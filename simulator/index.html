@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Copilot AI Credit Budget Simulator</title>
+    <style>
+        :root {
+            --color-bg: #0d1117;
+            --color-surface: #161b22;
+            --color-surface-raised: #1c2128;
+            --color-border: #30363d;
+            --color-text: #e6edf3;
+            --color-text-muted: #8b949e;
+            --color-accent: #58a6ff;
+            --color-accent-emphasis: #1f6feb;
+            --color-success: #3fb950;
+            --color-warning: #d29922;
+            --color-danger: #f85149;
+            --color-info: #58a6ff;
+            --radius: 6px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        header .actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        nav {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            gap: 0;
+            padding: 0 24px;
+            overflow-x: auto;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        nav button:hover { color: var(--color-text); }
+        nav button.active {
+            color: var(--color-text);
+            border-bottom-color: var(--color-accent);
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8125rem;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            font-size: 0.875rem;
+            transition: border-color 0.15s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-raised);
+            color: var(--color-text);
+            transition: background 0.15s;
+        }
+
+        button:hover { background: var(--color-border); }
+
+        .btn-primary {
+            background: var(--color-accent-emphasis);
+            border-color: var(--color-accent-emphasis);
+            color: #fff;
+        }
+        .btn-primary:hover { background: #388bfd; }
+
+        .btn-danger {
+            background: transparent;
+            border-color: var(--color-danger);
+            color: var(--color-danger);
+        }
+        .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
+
+        .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--color-text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success { background: rgba(63, 185, 80, 0.15); color: var(--color-success); }
+        .badge-danger { background: rgba(248, 81, 73, 0.15); color: var(--color-danger); }
+        .badge-warning { background: rgba(210, 153, 34, 0.15); color: var(--color-warning); }
+        .badge-info { background: rgba(88, 166, 255, 0.15); color: var(--color-info); }
+
+        .pool-bar {
+            height: 32px;
+            background: var(--color-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            border: 1px solid var(--color-border);
+            margin: 8px 0;
+        }
+
+        .pool-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: #fff;
+            min-width: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .pool-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 0.75rem;
+        }
+
+        .pool-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pool-legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-accent);
+        }
+
+        .stat-label {
+            font-size: 0.6875rem;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--color-text-muted);
+        }
+
+        .empty-state p { margin-top: 8px; font-size: 0.875rem; }
+
+        .result-blocked {
+            background: rgba(248, 81, 73, 0.05);
+        }
+
+        .result-metered {
+            background: rgba(210, 153, 34, 0.05);
+        }
+
+        .inline-form {
+            display: flex;
+            gap: 8px;
+            align-items: end;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .inline-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--color-bg);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .simulation-usage-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .simulation-usage-input input[type="range"] {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+
+        .simulation-usage-input .usage-value {
+            min-width: 70px;
+            text-align: right;
+            font-size: 0.8125rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 12px 16px; }
+            nav { padding: 0 16px; }
+            main { padding: 16px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🤖 AI Credit Budget Simulator</h1>
+        <div class="actions">
+            <button onclick="exportConfig()" title="Export configuration as JSON">📥 Export</button>
+            <button onclick="document.getElementById('importFile').click()" title="Import configuration from JSON">📤 Import</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+            <button onclick="resetAll()" class="btn-danger" title="Reset all configuration">🗑️ Reset</button>
+        </div>
+    </header>
+
+    <nav id="mainNav">
+        <button class="active" data-panel="enterprise">🏢 Enterprise</button>
+        <button data-panel="costcenters">📂 Cost Centers</button>
+        <button data-panel="users">👥 Users</button>
+        <button data-panel="pool">📊 Pool View</button>
+        <button data-panel="simulate">⚡ Simulate</button>
+    </nav>
+
+    <main>
+        <!-- Enterprise Setup Panel -->
+        <div id="panel-enterprise" class="panel active">
+            <div class="card">
+                <h2>🏢 Enterprise Configuration</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <select id="licenseType" onchange="updateEnterprise()">
+                            <option value="business">Copilot Business (3,000 credits/seat/mo)</option>
+                            <option value="enterprise">Copilot Enterprise (7,000 credits/seat/mo)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Licensed Seats</label>
+                        <input type="number" id="totalSeats" value="50" min="1" onchange="updateEnterprise()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Enterprise Budget (metered phase, $)</label>
+                        <input type="number" id="enterpriseBudget" value="1000" min="0" step="50" onchange="updateEnterprise()">
+                        <p class="help-text">Caps total metered charges across the enterprise</p>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enterpriseHardStop" checked onchange="updateEnterprise()">
+                            Hard stop when enterprise budget exhausted
+                        </label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="meteredEnabled" checked onchange="updateEnterprise()">
+                            Metered usage policy enabled (overage at $0.01/credit)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Universal User-Level Budget (credits)</label>
+                        <input type="number" id="universalULB" value="" min="0" placeholder="No limit" onchange="updateEnterprise()">
+                        <p class="help-text">Default per-user cap (leave empty for none)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Enterprise Summary</h2>
+                <div class="stat-grid" id="enterpriseStats"></div>
+            </div>
+        </div>
+
+        <!-- Cost Centers Panel -->
+        <div id="panel-costcenters" class="panel">
+            <div class="card">
+                <h2>📂 Cost Centers</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="ccName" placeholder="e.g., Engineering">
+                    </div>
+                    <div class="form-group">
+                        <label>Associated Team</label>
+                        <input type="text" id="ccTeam" placeholder="e.g., engineers">
+                    </div>
+                    <button class="btn-primary" onclick="addCostCenter()">+ Add Cost Center</button>
+                </div>
+            </div>
+            <div id="costCentersList"></div>
+        </div>
+
+        <!-- Users Panel -->
+        <div id="panel-users" class="panel">
+            <div class="card">
+                <h2>👥 Users</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="userName" placeholder="e.g., alice">
+                    </div>
+                    <div class="form-group">
+                        <label>Cost Center</label>
+                        <select id="userCC"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Individual ULB (credits)</label>
+                        <input type="number" id="userULB" placeholder="Use CC/Universal" min="0">
+                    </div>
+                    <button class="btn-primary" onclick="addUser()">+ Add User</button>
+                </div>
+                <p class="help-text">Individual ULB overrides cost center ULB, which overrides universal ULB.</p>
+            </div>
+            <div id="usersList"></div>
+        </div>
+
+        <!-- Pool View Panel -->
+        <div id="panel-pool" class="panel">
+            <div class="card">
+                <h2>📊 Pool Reservation View</h2>
+                <p class="help-text" style="margin-bottom: 12px">Shows how the enterprise shared pool is partitioned across cost centers with AI credit pools enabled.</p>
+                <div id="poolVisualization"></div>
+            </div>
+        </div>
+
+        <!-- Simulation Panel -->
+        <div id="panel-simulate" class="panel">
+            <div class="card">
+                <h2>⚡ Usage Simulation</h2>
+                <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
+                <div id="simulationInputs"></div>
+                <div style="margin-top: 16px; display: flex; gap: 8px;">
+                    <button class="btn-primary" onclick="runSimulation()">▶️ Run Simulation</button>
+                    <button onclick="resetUsage()">Reset Usage</button>
+                </div>
+            </div>
+
+            <div class="card" id="simulationResultsCard" style="display:none">
+                <h2>📋 Simulation Results</h2>
+                <div class="stat-grid" id="simSummaryStats"></div>
+                <div id="simulationResults"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏊 Pool & Overage Simulation</h2>
+                <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Credits Consumed (all users combined)</label>
+                        <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
+                    </div>
+                </div>
+                <div id="aggregateResults"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // ─── State ───────────────────────────────────────────────────────────────────
+    let state = loadState() || defaultState();
+
+    function defaultState() {
+        return {
+            enterprise: {
+                licenseType: 'business',
+                totalSeats: 50,
+                enterpriseBudget: 1000,
+                enterpriseHardStop: true,
+                meteredEnabled: true,
+                universalULB: null
+            },
+            costCenters: [],
+            users: [],
+            usage: {}
+        };
+    }
+
+    function creditsPerSeat() {
+        return state.enterprise.licenseType === 'enterprise' ? 7000 : 3000;
+    }
+
+    function totalPool() {
+        return state.enterprise.totalSeats * creditsPerSeat();
+    }
+
+    // ─── Persistence ─────────────────────────────────────────────────────────────
+    function saveState() {
+        localStorage.setItem('budget-simulator-state', JSON.stringify(state));
+    }
+
+    function loadState() {
+        try {
+            const saved = localStorage.getItem('budget-simulator-state');
+            return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+    }
+
+    function exportConfig() {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'budget-simulator-config.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importConfig(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                state = JSON.parse(e.target.result);
+                saveState();
+                renderAll();
+            } catch (err) {
+                alert('Invalid JSON file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function resetAll() {
+        if (!confirm('Reset all configuration? This cannot be undone.')) return;
+        state = defaultState();
+        saveState();
+        renderAll();
+    }
+
+    // ─── Enterprise ──────────────────────────────────────────────────────────────
+    function updateEnterprise() {
+        state.enterprise.licenseType = document.getElementById('licenseType').value;
+        state.enterprise.totalSeats = parseInt(document.getElementById('totalSeats').value) || 1;
+        state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
+        state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
+        state.enterprise.meteredEnabled = document.getElementById('meteredEnabled').checked;
+        const ulbVal = document.getElementById('universalULB').value;
+        state.enterprise.universalULB = ulbVal ? parseInt(ulbVal) : null;
+        saveState();
+        renderEnterpriseStats();
+    }
+
+    function renderEnterprise() {
+        document.getElementById('licenseType').value = state.enterprise.licenseType;
+        document.getElementById('totalSeats').value = state.enterprise.totalSeats;
+        document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
+        document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
+        document.getElementById('meteredEnabled').checked = state.enterprise.meteredEnabled;
+        document.getElementById('universalULB').value = state.enterprise.universalULB ?? '';
+        renderEnterpriseStats();
+    }
+
+    function renderEnterpriseStats() {
+        const pool = totalPool();
+        const reservedCredits = state.costCenters
+            .filter(cc => cc.poolEnabled)
+            .reduce((sum, cc) => sum + getCCPoolSize(cc), 0);
+        const unreserved = pool - reservedCredits;
+        const html = `
+            <div class="stat-card"><div class="stat-value">${formatNum(pool)}</div><div class="stat-label">Total Pool Credits</div></div>
+            <div class="stat-card"><div class="stat-value">${formatNum(creditsPerSeat())}</div><div class="stat-label">Credits / Seat / Mo</div></div>
+            <div class="stat-card"><div class="stat-value">${state.enterprise.totalSeats}</div><div class="stat-label">Licensed Seats</div></div>
+            <div class="stat-card"><div class="stat-value">${formatNum(reservedCredits)}</div><div class="stat-label">Reserved (CC Pools)</div></div>
+            <div class="stat-card"><div class="stat-value">${formatNum(unreserved)}</div><div class="stat-label">Unreserved Pool</div></div>
+            <div class="stat-card"><div class="stat-value">$${formatNum(state.enterprise.enterpriseBudget)}</div><div class="stat-label">Enterprise Budget</div></div>
+        `;
+        document.getElementById('enterpriseStats').innerHTML = html;
+    }
+
+    // ─── Cost Centers ────────────────────────────────────────────────────────────
+    function addCostCenter() {
+        const name = document.getElementById('ccName').value.trim();
+        const team = document.getElementById('ccTeam').value.trim();
+        if (!name) return alert('Name is required');
+        if (state.costCenters.some(cc => cc.name === name)) return alert('Cost center already exists');
+
+        state.costCenters.push({
+            id: 'cc_' + Date.now(),
+            name,
+            team,
+            poolEnabled: true,
+            overagesAllowed: true,
+            budget: null,
+            budgetHardStop: true,
+            ulb: null
+        });
+        document.getElementById('ccName').value = '';
+        document.getElementById('ccTeam').value = '';
+        saveState();
+        renderCostCenters();
+        renderUserCCDropdown();
+    }
+
+    function deleteCostCenter(id) {
+        state.costCenters = state.costCenters.filter(cc => cc.id !== id);
+        state.users.forEach(u => { if (u.costCenterId === id) u.costCenterId = null; });
+        saveState();
+        renderCostCenters();
+        renderUserCCDropdown();
+    }
+
+    function updateCC(id, field, value) {
+        const cc = state.costCenters.find(c => c.id === id);
+        if (!cc) return;
+        if (field === 'poolEnabled' || field === 'overagesAllowed' || field === 'budgetHardStop') {
+            cc[field] = value;
+        } else if (field === 'budget' || field === 'ulb') {
+            cc[field] = value === '' ? null : parseInt(value);
+        }
+        saveState();
+        renderCostCenters();
+        renderEnterpriseStats();
+    }
+
+    function getCCMembers(cc) {
+        return state.users.filter(u => u.costCenterId === cc.id);
+    }
+
+    function getCCPoolSize(cc) {
+        if (!cc.poolEnabled) return 0;
+        return getCCMembers(cc).length * creditsPerSeat();
+    }
+
+    function renderCostCenters() {
+        const container = document.getElementById('costCentersList');
+        if (state.costCenters.length === 0) {
+            container.innerHTML = '<div class="card empty-state"><p>No cost centers yet. Add one above.</p></div>';
+            return;
+        }
+        container.innerHTML = state.costCenters.map(cc => {
+            const members = getCCMembers(cc);
+            const poolSize = getCCPoolSize(cc);
+            return `
+                <div class="card">
+                    <h2>${cc.name} ${cc.team ? `<span class="badge badge-info">${cc.team}</span>` : ''}</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="updateCC('${cc.id}','poolEnabled',this.checked)">
+                                AI Credit Pool Enabled
+                            </label>
+                            ${cc.poolEnabled ? `<p class="help-text">Pool size: ${formatNum(poolSize)} credits (${members.length} members × ${formatNum(creditsPerSeat())})</p>` : ''}
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${cc.id}','overagesAllowed',this.checked)">
+                                Overages allowed (fall through to enterprise pool)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cost Center Budget (metered phase, $)</label>
+                            <input type="number" value="${cc.budget ?? ''}" placeholder="No limit" min="0"
+                                onchange="updateCC('${cc.id}','budget',this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label" style="margin-top: 20px">
+                                <input type="checkbox" ${cc.budgetHardStop ? 'checked' : ''} onchange="updateCC('${cc.id}','budgetHardStop',this.checked)">
+                                Hard stop when budget exhausted
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>User-Level Budget for members (credits)</label>
+                            <input type="number" value="${cc.ulb ?? ''}" placeholder="Use universal" min="0"
+                                onchange="updateCC('${cc.id}','ulb',this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>Members</label>
+                            <p style="padding: 8px 0; font-size: 0.875rem">${members.length > 0 ? members.map(u => u.name).join(', ') : '<span style="color:var(--color-text-muted)">None assigned</span>'}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px">
+                        <button class="btn-danger btn-sm" onclick="deleteCostCenter('${cc.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────────
+    function addUser() {
+        const name = document.getElementById('userName').value.trim();
+        const ccId = document.getElementById('userCC').value || null;
+        const ulbVal = document.getElementById('userULB').value;
+        if (!name) return alert('Username is required');
+        if (state.users.some(u => u.name === name)) return alert('User already exists');
+
+        state.users.push({
+            id: 'user_' + Date.now(),
+            name,
+            costCenterId: ccId,
+            individualULB: ulbVal ? parseInt(ulbVal) : null
+        });
+        document.getElementById('userName').value = '';
+        document.getElementById('userULB').value = '';
+        saveState();
+        renderUsers();
+        renderCostCenters();
+        renderEnterpriseStats();
+    }
+
+    function deleteUser(id) {
+        state.users = state.users.filter(u => u.id !== id);
+        delete state.usage[id];
+        saveState();
+        renderUsers();
+        renderCostCenters();
+        renderEnterpriseStats();
+    }
+
+    function getEffectiveULB(user) {
+        if (user.individualULB !== null) return { value: user.individualULB, source: 'Individual' };
+        if (user.costCenterId) {
+            const cc = state.costCenters.find(c => c.id === user.costCenterId);
+            if (cc && cc.ulb !== null) return { value: cc.ulb, source: `CC: ${cc.name}` };
+        }
+        if (state.enterprise.universalULB !== null) return { value: state.enterprise.universalULB, source: 'Universal' };
+        return { value: null, source: 'None' };
+    }
+
+    function renderUserCCDropdown() {
+        const select = document.getElementById('userCC');
+        select.innerHTML = '<option value="">(No cost center)</option>' +
+            state.costCenters.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+    }
+
+    function renderUsers() {
+        const container = document.getElementById('usersList');
+        if (state.users.length === 0) {
+            container.innerHTML = '<div class="card empty-state"><p>No users yet. Add one above.</p></div>';
+            return;
+        }
+        let html = '<div class="card"><table><thead><tr><th>User</th><th>Cost Center</th><th>Individual ULB</th><th>Effective ULB</th><th>Source</th><th></th></tr></thead><tbody>';
+        state.users.forEach(u => {
+            const cc = u.costCenterId ? state.costCenters.find(c => c.id === u.costCenterId) : null;
+            const effective = getEffectiveULB(u);
+            html += `<tr>
+                <td><strong>${u.name}</strong></td>
+                <td>${cc ? cc.name : '—'}</td>
+                <td>${u.individualULB !== null ? formatNum(u.individualULB) : '—'}</td>
+                <td>${effective.value !== null ? formatNum(effective.value) : '∞'}</td>
+                <td><span class="badge badge-info">${effective.source}</span></td>
+                <td><button class="btn-danger btn-sm" onclick="deleteUser('${u.id}')">✕</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    // ─── Pool Visualization ──────────────────────────────────────────────────────
+    function renderPoolView() {
+        const container = document.getElementById('poolVisualization');
+        const pool = totalPool();
+        if (pool === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Configure enterprise settings first.</p></div>';
+            return;
+        }
+
+        const colors = ['#1f6feb', '#238636', '#a371f7', '#d29922', '#f85149', '#58a6ff', '#3fb950', '#db61a2'];
+        const segments = [];
+        let reserved = 0;
+
+        state.costCenters.forEach((cc, i) => {
+            if (!cc.poolEnabled) return;
+            const size = getCCPoolSize(cc);
+            if (size === 0) return;
+            reserved += size;
+            segments.push({ label: cc.name, size, color: colors[i % colors.length] });
+        });
+
+        const unreserved = pool - reserved;
+
+        let barHtml = '<div class="pool-bar">';
+        segments.forEach(seg => {
+            const pct = (seg.size / pool * 100).toFixed(1);
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${seg.label}: ${formatNum(seg.size)} credits (${pct}%)">${pct > 8 ? seg.label : ''}</div>`;
+        });
+        if (unreserved > 0) {
+            const pct = (unreserved / pool * 100).toFixed(1);
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:var(--color-text-muted)" title="Unreserved: ${formatNum(unreserved)} credits (${pct}%)">${pct > 8 ? 'Unreserved' : ''}</div>`;
+        }
+        barHtml += '</div>';
+
+        let legendHtml = '<div class="pool-legend">';
+        segments.forEach(seg => {
+            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${seg.label}: ${formatNum(seg.size)} credits</div>`;
+        });
+        legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:var(--color-text-muted)"></div>Unreserved: ${formatNum(unreserved)} credits</div>`;
+        legendHtml += '</div>';
+
+        const detailsHtml = `
+            <table style="margin-top: 16px">
+                <thead><tr><th>Cost Center</th><th>Pool Enabled</th><th>Members</th><th>Pool Size</th><th>% of Total</th></tr></thead>
+                <tbody>
+                    ${state.costCenters.map(cc => `<tr>
+                        <td>${cc.name}</td>
+                        <td>${cc.poolEnabled ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-warning">No</span>'}</td>
+                        <td>${getCCMembers(cc).length}</td>
+                        <td>${formatNum(getCCPoolSize(cc))}</td>
+                        <td>${(getCCPoolSize(cc) / pool * 100).toFixed(1)}%</td>
+                    </tr>`).join('')}
+                    <tr style="font-weight:600">
+                        <td>Unreserved</td><td></td>
+                        <td>${state.users.filter(u => !u.costCenterId).length}</td>
+                        <td>${formatNum(unreserved)}</td>
+                        <td>${(unreserved / pool * 100).toFixed(1)}%</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = barHtml + legendHtml + detailsHtml;
+    }
+
+    // ─── Simulation Engine ───────────────────────────────────────────────────────
+    function evaluateUser(user, userUsage, poolState) {
+        const result = {
+            user: user.name,
+            usage: userUsage,
+            status: 'served',
+            source: '',
+            reason: '',
+            meteredCost: 0,
+            ulbRemaining: null,
+            creditsFromCC: 0,
+            creditsFromEntPool: 0,
+            creditsMetered: 0
+        };
+
+        if (userUsage === 0) {
+            result.status = 'served';
+            result.source = 'No usage';
+            const ulb = getEffectiveULB(user);
+            result.ulbRemaining = ulb.value;
+            return result;
+        }
+
+        // Step 1: User-Level Budget check
+        const ulb = getEffectiveULB(user);
+        if (ulb.value !== null && userUsage > ulb.value) {
+            result.status = 'blocked';
+            result.reason = `ULB exceeded (${formatNum(ulb.value)} limit via ${ulb.source})`;
+            result.ulbRemaining = 0;
+            return result;
+        }
+        result.ulbRemaining = ulb.value !== null ? ulb.value - userUsage : null;
+
+        let remaining = userUsage;
+
+        // Step 2: Cost Center pool
+        const cc = user.costCenterId ? state.costCenters.find(c => c.id === user.costCenterId) : null;
+
+        if (cc && cc.poolEnabled) {
+            const ccPoolKey = cc.id;
+            const available = poolState.ccPools[ccPoolKey] || 0;
+            const drawn = Math.min(remaining, available);
+            poolState.ccPools[ccPoolKey] -= drawn;
+            result.creditsFromCC = drawn;
+            remaining -= drawn;
+
+            if (remaining > 0) {
+                if (!cc.overagesAllowed) {
+                    result.status = 'blocked';
+                    result.reason = `CC pool exhausted & overages not allowed (${cc.name})`;
+                    return result;
+                }
+            }
+        }
+
+        // Step 3: Enterprise shared pool
+        if (remaining > 0) {
+            const drawn = Math.min(remaining, poolState.enterprisePool);
+            poolState.enterprisePool -= drawn;
+            result.creditsFromEntPool = drawn;
+            remaining -= drawn;
+        }
+
+        // Step 4: Metered phase
+        if (remaining > 0) {
+            if (!state.enterprise.meteredEnabled) {
+                result.status = 'blocked';
+                result.reason = 'Pool exhausted & metered usage not enabled';
+                return result;
+            }
+
+            // Check CC budget
+            if (cc && cc.budget !== null) {
+                const ccBudgetUsed = poolState.ccMetered[cc.id] || 0;
+                const ccBudgetRemaining = cc.budget - ccBudgetUsed;
+                const affordable = Math.floor(ccBudgetRemaining / 0.01);
+                if (affordable <= 0) {
+                    if (cc.budgetHardStop) {
+                        result.status = 'blocked';
+                        result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
+                        return result;
+                    }
+                } else if (remaining > affordable && cc.budgetHardStop) {
+                    remaining = affordable;
+                }
+            }
+
+            // Check enterprise budget
+            const entBudgetUsed = poolState.enterpriseMetered;
+            const entBudgetRemaining = state.enterprise.enterpriseBudget - entBudgetUsed;
+            const entAffordable = Math.floor(entBudgetRemaining / 0.01);
+            if (entAffordable <= 0) {
+                if (state.enterprise.enterpriseHardStop) {
+                    result.status = 'blocked';
+                    result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
+                    return result;
+                }
+            } else if (remaining > entAffordable && state.enterprise.enterpriseHardStop) {
+                remaining = entAffordable;
+            }
+
+            result.creditsMetered = remaining;
+            result.meteredCost = remaining * 0.01;
+            if (cc) {
+                poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + result.meteredCost;
+            }
+            poolState.enterpriseMetered += result.meteredCost;
+
+            result.status = 'metered';
+            result.source = `${formatNum(result.creditsFromCC)} from CC pool, ${formatNum(result.creditsFromEntPool)} from ent. pool, ${formatNum(remaining)} metered ($${result.meteredCost.toFixed(2)})`;
+            return result;
+        }
+
+        result.status = 'served';
+        result.source = result.creditsFromCC > 0 ? 'CC pool' : 'Enterprise pool';
+        if (result.creditsFromCC > 0 && result.creditsFromEntPool > 0) {
+            result.source = `CC pool (${formatNum(result.creditsFromCC)}) + Ent. pool (${formatNum(result.creditsFromEntPool)})`;
+        }
+        return result;
+    }
+
+    function runSimulation() {
+        const poolState = initPoolState();
+        const results = [];
+
+        state.users.forEach(user => {
+            const usage = state.usage[user.id] || 0;
+            results.push(evaluateUser(user, usage, poolState));
+        });
+
+        renderSimulationResults(results, poolState);
+    }
+
+    function initPoolState() {
+        const pool = totalPool();
+        const ccPools = {};
+        let totalReserved = 0;
+
+        state.costCenters.forEach(cc => {
+            if (cc.poolEnabled) {
+                const size = getCCPoolSize(cc);
+                ccPools[cc.id] = size;
+                totalReserved += size;
+            }
+        });
+
+        return {
+            ccPools,
+            enterprisePool: pool - totalReserved,
+            enterpriseMetered: 0,
+            ccMetered: {}
+        };
+    }
+
+    function renderSimulationResults(results, poolState) {
+        const card = document.getElementById('simulationResultsCard');
+        card.style.display = 'block';
+
+        const served = results.filter(r => r.status === 'served').length;
+        const metered = results.filter(r => r.status === 'metered').length;
+        const blocked = results.filter(r => r.status === 'blocked').length;
+        const totalMetered = results.reduce((s, r) => s + r.meteredCost, 0);
+
+        document.getElementById('simSummaryStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-success)">${served}</div><div class="stat-label">Served (Pool)</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-warning)">${metered}</div><div class="stat-label">Metered</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-danger)">${blocked}</div><div class="stat-label">Blocked</div></div>
+            <div class="stat-card"><div class="stat-value">$${totalMetered.toFixed(2)}</div><div class="stat-label">Total Metered Cost</div></div>
+            <div class="stat-card"><div class="stat-value">${formatNum(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
+        `;
+
+        let html = '<table><thead><tr><th>User</th><th>Usage</th><th>Status</th><th>ULB Remaining</th><th>Details</th></tr></thead><tbody>';
+        results.forEach(r => {
+            const rowClass = r.status === 'blocked' ? 'result-blocked' : r.status === 'metered' ? 'result-metered' : '';
+            const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
+                          r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
+                          '<span class="badge badge-success">Served</span>';
+            const detail = r.status === 'blocked' ? r.reason : r.source;
+            html += `<tr class="${rowClass}">
+                <td><strong>${r.user}</strong></td>
+                <td>${formatNum(r.usage)}</td>
+                <td>${badge}</td>
+                <td>${r.ulbRemaining !== null ? formatNum(r.ulbRemaining) : '∞'}</td>
+                <td>${detail}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('simulationResults').innerHTML = html;
+    }
+
+    // ─── Aggregate / Pool-Level Simulation ───────────────────────────────────────
+    function runAggregateSimulation() {
+        const totalUsage = parseInt(document.getElementById('aggregateUsage').value) || 0;
+        const pool = totalPool();
+        const container = document.getElementById('aggregateResults');
+
+        const poolConsumed = Math.min(totalUsage, pool);
+        const poolRemaining = pool - poolConsumed;
+        const overage = Math.max(0, totalUsage - pool);
+        const meteredCost = overage * 0.01;
+        const budgetRemaining = Math.max(0, state.enterprise.enterpriseBudget - meteredCost);
+        const budgetExhausted = meteredCost >= state.enterprise.enterpriseBudget;
+        const maxBeforeBlock = pool + (state.enterprise.meteredEnabled ?
+            (state.enterprise.enterpriseHardStop ? state.enterprise.enterpriseBudget / 0.01 : Infinity) : 0);
+
+        const poolPct = pool > 0 ? Math.min(100, poolConsumed / pool * 100) : 0;
+
+        container.innerHTML = `
+            <div class="stat-grid" style="margin-top: 12px">
+                <div class="stat-card"><div class="stat-value">${formatNum(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${formatNum(overage)}</div><div class="stat-label">Overage Credits</div></div>
+                <div class="stat-card"><div class="stat-value">$${meteredCost.toFixed(2)}</div><div class="stat-label">Metered Cost</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">$${budgetRemaining.toFixed(2)}</div><div class="stat-label">Budget Remaining</div></div>
+            </div>
+            <div style="margin-top: 12px">
+                <label style="font-size: 0.75rem; color: var(--color-text-muted)">Pool consumption: ${poolPct.toFixed(1)}%</label>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${poolPct}%; background: ${poolPct >= 100 ? 'var(--color-danger)' : poolPct >= 75 ? 'var(--color-warning)' : 'var(--color-success)'}"></div>
+                </div>
+            </div>
+            ${budgetExhausted ? `<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Enterprise budget exhausted! ${state.enterprise.enterpriseHardStop ? 'Users will be BLOCKED.' : 'Metered charges continue uncapped.'}</p>` : ''}
+            ${!state.enterprise.meteredEnabled && overage > 0 ? '<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Pool exhausted & metered usage disabled — users BLOCKED.</p>' : ''}
+            <p class="help-text" style="margin-top: 8px">Max credits before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : formatNum(maxBeforeBlock)}</p>
+        `;
+    }
+
+    // ─── Simulation Inputs ───────────────────────────────────────────────────────
+    function renderSimulationInputs() {
+        const container = document.getElementById('simulationInputs');
+        if (state.users.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
+            return;
+        }
+
+        const maxCredits = totalPool();
+        let html = '<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (credits)</th></tr></thead><tbody>';
+        state.users.forEach(user => {
+            const cc = user.costCenterId ? state.costCenters.find(c => c.id === user.costCenterId) : null;
+            const ulb = getEffectiveULB(user);
+            const max = ulb.value || Math.floor(maxCredits / state.users.length * 3);
+            const usage = state.usage[user.id] || 0;
+            html += `<tr>
+                <td><strong>${user.name}</strong></td>
+                <td>${cc ? cc.name : '—'}</td>
+                <td>
+                    <div class="simulation-usage-input">
+                        <input type="range" min="0" max="${max}" value="${usage}"
+                            oninput="updateUsage('${user.id}', this.value); this.parentElement.querySelector('.usage-value').textContent = formatNum(parseInt(this.value))">
+                        <span class="usage-value">${formatNum(usage)}</span>
+                        <input type="number" min="0" value="${usage}" style="width:80px"
+                            onchange="updateUsage('${user.id}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = formatNum(parseInt(this.value))">
+                    </div>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function updateUsage(userId, value) {
+        state.usage[userId] = parseInt(value) || 0;
+        saveState();
+    }
+
+    function resetUsage() {
+        state.usage = {};
+        saveState();
+        renderSimulationInputs();
+        document.getElementById('simulationResultsCard').style.display = 'none';
+    }
+
+    // ─── Navigation ──────────────────────────────────────────────────────────────
+    document.getElementById('mainNav').addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
+
+        // Refresh panel data
+        const panel = e.target.dataset.panel;
+        if (panel === 'pool') renderPoolView();
+        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
+    });
+
+    // ─── Utilities ───────────────────────────────────────────────────────────────
+    function formatNum(n) {
+        if (n === null || n === undefined) return '—';
+        return n.toLocaleString();
+    }
+
+    // ─── Render All ──────────────────────────────────────────────────────────────
+    function renderAll() {
+        renderEnterprise();
+        renderCostCenters();
+        renderUserCCDropdown();
+        renderUsers();
+        renderPoolView();
+        renderSimulationInputs();
+        runAggregateSimulation();
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────────────
+    renderAll();
+    </script>
+</body>
+</html>
