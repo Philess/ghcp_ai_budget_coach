@@ -1,2 +1,150 @@
-# ghcp_ai_budget_coach
-Helpers and simulation tool to help you understand and setup the right configuration for your GitHub Enterprise AI Credit Budgets
+# GitHub Copilot AI Credit Budget Coach
+
+Helpers and simulation tools to help you understand and set up the right configuration for your GitHub Enterprise AI Credit Budgets.
+
+## How AI Credit Budgets Work
+
+GitHub Copilot Enterprise/Business licenses include a shared pool of AI Credits. Budget controls govern how individual users draw from that pool and cap spending once it's exhausted.
+
+### Budget Evaluation Flow
+
+When a user makes a Copilot request that consumes AI Credits, the system evaluates controls in this order:
+
+```mermaid
+flowchart TD
+    A[User makes a Copilot request] --> B{User-Level Budget check}
+    B -->|Budget exceeded| BLOCK[🚫 Request BLOCKED]
+    B -->|Budget has room / No ULB set| C{Cost Center AI Credit Pool enabled?}
+
+    C -->|Yes| D{Cost Center pool has credits?}
+    C -->|No| E{Enterprise shared pool has credits?}
+
+    D -->|Yes| SERVE_CC[✅ Served from Cost Center pool<br/>No extra cost]
+    D -->|No & overages allowed| E
+    D -->|No & overages NOT allowed| BLOCK
+
+    E -->|Yes| SERVE_POOL[✅ Served from Enterprise shared pool<br/>No extra cost]
+    E -->|No| F{Metered usage policy enabled?}
+
+    F -->|No| BLOCK
+    F -->|Yes| G{Cost Center / Org / Enterprise budget check}
+
+    G -->|Budget has room| METER[💰 Metered at $0.01/credit]
+    G -->|Budget exhausted + hard stop ON| BLOCK
+    G -->|Budget exhausted + hard stop OFF| METER_UNCAPPED[💰 Metered uncapped]
+```
+
+### User-Level Budget Precedence
+
+User-level budgets (ULBs) are the **only** control active during both the pool phase and metered phase. They always enforce a hard stop.
+
+```mermaid
+flowchart TD
+    subgraph precedence ["Budget Precedence (most specific wins)"]
+        direction TB
+        IND["1️⃣ Individual User-Level Budget<br/>(per specific user)"]
+        CC_ULB["2️⃣ Cost Center User-Level Budget<br/>(per user in a cost center)"]
+        UNI["3️⃣ Universal User-Level Budget<br/>(default for all licensed users)"]
+        IND -->|overrides| CC_ULB -->|overrides| UNI
+    end
+
+    USER[User consumes AI Credits] --> precedence
+    precedence --> CHECK{Applicable budget exceeded?}
+    CHECK -->|Yes| BLOCK[🚫 Hard stop — always]
+    CHECK -->|No| CONTINUE[Continue to pool/metered checks]
+```
+
+### Enterprise Structure with Cost Centers & Pool Reservations
+
+```mermaid
+flowchart TB
+    subgraph ENT["🏢 Enterprise"]
+        direction TB
+        ENT_POOL["Shared AI Credit Pool<br/>(all licenses contribute)<br/>Business: 3,000/license/mo<br/>Enterprise: 7,000/license/mo"]
+        ENT_BUDGET["Enterprise Budget<br/>(caps total metered charges)"]
+
+        subgraph CC_A["Cost Center A (Engineering)"]
+            direction LR
+            TEAM_A["Enterprise Team: engineers"]
+            POOL_A["AI Credit Pool ✅<br/>Reserved share based on<br/>member license count"]
+            ULB_A["User-Level Budget: $50/user"]
+        end
+
+        subgraph CC_B["Cost Center B (Marketing)"]
+            direction LR
+            TEAM_B["Enterprise Team: marketing"]
+            POOL_B["AI Credit Pool ✅<br/>Reserved share based on<br/>member license count"]
+            ULB_B["User-Level Budget: $20/user"]
+        end
+
+        subgraph CC_NONE["Users NOT in a cost center"]
+            UNASSIGNED["Draw from remaining<br/>enterprise shared pool"]
+        end
+    end
+
+    ENT_POOL -.->|"Partitioned by<br/>pool reservations"| POOL_A
+    ENT_POOL -.->|"Partitioned by<br/>pool reservations"| POOL_B
+    ENT_POOL -.->|"Remainder available"| UNASSIGNED
+```
+
+### What Each Control Caps and When
+
+```mermaid
+flowchart LR
+    subgraph POOL_PHASE["🟢 Pool Phase (included credits)"]
+        ULB_P["User-Level Budgets ✅"]
+        CC_POOL["Cost Center AI Credit Pool ✅"]
+    end
+
+    subgraph METERED_PHASE["🟡 Metered Phase ($0.01/credit)"]
+        ULB_M["User-Level Budgets ✅"]
+        CC_BUD["Cost Center Budget ✅"]
+        ORG_BUD["Organization Budget ✅"]
+        ENT_BUD["Enterprise Budget ✅"]
+    end
+
+    POOL_PHASE -->|"Pool exhausted"| METERED_PHASE
+```
+
+### Key Interactions & Gotchas
+
+| Scenario | What happens |
+|----------|-------------|
+| User hits ULB but cost center budget has room | **User is blocked.** ULB is a total cap across both phases. |
+| Enterprise budget exhausted but user's ULB has room | **User is blocked** (if hard stop is on). Lowest headroom wins. |
+| Cost center pool exhausted mid-month | If overages allowed → falls through to enterprise pool/metered. If not → user blocked. |
+| Pool enabled mid-month | Not retroactive. Users share only what remains of their calculated pool from that point forward. |
+| User in no cost center | Draws from the full shared enterprise pool (no reservation). |
+
+### Recommended Setup (3 Controls Together)
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant API as GitHub API
+    participant CC as Cost Center
+    participant Team as Enterprise Team
+    participant Users
+
+    Admin->>API: 1. Create Cost Center
+    API-->>Admin: cost_center_id
+
+    Admin->>API: 2. Assign Enterprise Team to Cost Center
+    API->>CC: Team members → Cost Center members
+    Note over Team,CC: Membership stays in sync automatically
+
+    Admin->>API: 3. Enable AI Credit Pool on Cost Center
+    API->>CC: Pool = licenses × 3,000 (Biz) or 7,000 (Ent)
+    Note over CC: Calculated automatically, no custom amount
+
+    Admin->>API: 4. Set User-Level Budget on Cost Center
+    API->>Users: Each member gets per-user spending limit
+    Note over Users: Individual exceptions override cost center budget
+```
+
+## Further Reading
+
+- [Budgets for usage-based billing](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/billing/budgets-for-usage-based-billing)
+- [Getting started with budget controls](https://docs.github.com/en/enterprise-cloud@latest/copilot/tutorials/budgets/getting-started-with-budget-controls)
+- [Optimizing your budget configuration](https://docs.github.com/en/enterprise-cloud@latest/copilot/tutorials/budgets/optimizing-your-budget-configuration)
+- [About cost centers](https://docs.github.com/en/enterprise-cloud@latest/billing/using-the-new-billing-platform/about-cost-centers)
