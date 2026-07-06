@@ -265,16 +265,27 @@
         <!-- ═══════════════ COST CENTERS TAB ═══════════════ -->
         <div id="panel-costcenters" class="panel">
             <div class="card">
-                <h2>📂 Cost Centers</h2>
-                <div class="inline-form">
+                <h2>📂 Create Cost Center</h2>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Name</label>
                         <input type="text" id="ccName" placeholder="e.g., Engineering">
                     </div>
                     <div class="form-group">
-                        <label>Associated Team</label>
-                        <select id="ccTeam"></select>
+                        <label>Teams</label>
+                        <select id="ccTeam" multiple style="min-height:60px"></select>
+                        <p class="help-text">Hold Ctrl/Cmd to select multiple</p>
                     </div>
+                    <div class="form-group">
+                        <label>Organizations</label>
+                        <select id="ccOrgs" multiple style="min-height:60px"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Users (direct assignment)</label>
+                        <select id="ccUsers" multiple style="min-height:60px"></select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px">
                     <button class="btn-primary" onclick="addCostCenter()">+ Add Cost Center</button>
                 </div>
             </div>
@@ -284,8 +295,8 @@
         <!-- ═══════════════ USERS TAB ═══════════════ -->
         <div id="panel-users" class="panel">
             <div class="card">
-                <h2>👥 Users</h2>
-                <div class="inline-form">
+                <h2>👥 Add User</h2>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Username</label>
                         <input type="text" id="userName" placeholder="e.g., alice">
@@ -309,9 +320,38 @@
                             <option value="enterprise">Enterprise</option>
                         </select>
                     </div>
+                </div>
+                <div style="margin-top: 12px">
                     <button class="btn-primary" onclick="addUser()">+ Add User</button>
                 </div>
             </div>
+
+            <div class="card">
+                <h2>⚡ Bulk Create Users</h2>
+                <p class="help-text" style="margin-bottom: 12px">Generate multiple users at once. They are automatically distributed round-robin across existing teams and organizations. Cost center must be assigned manually.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Number of users</label>
+                        <input type="number" id="bulkCount" value="10" min="1" max="500">
+                    </div>
+                    <div class="form-group">
+                        <label>Name prefix</label>
+                        <input type="text" id="bulkPrefix" value="user" placeholder="e.g., dev">
+                    </div>
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <select id="bulkLicense">
+                            <option value="business">Business</option>
+                            <option value="enterprise">Enterprise</option>
+                            <option value="mixed">Mixed (alternate)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-primary" onclick="bulkCreateUsers()">⚡ Generate Users</button>
+                </div>
+            </div>
+
             <div id="usersList"></div>
         </div>
 
@@ -558,7 +598,10 @@
     function deleteTeam(id) {
         state.teams = state.teams.filter(t => t.id !== id);
         state.users.forEach(u => { if (u.teamId === id) u.teamId = null; });
-        state.costCenters.forEach(cc => { if (cc.teamId === id) cc.teamId = null; });
+        state.costCenters.forEach(cc => {
+            if (cc.teamId === id) cc.teamId = null;
+            if (cc.teamIds) cc.teamIds = cc.teamIds.filter(tid => tid !== id);
+        });
         saveState();
         renderTeams();
         renderCCTeamDropdown();
@@ -591,10 +634,14 @@
     function deleteOrg(id) {
         state.orgs = state.orgs.filter(o => o.id !== id);
         state.users.forEach(u => { if (u.orgId === id) u.orgId = null; });
+        state.costCenters.forEach(cc => {
+            if (cc.orgIds) cc.orgIds = cc.orgIds.filter(oid => oid !== id);
+        });
         saveState();
         renderOrgs();
         renderUserOrgDropdown();
         renderOrgBudgets();
+        renderCCOrgDropdown();
     }
 
     function renderOrgs() {
@@ -638,13 +685,24 @@
     // ─── Cost Centers ────────────────────────────────────────────────────────────
     function addCostCenter() {
         const name = document.getElementById('ccName').value.trim();
-        const teamId = document.getElementById('ccTeam').value || null;
         if (!name) return alert('Name is required');
         if (state.costCenters.some(cc => cc.name === name)) return alert('Cost center already exists');
+
+        const teamSelect = document.getElementById('ccTeam');
+        const orgSelect = document.getElementById('ccOrgs');
+        const userSelect = document.getElementById('ccUsers');
+        const teamIds = Array.from(teamSelect.selectedOptions).map(o => o.value).filter(Boolean);
+        const orgIds = Array.from(orgSelect.selectedOptions).map(o => o.value).filter(Boolean);
+        const userIds = Array.from(userSelect.selectedOptions).map(o => o.value).filter(Boolean);
+
         state.costCenters.push({
             id: 'cc_' + Date.now(),
             name,
-            teamId,
+            teamIds,
+            orgIds,
+            userIds,
+            // Legacy compat
+            teamId: teamIds[0] || null,
             poolEnabled: false,
             overagesAllowed: true,
             budget: null,
@@ -652,6 +710,9 @@
             ulb: null
         });
         document.getElementById('ccName').value = '';
+        teamSelect.selectedIndex = -1;
+        orgSelect.selectedIndex = -1;
+        userSelect.selectedIndex = -1;
         saveState();
         renderCostCenters();
         renderUserCCDropdown();
@@ -675,17 +736,34 @@
         const cc = state.costCenters.find(c => c.id === id);
         if (!cc) return;
         if (field === 'overagesAllowed') cc[field] = value;
-        else if (field === 'teamId') cc[field] = value || null;
+        else if (field === 'name') cc.name = value;
+        else if (field === 'teamIds') { cc.teamIds = value; cc.teamId = value[0] || null; }
+        else if (field === 'orgIds') cc.orgIds = value;
+        else if (field === 'userIds') cc.userIds = value;
         saveState();
         renderCostCenters();
+        renderEnterpriseStats();
+        renderCCPoolToggles();
     }
 
     function getCCMembers(cc) {
-        // Members come from the assigned team, or direct CC assignment
-        if (cc.teamId) {
-            return state.users.filter(u => u.teamId === cc.teamId || u.costCenterId === cc.id);
+        const memberSet = new Set();
+        // Users directly assigned to CC
+        state.users.filter(u => u.costCenterId === cc.id).forEach(u => memberSet.add(u.id));
+        // Users in CC's userIds list
+        if (cc.userIds) cc.userIds.forEach(uid => memberSet.add(uid));
+        // Users in assigned teams
+        const teamIds = cc.teamIds || (cc.teamId ? [cc.teamId] : []);
+        teamIds.forEach(tid => {
+            state.users.filter(u => u.teamId === tid).forEach(u => memberSet.add(u.id));
+        });
+        // Users in assigned orgs
+        if (cc.orgIds) {
+            cc.orgIds.forEach(oid => {
+                state.users.filter(u => u.orgId === oid).forEach(u => memberSet.add(u.id));
+            });
         }
-        return state.users.filter(u => u.costCenterId === cc.id);
+        return state.users.filter(u => memberSet.has(u.id));
     }
 
     function getCCPoolSize(cc) {
@@ -695,7 +773,20 @@
 
     function renderCCTeamDropdown() {
         const sel = document.getElementById('ccTeam');
-        sel.innerHTML = '<option value="">(No team)</option>' + state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        sel.innerHTML = state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        sel.selectedIndex = -1;
+    }
+
+    function renderCCOrgDropdown() {
+        const sel = document.getElementById('ccOrgs');
+        sel.innerHTML = state.orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+        sel.selectedIndex = -1;
+    }
+
+    function renderCCUserDropdown() {
+        const sel = document.getElementById('ccUsers');
+        sel.innerHTML = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        sel.selectedIndex = -1;
     }
 
     function renderCostCenters() {
@@ -706,19 +797,41 @@
         }
         container.innerHTML = state.costCenters.map(cc => {
             const members = getCCMembers(cc);
-            const team = cc.teamId ? state.teams.find(t => t.id === cc.teamId) : null;
+            const teamIds = cc.teamIds || (cc.teamId ? [cc.teamId] : []);
+            const orgIds = cc.orgIds || [];
+            const userIds = cc.userIds || [];
+            const teamNames = teamIds.map(tid => state.teams.find(t => t.id === tid)?.name).filter(Boolean);
+            const orgNames = orgIds.map(oid => state.orgs.find(o => o.id === oid)?.name).filter(Boolean);
+            const directUsers = userIds.map(uid => state.users.find(u => u.id === uid)?.name).filter(Boolean);
+
             return `<div class="card">
-                <h2>${cc.name} ${team ? `<span class="badge badge-info">${team.name}</span>` : ''} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
+                <h2>${cc.name} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Associated Team</label>
-                        <select onchange="updateCC('${cc.id}','teamId',this.value)">
-                            <option value="">(None)</option>
-                            ${state.teams.map(t => `<option value="${t.id}" ${cc.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                        <label>Name</label>
+                        <input type="text" value="${cc.name}" onchange="updateCC('${cc.id}','name',this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Teams</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','teamIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.teams.map(t => `<option value="${t.id}" ${teamIds.includes(t.id) ? 'selected' : ''}>${t.name}</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>&nbsp;</label>
+                        <label>Organizations</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','orgIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.orgs.map(o => `<option value="${o.id}" ${orgIds.includes(o.id) ? 'selected' : ''}>${o.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Direct Users</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','userIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.users.map(u => `<option value="${u.id}" ${userIds.includes(u.id) ? 'selected' : ''}>${u.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-top: 8px">
+                    <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${cc.id}','overagesAllowed',this.checked)">
                             Overages allowed (fall through to enterprise pool when CC pool exhausted)
@@ -726,7 +839,7 @@
                     </div>
                 </div>
                 <div style="margin-top: 8px">
-                    <label style="font-size: 0.8125rem; color: var(--color-text-muted)">Members (${members.length}): </label>
+                    <label style="font-size: 0.8125rem; color: var(--color-text-muted)">Resolved Members (${members.length}): </label>
                     <span style="font-size: 0.8125rem">${members.length > 0 ? members.map(u => u.name).join(', ') : '<em>None</em>'}</span>
                 </div>
                 <div style="margin-top: 12px">
@@ -737,6 +850,8 @@
     }
 
     // ─── Users ───────────────────────────────────────────────────────────────────
+    let editingUserId = null;
+
     function addUser() {
         const name = document.getElementById('userName').value.trim();
         if (!name) return alert('Username is required');
@@ -752,19 +867,40 @@
         });
         document.getElementById('userName').value = '';
         saveState();
-        renderUsers();
-        renderCostCenters();
-        renderTeams();
-        renderOrgs();
-        renderEnterpriseStats();
-        renderCCPoolToggles();
-        renderBudgets();
+        refreshAfterUserChange();
     }
 
     function deleteUser(id) {
         state.users = state.users.filter(u => u.id !== id);
         delete state.usage[id];
+        // Remove from CC userIds
+        state.costCenters.forEach(cc => {
+            if (cc.userIds) cc.userIds = cc.userIds.filter(uid => uid !== id);
+        });
         saveState();
+        refreshAfterUserChange();
+    }
+
+    function editUser(id) {
+        editingUserId = editingUserId === id ? null : id;
+        renderUsers();
+    }
+
+    function saveUserEdit(id) {
+        const user = state.users.find(u => u.id === id);
+        if (!user) return;
+        const row = document.getElementById('edit-' + id);
+        if (!row) return;
+        user.costCenterId = row.querySelector('[data-field="cc"]').value || null;
+        user.orgId = row.querySelector('[data-field="org"]').value || null;
+        user.teamId = row.querySelector('[data-field="team"]').value || null;
+        user.license = row.querySelector('[data-field="license"]').value;
+        editingUserId = null;
+        saveState();
+        refreshAfterUserChange();
+    }
+
+    function refreshAfterUserChange() {
         renderUsers();
         renderCostCenters();
         renderTeams();
@@ -772,6 +908,45 @@
         renderEnterpriseStats();
         renderCCPoolToggles();
         renderBudgets();
+        renderCCUserDropdown();
+    }
+
+    function bulkCreateUsers() {
+        const count = parseInt(document.getElementById('bulkCount').value) || 0;
+        const prefix = document.getElementById('bulkPrefix').value.trim() || 'user';
+        const licenseMode = document.getElementById('bulkLicense').value;
+        if (count <= 0) return alert('Enter a positive number');
+
+        const existingNumbers = state.users
+            .map(u => { const m = u.name.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+            .filter(n => n > 0);
+        let nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+
+        const teams = state.teams.length > 0 ? state.teams : [null];
+        const orgs = state.orgs.length > 0 ? state.orgs : [null];
+
+        for (let i = 0; i < count; i++) {
+            const name = `${prefix}-${nextNum + i}`;
+            if (state.users.some(u => u.name === name)) continue;
+
+            const team = teams[i % teams.length];
+            const org = orgs[i % orgs.length];
+            let license = 'business';
+            if (licenseMode === 'enterprise') license = 'enterprise';
+            else if (licenseMode === 'mixed') license = i % 2 === 0 ? 'business' : 'enterprise';
+
+            state.users.push({
+                id: 'user_' + (Date.now() + i),
+                name,
+                costCenterId: null,
+                orgId: org ? org.id : null,
+                teamId: team ? team.id : null,
+                license,
+                individualULB: null
+            });
+        }
+        saveState();
+        refreshAfterUserChange();
     }
 
     function getEffectiveULB(user) {
@@ -805,21 +980,34 @@
             container.innerHTML = '<div class="card empty-state"><p>No users yet. Add one above.</p></div>';
             return;
         }
-        let html = '<div class="card"><table><thead><tr><th>User</th><th>License</th><th>Cost Center</th><th>Org</th><th>Team</th><th>Effective ULB</th><th></th></tr></thead><tbody>';
+        let html = `<div class="card"><p style="margin-bottom:8px; font-size:0.8125rem; color:var(--color-text-muted)">${state.users.length} user(s)</p><table><thead><tr><th>User</th><th>License</th><th>Cost Center</th><th>Org</th><th>Team</th><th>Effective ULB</th><th></th></tr></thead><tbody>`;
         state.users.forEach(u => {
             const cc = u.costCenterId ? state.costCenters.find(c => c.id === u.costCenterId) : null;
             const org = u.orgId ? state.orgs.find(o => o.id === u.orgId) : null;
             const team = u.teamId ? state.teams.find(t => t.id === u.teamId) : null;
             const ulb = getEffectiveULB(u);
-            html += `<tr>
-                <td><strong>${u.name}</strong></td>
-                <td><span class="badge badge-info">${u.license || 'business'}</span></td>
-                <td>${cc ? cc.name : '—'}</td>
-                <td>${org ? org.name : '—'}</td>
-                <td>${team ? team.name : '—'}</td>
-                <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
-                <td><button class="btn-danger btn-sm" onclick="deleteUser('${u.id}')">✕</button></td>
-            </tr>`;
+
+            if (editingUserId === u.id) {
+                html += `<tr id="edit-${u.id}" style="background:var(--color-surface-raised)">
+                    <td><strong>${u.name}</strong></td>
+                    <td><select data-field="license"><option value="business" ${u.license !== 'enterprise' ? 'selected' : ''}>Business</option><option value="enterprise" ${u.license === 'enterprise' ? 'selected' : ''}>Enterprise</option></select></td>
+                    <td><select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => `<option value="${c.id}" ${u.costCenterId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></td>
+                    <td><select data-field="org"><option value="">(None)</option>${state.orgs.map(o => `<option value="${o.id}" ${u.orgId === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}</select></td>
+                    <td><select data-field="team"><option value="">(None)</option>${state.teams.map(t => `<option value="${t.id}" ${u.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select></td>
+                    <td>${ulb.value !== null ? fmt(ulb.value) : '∞'}</td>
+                    <td><button class="btn-primary btn-sm" onclick="saveUserEdit('${u.id}')">💾</button> <button class="btn-sm" onclick="editUser(null)">✕</button></td>
+                </tr>`;
+            } else {
+                html += `<tr>
+                    <td><strong>${u.name}</strong></td>
+                    <td><span class="badge badge-info">${u.license || 'business'}</span></td>
+                    <td>${cc ? cc.name : '—'}</td>
+                    <td>${org ? org.name : '—'}</td>
+                    <td>${team ? team.name : '—'}</td>
+                    <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
+                    <td><button class="btn-sm" onclick="editUser('${u.id}')" title="Edit">✏️</button> <button class="btn-danger btn-sm" onclick="deleteUser('${u.id}')">✕</button></td>
+                </tr>`;
+            }
         });
         html += '</tbody></table></div>';
         container.innerHTML = html;
@@ -1007,9 +1195,20 @@
         if (user.costCenterId) return state.costCenters.find(c => c.id === user.costCenterId) || null;
         // Check if user is in a team that's assigned to a CC
         if (user.teamId) {
-            const cc = state.costCenters.find(c => c.teamId === user.teamId);
+            const cc = state.costCenters.find(c => {
+                const tids = c.teamIds || (c.teamId ? [c.teamId] : []);
+                return tids.includes(user.teamId);
+            });
             if (cc) return cc;
         }
+        // Check if user is in an org assigned to a CC
+        if (user.orgId) {
+            const cc = state.costCenters.find(c => c.orgIds && c.orgIds.includes(user.orgId));
+            if (cc) return cc;
+        }
+        // Check if user is directly listed in a CC's userIds
+        const cc = state.costCenters.find(c => c.userIds && c.userIds.includes(user.id));
+        if (cc) return cc;
         return null;
     }
 
@@ -1285,6 +1484,8 @@
     function renderAll() {
         renderEnterprise();
         renderCCTeamDropdown();
+        renderCCOrgDropdown();
+        renderCCUserDropdown();
         renderCostCenters();
         renderUserCCDropdown();
         renderUserOrgDropdown();
