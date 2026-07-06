@@ -42,25 +42,14 @@
             flex-wrap: wrap;
         }
 
-        header h1 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        header h1 { font-size: 1.25rem; font-weight: 600; }
 
-        header .actions {
-            margin-left: auto;
-            display: flex;
-            gap: 8px;
-        }
+        header .actions { margin-left: auto; display: flex; gap: 8px; }
 
         nav {
             background: var(--color-surface);
             border-bottom: 1px solid var(--color-border);
             display: flex;
-            gap: 0;
             padding: 0 24px;
             overflow-x: auto;
         }
@@ -79,16 +68,9 @@
         }
 
         nav button:hover { color: var(--color-text); }
-        nav button.active {
-            color: var(--color-text);
-            border-bottom-color: var(--color-accent);
-        }
+        nav button.active { color: var(--color-text); border-bottom-color: var(--color-accent); }
 
-        main {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
-        }
+        main { max-width: 1200px; margin: 0 auto; padding: 24px; }
 
         .panel { display: none; }
         .panel.active { display: block; }
@@ -102,41 +84,13 @@
             box-shadow: var(--shadow);
         }
 
-        .card h2 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
+        .card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .card h3 {
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: 4px; font-weight: 500; }
 
-        .form-group {
-            margin-bottom: 12px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.8125rem;
-            color: var(--color-text-muted);
-            margin-bottom: 4px;
-            font-weight: 500;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-        }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 
         input, select {
             width: 100%;
@@ -146,26 +100,12 @@
             border-radius: var(--radius);
             color: var(--color-text);
             font-size: 0.875rem;
-            transition: border-color 0.15s;
         }
 
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
-        }
+        input:focus, select:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15); }
+        input[type="checkbox"] { width: auto; margin-right: 8px; }
 
-        input[type="checkbox"] {
-            width: auto;
-            margin-right: 8px;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            font-size: 0.875rem;
-            cursor: pointer;
-        }
+        .checkbox-label { display: flex; align-items: center; font-size: 0.875rem; cursor: pointer; }
 
         button {
             padding: 8px 16px;
@@ -180,192 +120,57 @@
         }
 
         button:hover { background: var(--color-border); }
-
-        .btn-primary {
-            background: var(--color-accent-emphasis);
-            border-color: var(--color-accent-emphasis);
-            color: #fff;
-        }
+        .btn-primary { background: var(--color-accent-emphasis); border-color: var(--color-accent-emphasis); color: #fff; }
         .btn-primary:hover { background: #388bfd; }
-
-        .btn-danger {
-            background: transparent;
-            border-color: var(--color-danger);
-            color: var(--color-danger);
-        }
+        .btn-danger { background: transparent; border-color: var(--color-danger); color: var(--color-danger); }
         .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
-
         .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8125rem;
-        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--color-border); }
+        th { font-weight: 600; color: var(--color-text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        th, td {
-            padding: 8px 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--color-border);
-        }
-
-        th {
-            font-weight: 600;
-            color: var(--color-text-muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.6875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; }
         .badge-success { background: rgba(63, 185, 80, 0.15); color: var(--color-success); }
         .badge-danger { background: rgba(248, 81, 73, 0.15); color: var(--color-danger); }
         .badge-warning { background: rgba(210, 153, 34, 0.15); color: var(--color-warning); }
         .badge-info { background: rgba(88, 166, 255, 0.15); color: var(--color-info); }
 
-        .pool-bar {
-            height: 32px;
-            background: var(--color-bg);
-            border-radius: var(--radius);
-            overflow: hidden;
-            display: flex;
-            border: 1px solid var(--color-border);
-            margin: 8px 0;
-        }
+        .pool-bar { height: 32px; background: var(--color-bg); border-radius: var(--radius); overflow: hidden; display: flex; border: 1px solid var(--color-border); margin: 8px 0; }
+        .pool-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 600; color: #fff; min-width: 2px; transition: width 0.3s ease; }
 
-        .pool-segment {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.6875rem;
-            font-weight: 600;
-            color: #fff;
-            min-width: 2px;
-            transition: width 0.3s ease;
-        }
+        .pool-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.75rem; }
+        .pool-legend-item { display: flex; align-items: center; gap: 6px; }
+        .pool-legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
 
-        .pool-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 8px;
-            font-size: 0.75rem;
-        }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px; text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--color-accent); }
+        .stat-label { font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase; margin-top: 2px; }
 
-        .pool-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .pool-legend-swatch {
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-        }
-
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .stat-card {
-            background: var(--color-bg);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius);
-            padding: 12px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--color-accent);
-        }
-
-        .stat-label {
-            font-size: 0.6875rem;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--color-text-muted);
-        }
-
+        .empty-state { text-align: center; padding: 40px; color: var(--color-text-muted); }
         .empty-state p { margin-top: 8px; font-size: 0.875rem; }
 
-        .result-blocked {
-            background: rgba(248, 81, 73, 0.05);
-        }
+        .result-blocked { background: rgba(248, 81, 73, 0.05); }
+        .result-metered { background: rgba(210, 153, 34, 0.05); }
 
-        .result-metered {
-            background: rgba(210, 153, 34, 0.05);
-        }
-
-        .inline-form {
-            display: flex;
-            gap: 8px;
-            align-items: end;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-
+        .inline-form { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; margin-bottom: 12px; }
         .inline-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
 
-        .help-text {
-            font-size: 0.75rem;
-            color: var(--color-text-muted);
-            margin-top: 4px;
-        }
+        .help-text { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; }
 
-        .progress-bar {
-            height: 8px;
-            background: var(--color-bg);
-            border-radius: 4px;
-            overflow: hidden;
-            border: 1px solid var(--color-border);
-        }
+        .progress-bar { height: 8px; background: var(--color-bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--color-border); }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
 
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
+        .simulation-usage-input { display: flex; align-items: center; gap: 8px; }
+        .simulation-usage-input input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
+        .simulation-usage-input .usage-value { min-width: 70px; text-align: right; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 
-        .simulation-usage-input {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .section-divider { border-top: 1px solid var(--color-border); margin: 20px 0; padding-top: 16px; }
 
-        .simulation-usage-input input[type="range"] {
-            flex: 1;
-            border: none;
-            background: none;
-            padding: 0;
-        }
-
-        .simulation-usage-input .usage-value {
-            min-width: 70px;
-            text-align: right;
-            font-size: 0.8125rem;
-            font-variant-numeric: tabular-nums;
-        }
+        .tag { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 12px; font-size: 0.75rem; background: var(--color-surface-raised); border: 1px solid var(--color-border); }
+        .tag .remove { cursor: pointer; margin-left: 4px; color: var(--color-text-muted); }
+        .tag .remove:hover { color: var(--color-danger); }
 
         @media (max-width: 768px) {
             header { padding: 12px 16px; }
@@ -379,10 +184,10 @@
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
-            <button onclick="exportConfig()" title="Export configuration as JSON">📥 Export</button>
-            <button onclick="document.getElementById('importFile').click()" title="Import configuration from JSON">📤 Import</button>
+            <button onclick="exportConfig()">📥 Export</button>
+            <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
-            <button onclick="resetAll()" class="btn-danger" title="Reset all configuration">🗑️ Reset</button>
+            <button onclick="resetAll()" class="btn-danger">🗑️ Reset</button>
         </div>
     </header>
 
@@ -390,54 +195,33 @@
         <button class="active" data-panel="enterprise">🏢 Enterprise</button>
         <button data-panel="costcenters">📂 Cost Centers</button>
         <button data-panel="users">👥 Users</button>
+        <button data-panel="budgets">💰 Budgets</button>
         <button data-panel="pool">📊 Pool View</button>
         <button data-panel="simulate">⚡ Simulate</button>
     </nav>
 
     <main>
-        <!-- Enterprise Setup Panel -->
+        <!-- ═══════════════ ENTERPRISE TAB ═══════════════ -->
         <div id="panel-enterprise" class="panel active">
             <div class="card">
-                <h2>🏢 Enterprise Configuration</h2>
+                <h2>🏢 License Seats</h2>
+                <p class="help-text" style="margin-bottom: 12px">Configure how many Copilot Business and Enterprise seats your enterprise has. The AI credit pool is calculated from these.</p>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>License Type</label>
-                        <select id="licenseType" onchange="updateEnterprise()">
-                            <option value="business">Copilot Business (3,000 credits/seat/mo)</option>
-                            <option value="enterprise">Copilot Enterprise (7,000 credits/seat/mo)</option>
-                        </select>
+                        <label>Copilot Business Seats (3,000 credits/seat/mo)</label>
+                        <input type="number" id="businessSeats" value="0" min="0" onchange="updateEnterprise()">
                     </div>
                     <div class="form-group">
-                        <label>Total Licensed Seats</label>
-                        <input type="number" id="totalSeats" value="50" min="1" onchange="updateEnterprise()">
+                        <label>Copilot Enterprise Seats (7,000 credits/seat/mo)</label>
+                        <input type="number" id="enterpriseSeats" value="0" min="0" onchange="updateEnterprise()">
                     </div>
                 </div>
-                <div class="form-row">
+                <div class="form-row" style="margin-top: 12px">
                     <div class="form-group">
-                        <label>Enterprise Budget (metered phase, $)</label>
-                        <input type="number" id="enterpriseBudget" value="1000" min="0" step="50" onchange="updateEnterprise()">
-                        <p class="help-text">Caps total metered charges across the enterprise</p>
-                    </div>
-                    <div class="form-group">
-                        <label>&nbsp;</label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enterpriseHardStop" checked onchange="updateEnterprise()">
-                            Hard stop when enterprise budget exhausted
-                        </label>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>&nbsp;</label>
                         <label class="checkbox-label">
                             <input type="checkbox" id="meteredEnabled" checked onchange="updateEnterprise()">
                             Metered usage policy enabled (overage at $0.01/credit)
                         </label>
-                    </div>
-                    <div class="form-group">
-                        <label>Universal User-Level Budget (credits)</label>
-                        <input type="number" id="universalULB" value="" min="0" placeholder="No limit" onchange="updateEnterprise()">
-                        <p class="help-text">Default per-user cap (leave empty for none)</p>
                     </div>
                 </div>
             </div>
@@ -446,9 +230,39 @@
                 <h2>📈 Enterprise Summary</h2>
                 <div class="stat-grid" id="enterpriseStats"></div>
             </div>
+
+            <div class="card">
+                <h2>👥 Enterprise Teams</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Team Name</label>
+                        <input type="text" id="teamName" placeholder="e.g., engineers">
+                    </div>
+                    <button class="btn-primary" onclick="addTeam()">+ Add Team</button>
+                </div>
+                <div id="teamsList"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏛️ Organizations</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Organization Name</label>
+                        <input type="text" id="orgName" placeholder="e.g., acme-corp">
+                    </div>
+                    <button class="btn-primary" onclick="addOrg()">+ Add Organization</button>
+                </div>
+                <div id="orgsList"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏊 AI Credit Pool Reservations per Cost Center</h2>
+                <p class="help-text" style="margin-bottom: 12px">Enable or disable the AI credit pool reservation for each cost center. When enabled, a cost center gets a reserved portion of the shared pool based on its member count × credits per seat.</p>
+                <div id="ccPoolToggles"></div>
+            </div>
         </div>
 
-        <!-- Cost Centers Panel -->
+        <!-- ═══════════════ COST CENTERS TAB ═══════════════ -->
         <div id="panel-costcenters" class="panel">
             <div class="card">
                 <h2>📂 Cost Centers</h2>
@@ -459,7 +273,7 @@
                     </div>
                     <div class="form-group">
                         <label>Associated Team</label>
-                        <input type="text" id="ccTeam" placeholder="e.g., engineers">
+                        <select id="ccTeam"></select>
                     </div>
                     <button class="btn-primary" onclick="addCostCenter()">+ Add Cost Center</button>
                 </div>
@@ -467,7 +281,7 @@
             <div id="costCentersList"></div>
         </div>
 
-        <!-- Users Panel -->
+        <!-- ═══════════════ USERS TAB ═══════════════ -->
         <div id="panel-users" class="panel">
             <div class="card">
                 <h2>👥 Users</h2>
@@ -481,17 +295,84 @@
                         <select id="userCC"></select>
                     </div>
                     <div class="form-group">
-                        <label>Individual ULB (credits)</label>
-                        <input type="number" id="userULB" placeholder="Use CC/Universal" min="0">
+                        <label>Organization</label>
+                        <select id="userOrg"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Team</label>
+                        <select id="userTeam"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <select id="userLicense">
+                            <option value="business">Business</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
                     </div>
                     <button class="btn-primary" onclick="addUser()">+ Add User</button>
                 </div>
-                <p class="help-text">Individual ULB overrides cost center ULB, which overrides universal ULB.</p>
             </div>
             <div id="usersList"></div>
         </div>
 
-        <!-- Pool View Panel -->
+        <!-- ═══════════════ BUDGETS TAB ═══════════════ -->
+        <div id="panel-budgets" class="panel">
+            <div class="card">
+                <h2>🎯 User-Level Budgets (ULB)</h2>
+                <p class="help-text" style="margin-bottom: 16px">ULBs cap individual user consumption across both pool and metered phases. Always a hard stop. Precedence: Individual > Cost Center > Universal.</p>
+
+                <h3>Universal ULB</h3>
+                <div class="form-row" style="margin-bottom: 16px">
+                    <div class="form-group">
+                        <label>Default per-user budget (credits)</label>
+                        <input type="number" id="universalULB" placeholder="No limit" min="0" onchange="updateBudgets()">
+                        <p class="help-text">Applies to all licensed users unless overridden</p>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3>Cost Center ULBs</h3>
+                <p class="help-text" style="margin-bottom: 8px">Per-user budget for members of each cost center. Overrides universal ULB.</p>
+                <div id="ccULBList"></div>
+
+                <div class="section-divider"></div>
+                <h3>Individual ULBs</h3>
+                <p class="help-text" style="margin-bottom: 8px">Per-user budget for specific users. Overrides both cost center and universal ULBs.</p>
+                <div id="individualULBList"></div>
+            </div>
+
+            <div class="card">
+                <h2>💳 Overage Budgets</h2>
+                <p class="help-text" style="margin-bottom: 16px">These budgets cap metered charges ($0.01/credit) once the pool is exhausted. Can be configured with or without hard stop.</p>
+
+                <h3>Enterprise Budget</h3>
+                <div class="form-row" style="margin-bottom: 16px">
+                    <div class="form-group">
+                        <label>Enterprise metered budget ($)</label>
+                        <input type="number" id="enterpriseBudget" value="1000" min="0" step="50" onchange="updateBudgets()">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enterpriseHardStop" checked onchange="updateBudgets()">
+                            Hard stop when exhausted
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3>Organization Budgets</h3>
+                <p class="help-text" style="margin-bottom: 8px">Cap metered charges per organization.</p>
+                <div id="orgBudgetList"></div>
+
+                <div class="section-divider"></div>
+                <h3>Cost Center Budgets</h3>
+                <p class="help-text" style="margin-bottom: 8px">Cap metered charges per cost center.</p>
+                <div id="ccBudgetList"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════ POOL VIEW TAB ═══════════════ -->
         <div id="panel-pool" class="panel">
             <div class="card">
                 <h2>📊 Pool Reservation View</h2>
@@ -500,7 +381,7 @@
             </div>
         </div>
 
-        <!-- Simulation Panel -->
+        <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
         <div id="panel-simulate" class="panel">
             <div class="card">
                 <h2>⚡ Usage Simulation</h2>
@@ -539,25 +420,31 @@
     function defaultState() {
         return {
             enterprise: {
-                licenseType: 'business',
-                totalSeats: 50,
+                businessSeats: 0,
+                enterpriseSeats: 0,
+                meteredEnabled: true,
                 enterpriseBudget: 1000,
                 enterpriseHardStop: true,
-                meteredEnabled: true,
                 universalULB: null
             },
+            teams: [],
+            orgs: [],
             costCenters: [],
             users: [],
             usage: {}
         };
     }
 
-    function creditsPerSeat() {
-        return state.enterprise.licenseType === 'enterprise' ? 7000 : 3000;
+    function totalPool() {
+        return (state.enterprise.businessSeats * 3000) + (state.enterprise.enterpriseSeats * 7000);
     }
 
-    function totalPool() {
-        return state.enterprise.totalSeats * creditsPerSeat();
+    function totalSeats() {
+        return state.enterprise.businessSeats + state.enterprise.enterpriseSeats;
+    }
+
+    function userCreditsPerSeat(user) {
+        return user.license === 'enterprise' ? 7000 : 3000;
     }
 
     // ─── Persistence ─────────────────────────────────────────────────────────────
@@ -568,7 +455,24 @@
     function loadState() {
         try {
             const saved = localStorage.getItem('budget-simulator-state');
-            return saved ? JSON.parse(saved) : null;
+            if (!saved) return null;
+            const parsed = JSON.parse(saved);
+            // Migration from old format
+            if (parsed.enterprise && parsed.enterprise.licenseType !== undefined) {
+                const seats = parsed.enterprise.totalSeats || 0;
+                if (parsed.enterprise.licenseType === 'enterprise') {
+                    parsed.enterprise.enterpriseSeats = seats;
+                    parsed.enterprise.businessSeats = 0;
+                } else {
+                    parsed.enterprise.businessSeats = seats;
+                    parsed.enterprise.enterpriseSeats = 0;
+                }
+                delete parsed.enterprise.licenseType;
+                delete parsed.enterprise.totalSeats;
+            }
+            if (!parsed.teams) parsed.teams = [];
+            if (!parsed.orgs) parsed.orgs = [];
+            return parsed;
         } catch { return null; }
     }
 
@@ -589,11 +493,11 @@
         reader.onload = (e) => {
             try {
                 state = JSON.parse(e.target.result);
+                if (!state.teams) state.teams = [];
+                if (!state.orgs) state.orgs = [];
                 saveState();
                 renderAll();
-            } catch (err) {
-                alert('Invalid JSON file: ' + err.message);
-            }
+            } catch (err) { alert('Invalid JSON file: ' + err.message); }
         };
         reader.readAsText(file);
         event.target.value = '';
@@ -608,66 +512,152 @@
 
     // ─── Enterprise ──────────────────────────────────────────────────────────────
     function updateEnterprise() {
-        state.enterprise.licenseType = document.getElementById('licenseType').value;
-        state.enterprise.totalSeats = parseInt(document.getElementById('totalSeats').value) || 1;
-        state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
-        state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
+        state.enterprise.businessSeats = parseInt(document.getElementById('businessSeats').value) || 0;
+        state.enterprise.enterpriseSeats = parseInt(document.getElementById('enterpriseSeats').value) || 0;
         state.enterprise.meteredEnabled = document.getElementById('meteredEnabled').checked;
-        const ulbVal = document.getElementById('universalULB').value;
-        state.enterprise.universalULB = ulbVal ? parseInt(ulbVal) : null;
         saveState();
         renderEnterpriseStats();
+        renderCCPoolToggles();
     }
 
     function renderEnterprise() {
-        document.getElementById('licenseType').value = state.enterprise.licenseType;
-        document.getElementById('totalSeats').value = state.enterprise.totalSeats;
-        document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
-        document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
+        document.getElementById('businessSeats').value = state.enterprise.businessSeats;
+        document.getElementById('enterpriseSeats').value = state.enterprise.enterpriseSeats;
         document.getElementById('meteredEnabled').checked = state.enterprise.meteredEnabled;
-        document.getElementById('universalULB').value = state.enterprise.universalULB ?? '';
         renderEnterpriseStats();
+        renderTeams();
+        renderOrgs();
+        renderCCPoolToggles();
     }
 
     function renderEnterpriseStats() {
         const pool = totalPool();
-        const reservedCredits = state.costCenters
-            .filter(cc => cc.poolEnabled)
-            .reduce((sum, cc) => sum + getCCPoolSize(cc), 0);
-        const unreserved = pool - reservedCredits;
-        const html = `
-            <div class="stat-card"><div class="stat-value">${formatNum(pool)}</div><div class="stat-label">Total Pool Credits</div></div>
-            <div class="stat-card"><div class="stat-value">${formatNum(creditsPerSeat())}</div><div class="stat-label">Credits / Seat / Mo</div></div>
-            <div class="stat-card"><div class="stat-value">${state.enterprise.totalSeats}</div><div class="stat-label">Licensed Seats</div></div>
-            <div class="stat-card"><div class="stat-value">${formatNum(reservedCredits)}</div><div class="stat-label">Reserved (CC Pools)</div></div>
-            <div class="stat-card"><div class="stat-value">${formatNum(unreserved)}</div><div class="stat-label">Unreserved Pool</div></div>
-            <div class="stat-card"><div class="stat-value">$${formatNum(state.enterprise.enterpriseBudget)}</div><div class="stat-label">Enterprise Budget</div></div>
+        const reserved = state.costCenters.filter(cc => cc.poolEnabled).reduce((s, cc) => s + getCCPoolSize(cc), 0);
+        document.getElementById('enterpriseStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value">${fmt(pool)}</div><div class="stat-label">Total Pool Credits</div></div>
+            <div class="stat-card"><div class="stat-value">${state.enterprise.businessSeats}</div><div class="stat-label">Business Seats</div></div>
+            <div class="stat-card"><div class="stat-value">${state.enterprise.enterpriseSeats}</div><div class="stat-label">Enterprise Seats</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(reserved)}</div><div class="stat-label">Reserved (CC Pools)</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(pool - reserved)}</div><div class="stat-label">Unreserved Pool</div></div>
         `;
-        document.getElementById('enterpriseStats').innerHTML = html;
+    }
+
+    // ─── Teams ───────────────────────────────────────────────────────────────────
+    function addTeam() {
+        const name = document.getElementById('teamName').value.trim();
+        if (!name) return;
+        if (state.teams.some(t => t.name === name)) return alert('Team already exists');
+        state.teams.push({ id: 'team_' + Date.now(), name });
+        document.getElementById('teamName').value = '';
+        saveState();
+        renderTeams();
+        renderCCTeamDropdown();
+        renderUserTeamDropdown();
+    }
+
+    function deleteTeam(id) {
+        state.teams = state.teams.filter(t => t.id !== id);
+        state.users.forEach(u => { if (u.teamId === id) u.teamId = null; });
+        state.costCenters.forEach(cc => { if (cc.teamId === id) cc.teamId = null; });
+        saveState();
+        renderTeams();
+        renderCCTeamDropdown();
+        renderUserTeamDropdown();
+    }
+
+    function renderTeams() {
+        const el = document.getElementById('teamsList');
+        if (state.teams.length === 0) { el.innerHTML = '<p class="help-text">No teams yet.</p>'; return; }
+        el.innerHTML = '<table><thead><tr><th>Team</th><th>Members</th><th></th></tr></thead><tbody>' +
+            state.teams.map(t => {
+                const members = state.users.filter(u => u.teamId === t.id);
+                return `<tr><td><strong>${t.name}</strong></td><td>${members.length > 0 ? members.map(u => u.name).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteTeam('${t.id}')">✕</button></td></tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    // ─── Organizations ───────────────────────────────────────────────────────────
+    function addOrg() {
+        const name = document.getElementById('orgName').value.trim();
+        if (!name) return;
+        if (state.orgs.some(o => o.name === name)) return alert('Organization already exists');
+        state.orgs.push({ id: 'org_' + Date.now(), name, budget: null, budgetHardStop: true });
+        document.getElementById('orgName').value = '';
+        saveState();
+        renderOrgs();
+        renderUserOrgDropdown();
+        renderOrgBudgets();
+    }
+
+    function deleteOrg(id) {
+        state.orgs = state.orgs.filter(o => o.id !== id);
+        state.users.forEach(u => { if (u.orgId === id) u.orgId = null; });
+        saveState();
+        renderOrgs();
+        renderUserOrgDropdown();
+        renderOrgBudgets();
+    }
+
+    function renderOrgs() {
+        const el = document.getElementById('orgsList');
+        if (state.orgs.length === 0) { el.innerHTML = '<p class="help-text">No organizations yet.</p>'; return; }
+        el.innerHTML = '<table><thead><tr><th>Organization</th><th>Members</th><th></th></tr></thead><tbody>' +
+            state.orgs.map(o => {
+                const members = state.users.filter(u => u.orgId === o.id);
+                return `<tr><td><strong>${o.name}</strong></td><td>${members.length > 0 ? members.map(u => u.name).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteOrg('${o.id}')">✕</button></td></tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    // ─── CC Pool Toggles (on Enterprise tab) ─────────────────────────────────────
+    function toggleCCPool(ccId, enabled) {
+        const cc = state.costCenters.find(c => c.id === ccId);
+        if (cc) cc.poolEnabled = enabled;
+        saveState();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+    }
+
+    function renderCCPoolToggles() {
+        const el = document.getElementById('ccPoolToggles');
+        if (state.costCenters.length === 0) {
+            el.innerHTML = '<p class="help-text">No cost centers yet. Create them in the Cost Centers tab.</p>';
+            return;
+        }
+        el.innerHTML = '<table><thead><tr><th>Cost Center</th><th>Pool Enabled</th><th>Members</th><th>Pool Size</th></tr></thead><tbody>' +
+            state.costCenters.map(cc => {
+                const members = getCCMembers(cc);
+                const poolSize = getCCPoolSize(cc);
+                return `<tr>
+                    <td><strong>${cc.name}</strong></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="toggleCCPool('${cc.id}', this.checked)"> ${cc.poolEnabled ? 'Active' : 'Inactive'}</label></td>
+                    <td>${members.length}</td>
+                    <td>${cc.poolEnabled ? fmt(poolSize) + ' credits' : '—'}</td>
+                </tr>`;
+            }).join('') + '</tbody></table>';
     }
 
     // ─── Cost Centers ────────────────────────────────────────────────────────────
     function addCostCenter() {
         const name = document.getElementById('ccName').value.trim();
-        const team = document.getElementById('ccTeam').value.trim();
+        const teamId = document.getElementById('ccTeam').value || null;
         if (!name) return alert('Name is required');
         if (state.costCenters.some(cc => cc.name === name)) return alert('Cost center already exists');
-
         state.costCenters.push({
             id: 'cc_' + Date.now(),
             name,
-            team,
-            poolEnabled: true,
+            teamId,
+            poolEnabled: false,
             overagesAllowed: true,
             budget: null,
             budgetHardStop: true,
             ulb: null
         });
         document.getElementById('ccName').value = '';
-        document.getElementById('ccTeam').value = '';
         saveState();
         renderCostCenters();
         renderUserCCDropdown();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+        renderBudgets();
     }
 
     function deleteCostCenter(id) {
@@ -676,28 +666,36 @@
         saveState();
         renderCostCenters();
         renderUserCCDropdown();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+        renderBudgets();
     }
 
     function updateCC(id, field, value) {
         const cc = state.costCenters.find(c => c.id === id);
         if (!cc) return;
-        if (field === 'poolEnabled' || field === 'overagesAllowed' || field === 'budgetHardStop') {
-            cc[field] = value;
-        } else if (field === 'budget' || field === 'ulb') {
-            cc[field] = value === '' ? null : parseInt(value);
-        }
+        if (field === 'overagesAllowed') cc[field] = value;
+        else if (field === 'teamId') cc[field] = value || null;
         saveState();
         renderCostCenters();
-        renderEnterpriseStats();
     }
 
     function getCCMembers(cc) {
+        // Members come from the assigned team, or direct CC assignment
+        if (cc.teamId) {
+            return state.users.filter(u => u.teamId === cc.teamId || u.costCenterId === cc.id);
+        }
         return state.users.filter(u => u.costCenterId === cc.id);
     }
 
     function getCCPoolSize(cc) {
         if (!cc.poolEnabled) return 0;
-        return getCCMembers(cc).length * creditsPerSeat();
+        return getCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
+    }
+
+    function renderCCTeamDropdown() {
+        const sel = document.getElementById('ccTeam');
+        sel.innerHTML = '<option value="">(No team)</option>' + state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
 
     function renderCostCenters() {
@@ -708,77 +706,59 @@
         }
         container.innerHTML = state.costCenters.map(cc => {
             const members = getCCMembers(cc);
-            const poolSize = getCCPoolSize(cc);
-            return `
-                <div class="card">
-                    <h2>${cc.name} ${cc.team ? `<span class="badge badge-info">${cc.team}</span>` : ''}</h2>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="updateCC('${cc.id}','poolEnabled',this.checked)">
-                                AI Credit Pool Enabled
-                            </label>
-                            ${cc.poolEnabled ? `<p class="help-text">Pool size: ${formatNum(poolSize)} credits (${members.length} members × ${formatNum(creditsPerSeat())})</p>` : ''}
-                        </div>
-                        <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${cc.id}','overagesAllowed',this.checked)">
-                                Overages allowed (fall through to enterprise pool)
-                            </label>
-                        </div>
+            const team = cc.teamId ? state.teams.find(t => t.id === cc.teamId) : null;
+            return `<div class="card">
+                <h2>${cc.name} ${team ? `<span class="badge badge-info">${team.name}</span>` : ''} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Associated Team</label>
+                        <select onchange="updateCC('${cc.id}','teamId',this.value)">
+                            <option value="">(None)</option>
+                            ${state.teams.map(t => `<option value="${t.id}" ${cc.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                        </select>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Cost Center Budget (metered phase, $)</label>
-                            <input type="number" value="${cc.budget ?? ''}" placeholder="No limit" min="0"
-                                onchange="updateCC('${cc.id}','budget',this.value)">
-                        </div>
-                        <div class="form-group">
-                            <label class="checkbox-label" style="margin-top: 20px">
-                                <input type="checkbox" ${cc.budgetHardStop ? 'checked' : ''} onchange="updateCC('${cc.id}','budgetHardStop',this.checked)">
-                                Hard stop when budget exhausted
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>User-Level Budget for members (credits)</label>
-                            <input type="number" value="${cc.ulb ?? ''}" placeholder="Use universal" min="0"
-                                onchange="updateCC('${cc.id}','ulb',this.value)">
-                        </div>
-                        <div class="form-group">
-                            <label>Members</label>
-                            <p style="padding: 8px 0; font-size: 0.875rem">${members.length > 0 ? members.map(u => u.name).join(', ') : '<span style="color:var(--color-text-muted)">None assigned</span>'}</p>
-                        </div>
-                    </div>
-                    <div style="margin-top: 8px">
-                        <button class="btn-danger btn-sm" onclick="deleteCostCenter('${cc.id}')">Delete</button>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${cc.id}','overagesAllowed',this.checked)">
+                            Overages allowed (fall through to enterprise pool when CC pool exhausted)
+                        </label>
                     </div>
                 </div>
-            `;
+                <div style="margin-top: 8px">
+                    <label style="font-size: 0.8125rem; color: var(--color-text-muted)">Members (${members.length}): </label>
+                    <span style="font-size: 0.8125rem">${members.length > 0 ? members.map(u => u.name).join(', ') : '<em>None</em>'}</span>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-danger btn-sm" onclick="deleteCostCenter('${cc.id}')">Delete Cost Center</button>
+                </div>
+            </div>`;
         }).join('');
     }
 
     // ─── Users ───────────────────────────────────────────────────────────────────
     function addUser() {
         const name = document.getElementById('userName').value.trim();
-        const ccId = document.getElementById('userCC').value || null;
-        const ulbVal = document.getElementById('userULB').value;
         if (!name) return alert('Username is required');
         if (state.users.some(u => u.name === name)) return alert('User already exists');
-
         state.users.push({
             id: 'user_' + Date.now(),
             name,
-            costCenterId: ccId,
-            individualULB: ulbVal ? parseInt(ulbVal) : null
+            costCenterId: document.getElementById('userCC').value || null,
+            orgId: document.getElementById('userOrg').value || null,
+            teamId: document.getElementById('userTeam').value || null,
+            license: document.getElementById('userLicense').value,
+            individualULB: null
         });
         document.getElementById('userName').value = '';
-        document.getElementById('userULB').value = '';
         saveState();
         renderUsers();
         renderCostCenters();
+        renderTeams();
+        renderOrgs();
         renderEnterpriseStats();
+        renderCCPoolToggles();
+        renderBudgets();
     }
 
     function deleteUser(id) {
@@ -787,7 +767,11 @@
         saveState();
         renderUsers();
         renderCostCenters();
+        renderTeams();
+        renderOrgs();
         renderEnterpriseStats();
+        renderCCPoolToggles();
+        renderBudgets();
     }
 
     function getEffectiveULB(user) {
@@ -801,9 +785,18 @@
     }
 
     function renderUserCCDropdown() {
-        const select = document.getElementById('userCC');
-        select.innerHTML = '<option value="">(No cost center)</option>' +
+        document.getElementById('userCC').innerHTML = '<option value="">(None)</option>' +
             state.costCenters.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+    }
+
+    function renderUserOrgDropdown() {
+        document.getElementById('userOrg').innerHTML = '<option value="">(None)</option>' +
+            state.orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+    }
+
+    function renderUserTeamDropdown() {
+        document.getElementById('userTeam').innerHTML = '<option value="">(None)</option>' +
+            state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
 
     function renderUsers() {
@@ -812,16 +805,19 @@
             container.innerHTML = '<div class="card empty-state"><p>No users yet. Add one above.</p></div>';
             return;
         }
-        let html = '<div class="card"><table><thead><tr><th>User</th><th>Cost Center</th><th>Individual ULB</th><th>Effective ULB</th><th>Source</th><th></th></tr></thead><tbody>';
+        let html = '<div class="card"><table><thead><tr><th>User</th><th>License</th><th>Cost Center</th><th>Org</th><th>Team</th><th>Effective ULB</th><th></th></tr></thead><tbody>';
         state.users.forEach(u => {
             const cc = u.costCenterId ? state.costCenters.find(c => c.id === u.costCenterId) : null;
-            const effective = getEffectiveULB(u);
+            const org = u.orgId ? state.orgs.find(o => o.id === u.orgId) : null;
+            const team = u.teamId ? state.teams.find(t => t.id === u.teamId) : null;
+            const ulb = getEffectiveULB(u);
             html += `<tr>
                 <td><strong>${u.name}</strong></td>
+                <td><span class="badge badge-info">${u.license || 'business'}</span></td>
                 <td>${cc ? cc.name : '—'}</td>
-                <td>${u.individualULB !== null ? formatNum(u.individualULB) : '—'}</td>
-                <td>${effective.value !== null ? formatNum(effective.value) : '∞'}</td>
-                <td><span class="badge badge-info">${effective.source}</span></td>
+                <td>${org ? org.name : '—'}</td>
+                <td>${team ? team.name : '—'}</td>
+                <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
                 <td><button class="btn-danger btn-sm" onclick="deleteUser('${u.id}')">✕</button></td>
             </tr>`;
         });
@@ -829,12 +825,112 @@
         container.innerHTML = html;
     }
 
+    // ─── Budgets Tab ─────────────────────────────────────────────────────────────
+    function updateBudgets() {
+        const ulbVal = document.getElementById('universalULB').value;
+        state.enterprise.universalULB = ulbVal ? parseInt(ulbVal) : null;
+        state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
+        state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
+        saveState();
+    }
+
+    function updateCCULB(ccId, value) {
+        const cc = state.costCenters.find(c => c.id === ccId);
+        if (cc) cc.ulb = value === '' ? null : parseInt(value);
+        saveState();
+    }
+
+    function updateIndividualULB(userId, value) {
+        const user = state.users.find(u => u.id === userId);
+        if (user) user.individualULB = value === '' ? null : parseInt(value);
+        saveState();
+        renderUsers();
+    }
+
+    function updateOrgBudget(orgId, field, value) {
+        const org = state.orgs.find(o => o.id === orgId);
+        if (!org) return;
+        if (field === 'budget') org.budget = value === '' ? null : parseFloat(value);
+        else if (field === 'budgetHardStop') org.budgetHardStop = value;
+        saveState();
+    }
+
+    function updateCCBudget(ccId, field, value) {
+        const cc = state.costCenters.find(c => c.id === ccId);
+        if (!cc) return;
+        if (field === 'budget') cc.budget = value === '' ? null : parseFloat(value);
+        else if (field === 'budgetHardStop') cc.budgetHardStop = value;
+        saveState();
+    }
+
+    function renderBudgets() {
+        // Universal ULB
+        document.getElementById('universalULB').value = state.enterprise.universalULB ?? '';
+        document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
+        document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
+
+        // CC ULBs
+        const ccUlbEl = document.getElementById('ccULBList');
+        if (state.costCenters.length === 0) {
+            ccUlbEl.innerHTML = '<p class="help-text">No cost centers. Create them in the Cost Centers tab.</p>';
+        } else {
+            ccUlbEl.innerHTML = '<table><thead><tr><th>Cost Center</th><th>ULB (credits per user)</th></tr></thead><tbody>' +
+                state.costCenters.map(cc => `<tr>
+                    <td>${cc.name}</td>
+                    <td><input type="number" value="${cc.ulb ?? ''}" placeholder="Use universal" min="0" style="width:150px" onchange="updateCCULB('${cc.id}', this.value)"></td>
+                </tr>`).join('') + '</tbody></table>';
+        }
+
+        // Individual ULBs
+        const indUlbEl = document.getElementById('individualULBList');
+        if (state.users.length === 0) {
+            indUlbEl.innerHTML = '<p class="help-text">No users. Create them in the Users tab.</p>';
+        } else {
+            indUlbEl.innerHTML = '<table><thead><tr><th>User</th><th>Cost Center</th><th>Individual ULB (credits)</th><th>Effective</th></tr></thead><tbody>' +
+                state.users.map(u => {
+                    const ulb = getEffectiveULB(u);
+                    return `<tr>
+                        <td>${u.name}</td>
+                        <td>${u.costCenterId ? (state.costCenters.find(c => c.id === u.costCenterId)?.name || '—') : '—'}</td>
+                        <td><input type="number" value="${u.individualULB ?? ''}" placeholder="Use CC/Universal" min="0" style="width:150px" onchange="updateIndividualULB('${u.id}', this.value)"></td>
+                        <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
+                    </tr>`;
+                }).join('') + '</tbody></table>';
+        }
+
+        // Org budgets
+        const orgBudgetEl = document.getElementById('orgBudgetList');
+        if (state.orgs.length === 0) {
+            orgBudgetEl.innerHTML = '<p class="help-text">No organizations. Create them in the Enterprise tab.</p>';
+        } else {
+            orgBudgetEl.innerHTML = '<table><thead><tr><th>Organization</th><th>Budget ($)</th><th>Hard Stop</th></tr></thead><tbody>' +
+                state.orgs.map(o => `<tr>
+                    <td>${o.name}</td>
+                    <td><input type="number" value="${o.budget ?? ''}" placeholder="No limit" min="0" style="width:120px" onchange="updateOrgBudget('${o.id}', 'budget', this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateOrgBudget('${o.id}', 'budgetHardStop', this.checked)"> Yes</label></td>
+                </tr>`).join('') + '</tbody></table>';
+        }
+
+        // CC budgets
+        const ccBudgetEl = document.getElementById('ccBudgetList');
+        if (state.costCenters.length === 0) {
+            ccBudgetEl.innerHTML = '<p class="help-text">No cost centers. Create them in the Cost Centers tab.</p>';
+        } else {
+            ccBudgetEl.innerHTML = '<table><thead><tr><th>Cost Center</th><th>Budget ($)</th><th>Hard Stop</th></tr></thead><tbody>' +
+                state.costCenters.map(cc => `<tr>
+                    <td>${cc.name}</td>
+                    <td><input type="number" value="${cc.budget ?? ''}" placeholder="No limit" min="0" style="width:120px" onchange="updateCCBudget('${cc.id}', 'budget', this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateCCBudget('${cc.id}', 'budgetHardStop', this.checked)"> Yes</label></td>
+                </tr>`).join('') + '</tbody></table>';
+        }
+    }
+
     // ─── Pool Visualization ──────────────────────────────────────────────────────
     function renderPoolView() {
         const container = document.getElementById('poolVisualization');
         const pool = totalPool();
         if (pool === 0) {
-            container.innerHTML = '<div class="empty-state"><p>Configure enterprise settings first.</p></div>';
+            container.innerHTML = '<div class="empty-state"><p>Configure enterprise seats first.</p></div>';
             return;
         }
 
@@ -855,46 +951,68 @@
         let barHtml = '<div class="pool-bar">';
         segments.forEach(seg => {
             const pct = (seg.size / pool * 100).toFixed(1);
-            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${seg.label}: ${formatNum(seg.size)} credits (${pct}%)">${pct > 8 ? seg.label : ''}</div>`;
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${seg.label}: ${fmt(seg.size)} credits (${pct}%)">${pct > 8 ? seg.label : ''}</div>`;
         });
         if (unreserved > 0) {
             const pct = (unreserved / pool * 100).toFixed(1);
-            barHtml += `<div class="pool-segment" style="width:${pct}%; background:var(--color-text-muted)" title="Unreserved: ${formatNum(unreserved)} credits (${pct}%)">${pct > 8 ? 'Unreserved' : ''}</div>`;
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:var(--color-text-muted)" title="Unreserved: ${fmt(unreserved)} credits (${pct}%)">${pct > 8 ? 'Unreserved' : ''}</div>`;
         }
         barHtml += '</div>';
 
         let legendHtml = '<div class="pool-legend">';
         segments.forEach(seg => {
-            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${seg.label}: ${formatNum(seg.size)} credits</div>`;
+            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${seg.label}: ${fmt(seg.size)}</div>`;
         });
-        legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:var(--color-text-muted)"></div>Unreserved: ${formatNum(unreserved)} credits</div>`;
+        legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:var(--color-text-muted)"></div>Unreserved: ${fmt(unreserved)}</div>`;
         legendHtml += '</div>';
 
-        const detailsHtml = `
-            <table style="margin-top: 16px">
-                <thead><tr><th>Cost Center</th><th>Pool Enabled</th><th>Members</th><th>Pool Size</th><th>% of Total</th></tr></thead>
-                <tbody>
-                    ${state.costCenters.map(cc => `<tr>
-                        <td>${cc.name}</td>
-                        <td>${cc.poolEnabled ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-warning">No</span>'}</td>
-                        <td>${getCCMembers(cc).length}</td>
-                        <td>${formatNum(getCCPoolSize(cc))}</td>
-                        <td>${(getCCPoolSize(cc) / pool * 100).toFixed(1)}%</td>
-                    </tr>`).join('')}
-                    <tr style="font-weight:600">
-                        <td>Unreserved</td><td></td>
-                        <td>${state.users.filter(u => !u.costCenterId).length}</td>
-                        <td>${formatNum(unreserved)}</td>
-                        <td>${(unreserved / pool * 100).toFixed(1)}%</td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
+        const detailsHtml = `<table style="margin-top: 16px">
+            <thead><tr><th>Cost Center</th><th>Pool</th><th>Members</th><th>Pool Size</th><th>% of Total</th></tr></thead>
+            <tbody>
+                ${state.costCenters.map(cc => `<tr>
+                    <td>${cc.name}</td>
+                    <td>${cc.poolEnabled ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-warning">Inactive</span>'}</td>
+                    <td>${getCCMembers(cc).length}</td>
+                    <td>${fmt(getCCPoolSize(cc))}</td>
+                    <td>${pool > 0 ? (getCCPoolSize(cc) / pool * 100).toFixed(1) : 0}%</td>
+                </tr>`).join('')}
+                <tr style="font-weight:600">
+                    <td>Unreserved</td><td></td>
+                    <td>${state.users.filter(u => !u.costCenterId && !state.costCenters.some(cc => cc.teamId && u.teamId === cc.teamId)).length}</td>
+                    <td>${fmt(unreserved)}</td>
+                    <td>${pool > 0 ? (unreserved / pool * 100).toFixed(1) : 0}%</td>
+                </tr>
+            </tbody>
+        </table>`;
 
         container.innerHTML = barHtml + legendHtml + detailsHtml;
     }
 
     // ─── Simulation Engine ───────────────────────────────────────────────────────
+    function initPoolState() {
+        const pool = totalPool();
+        const ccPools = {};
+        let totalReserved = 0;
+        state.costCenters.forEach(cc => {
+            if (cc.poolEnabled) {
+                const size = getCCPoolSize(cc);
+                ccPools[cc.id] = size;
+                totalReserved += size;
+            }
+        });
+        return { ccPools, enterprisePool: pool - totalReserved, enterpriseMetered: 0, ccMetered: {}, orgMetered: {} };
+    }
+
+    function getUserCC(user) {
+        if (user.costCenterId) return state.costCenters.find(c => c.id === user.costCenterId) || null;
+        // Check if user is in a team that's assigned to a CC
+        if (user.teamId) {
+            const cc = state.costCenters.find(c => c.teamId === user.teamId);
+            if (cc) return cc;
+        }
+        return null;
+    }
+
     function evaluateUser(user, userUsage, poolState) {
         const result = {
             user: user.name,
@@ -910,46 +1028,41 @@
         };
 
         if (userUsage === 0) {
-            result.status = 'served';
             result.source = 'No usage';
             const ulb = getEffectiveULB(user);
             result.ulbRemaining = ulb.value;
             return result;
         }
 
-        // Step 1: User-Level Budget check
+        // Step 1: ULB check
         const ulb = getEffectiveULB(user);
         if (ulb.value !== null && userUsage > ulb.value) {
             result.status = 'blocked';
-            result.reason = `ULB exceeded (${formatNum(ulb.value)} limit via ${ulb.source})`;
+            result.reason = `ULB exceeded (${fmt(ulb.value)} limit via ${ulb.source})`;
             result.ulbRemaining = 0;
             return result;
         }
         result.ulbRemaining = ulb.value !== null ? ulb.value - userUsage : null;
 
         let remaining = userUsage;
+        const cc = getUserCC(user);
 
-        // Step 2: Cost Center pool
-        const cc = user.costCenterId ? state.costCenters.find(c => c.id === user.costCenterId) : null;
-
+        // Step 2: CC pool
         if (cc && cc.poolEnabled) {
-            const ccPoolKey = cc.id;
-            const available = poolState.ccPools[ccPoolKey] || 0;
+            const available = poolState.ccPools[cc.id] || 0;
             const drawn = Math.min(remaining, available);
-            poolState.ccPools[ccPoolKey] -= drawn;
+            poolState.ccPools[cc.id] -= drawn;
             result.creditsFromCC = drawn;
             remaining -= drawn;
 
-            if (remaining > 0) {
-                if (!cc.overagesAllowed) {
-                    result.status = 'blocked';
-                    result.reason = `CC pool exhausted & overages not allowed (${cc.name})`;
-                    return result;
-                }
+            if (remaining > 0 && !cc.overagesAllowed) {
+                result.status = 'blocked';
+                result.reason = `CC pool exhausted & overages not allowed (${cc.name})`;
+                return result;
             }
         }
 
-        // Step 3: Enterprise shared pool
+        // Step 3: Enterprise pool
         if (remaining > 0) {
             const drawn = Math.min(remaining, poolState.enterprisePool);
             poolState.enterprisePool -= drawn;
@@ -965,104 +1078,90 @@
                 return result;
             }
 
-            // Check CC budget
+            // CC budget check
             if (cc && cc.budget !== null) {
-                const ccBudgetUsed = poolState.ccMetered[cc.id] || 0;
-                const ccBudgetRemaining = cc.budget - ccBudgetUsed;
-                const affordable = Math.floor(ccBudgetRemaining / 0.01);
-                if (affordable <= 0) {
-                    if (cc.budgetHardStop) {
-                        result.status = 'blocked';
-                        result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
-                        return result;
-                    }
-                } else if (remaining > affordable && cc.budgetHardStop) {
-                    remaining = affordable;
-                }
-            }
-
-            // Check enterprise budget
-            const entBudgetUsed = poolState.enterpriseMetered;
-            const entBudgetRemaining = state.enterprise.enterpriseBudget - entBudgetUsed;
-            const entAffordable = Math.floor(entBudgetRemaining / 0.01);
-            if (entAffordable <= 0) {
-                if (state.enterprise.enterpriseHardStop) {
+                const ccUsed = poolState.ccMetered[cc.id] || 0;
+                const ccRemaining = cc.budget - ccUsed;
+                const affordable = Math.floor(ccRemaining / 0.01);
+                if (affordable <= 0 && cc.budgetHardStop) {
                     result.status = 'blocked';
-                    result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
+                    result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
                     return result;
                 }
-            } else if (remaining > entAffordable && state.enterprise.enterpriseHardStop) {
-                remaining = entAffordable;
+                if (remaining > affordable && cc.budgetHardStop) remaining = Math.max(0, affordable);
+            }
+
+            // Org budget check
+            const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+            if (org && org.budget !== null) {
+                const orgUsed = poolState.orgMetered[org.id] || 0;
+                const orgRemaining = org.budget - orgUsed;
+                const affordable = Math.floor(orgRemaining / 0.01);
+                if (affordable <= 0 && org.budgetHardStop) {
+                    result.status = 'blocked';
+                    result.reason = `Org budget exhausted ($${org.budget}, ${org.name})`;
+                    return result;
+                }
+                if (remaining > affordable && org.budgetHardStop) remaining = Math.max(0, affordable);
+            }
+
+            // Enterprise budget check
+            const entRemaining = state.enterprise.enterpriseBudget - poolState.enterpriseMetered;
+            const entAffordable = Math.floor(entRemaining / 0.01);
+            if (entAffordable <= 0 && state.enterprise.enterpriseHardStop) {
+                result.status = 'blocked';
+                result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
+                return result;
+            }
+            if (remaining > entAffordable && state.enterprise.enterpriseHardStop) remaining = Math.max(0, entAffordable);
+
+            if (remaining <= 0) {
+                result.status = 'blocked';
+                result.reason = 'All applicable budgets exhausted';
+                return result;
             }
 
             result.creditsMetered = remaining;
             result.meteredCost = remaining * 0.01;
-            if (cc) {
-                poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + result.meteredCost;
-            }
+            if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + result.meteredCost;
+            if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + result.meteredCost;
             poolState.enterpriseMetered += result.meteredCost;
 
             result.status = 'metered';
-            result.source = `${formatNum(result.creditsFromCC)} from CC pool, ${formatNum(result.creditsFromEntPool)} from ent. pool, ${formatNum(remaining)} metered ($${result.meteredCost.toFixed(2)})`;
+            result.source = `${fmt(result.creditsFromCC)} CC pool + ${fmt(result.creditsFromEntPool)} ent. pool + ${fmt(remaining)} metered ($${result.meteredCost.toFixed(2)})`;
             return result;
         }
 
         result.status = 'served';
-        result.source = result.creditsFromCC > 0 ? 'CC pool' : 'Enterprise pool';
         if (result.creditsFromCC > 0 && result.creditsFromEntPool > 0) {
-            result.source = `CC pool (${formatNum(result.creditsFromCC)}) + Ent. pool (${formatNum(result.creditsFromEntPool)})`;
+            result.source = `CC pool (${fmt(result.creditsFromCC)}) + Ent. pool (${fmt(result.creditsFromEntPool)})`;
+        } else if (result.creditsFromCC > 0) {
+            result.source = 'CC pool';
+        } else {
+            result.source = 'Enterprise pool';
         }
         return result;
     }
 
     function runSimulation() {
         const poolState = initPoolState();
-        const results = [];
-
-        state.users.forEach(user => {
-            const usage = state.usage[user.id] || 0;
-            results.push(evaluateUser(user, usage, poolState));
-        });
-
+        const results = state.users.map(user => evaluateUser(user, state.usage[user.id] || 0, poolState));
         renderSimulationResults(results, poolState);
     }
 
-    function initPoolState() {
-        const pool = totalPool();
-        const ccPools = {};
-        let totalReserved = 0;
-
-        state.costCenters.forEach(cc => {
-            if (cc.poolEnabled) {
-                const size = getCCPoolSize(cc);
-                ccPools[cc.id] = size;
-                totalReserved += size;
-            }
-        });
-
-        return {
-            ccPools,
-            enterprisePool: pool - totalReserved,
-            enterpriseMetered: 0,
-            ccMetered: {}
-        };
-    }
-
     function renderSimulationResults(results, poolState) {
-        const card = document.getElementById('simulationResultsCard');
-        card.style.display = 'block';
-
+        document.getElementById('simulationResultsCard').style.display = 'block';
         const served = results.filter(r => r.status === 'served').length;
         const metered = results.filter(r => r.status === 'metered').length;
         const blocked = results.filter(r => r.status === 'blocked').length;
-        const totalMetered = results.reduce((s, r) => s + r.meteredCost, 0);
+        const totalMeteredCost = results.reduce((s, r) => s + r.meteredCost, 0);
 
         document.getElementById('simSummaryStats').innerHTML = `
             <div class="stat-card"><div class="stat-value" style="color:var(--color-success)">${served}</div><div class="stat-label">Served (Pool)</div></div>
             <div class="stat-card"><div class="stat-value" style="color:var(--color-warning)">${metered}</div><div class="stat-label">Metered</div></div>
             <div class="stat-card"><div class="stat-value" style="color:var(--color-danger)">${blocked}</div><div class="stat-label">Blocked</div></div>
-            <div class="stat-card"><div class="stat-value">$${totalMetered.toFixed(2)}</div><div class="stat-label">Total Metered Cost</div></div>
-            <div class="stat-card"><div class="stat-value">${formatNum(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
+            <div class="stat-card"><div class="stat-value">$${totalMeteredCost.toFixed(2)}</div><div class="stat-label">Total Metered Cost</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
         `;
 
         let html = '<table><thead><tr><th>User</th><th>Usage</th><th>Status</th><th>ULB Remaining</th><th>Details</th></tr></thead><tbody>';
@@ -1071,20 +1170,19 @@
             const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
                           r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
                           '<span class="badge badge-success">Served</span>';
-            const detail = r.status === 'blocked' ? r.reason : r.source;
             html += `<tr class="${rowClass}">
                 <td><strong>${r.user}</strong></td>
-                <td>${formatNum(r.usage)}</td>
+                <td>${fmt(r.usage)}</td>
                 <td>${badge}</td>
-                <td>${r.ulbRemaining !== null ? formatNum(r.ulbRemaining) : '∞'}</td>
-                <td>${detail}</td>
+                <td>${r.ulbRemaining !== null ? fmt(r.ulbRemaining) : '∞'}</td>
+                <td>${r.status === 'blocked' ? r.reason : r.source}</td>
             </tr>`;
         });
         html += '</tbody></table>';
         document.getElementById('simulationResults').innerHTML = html;
     }
 
-    // ─── Aggregate / Pool-Level Simulation ───────────────────────────────────────
+    // ─── Aggregate Simulation ────────────────────────────────────────────────────
     function runAggregateSimulation() {
         const totalUsage = parseInt(document.getElementById('aggregateUsage').value) || 0;
         const pool = totalPool();
@@ -1098,13 +1196,12 @@
         const budgetExhausted = meteredCost >= state.enterprise.enterpriseBudget;
         const maxBeforeBlock = pool + (state.enterprise.meteredEnabled ?
             (state.enterprise.enterpriseHardStop ? state.enterprise.enterpriseBudget / 0.01 : Infinity) : 0);
-
         const poolPct = pool > 0 ? Math.min(100, poolConsumed / pool * 100) : 0;
 
         container.innerHTML = `
             <div class="stat-grid" style="margin-top: 12px">
-                <div class="stat-card"><div class="stat-value">${formatNum(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${formatNum(overage)}</div><div class="stat-label">Overage Credits</div></div>
+                <div class="stat-card"><div class="stat-value">${fmt(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${fmt(overage)}</div><div class="stat-label">Overage Credits</div></div>
                 <div class="stat-card"><div class="stat-value">$${meteredCost.toFixed(2)}</div><div class="stat-label">Metered Cost</div></div>
                 <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">$${budgetRemaining.toFixed(2)}</div><div class="stat-label">Budget Remaining</div></div>
             </div>
@@ -1116,7 +1213,7 @@
             </div>
             ${budgetExhausted ? `<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Enterprise budget exhausted! ${state.enterprise.enterpriseHardStop ? 'Users will be BLOCKED.' : 'Metered charges continue uncapped.'}</p>` : ''}
             ${!state.enterprise.meteredEnabled && overage > 0 ? '<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Pool exhausted & metered usage disabled — users BLOCKED.</p>' : ''}
-            <p class="help-text" style="margin-top: 8px">Max credits before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : formatNum(maxBeforeBlock)}</p>
+            <p class="help-text" style="margin-top: 8px">Max credits before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : fmt(maxBeforeBlock)}</p>
         `;
     }
 
@@ -1127,11 +1224,10 @@
             container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
             return;
         }
-
-        const maxCredits = totalPool();
+        const maxCredits = totalPool() || 100000;
         let html = '<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (credits)</th></tr></thead><tbody>';
         state.users.forEach(user => {
-            const cc = user.costCenterId ? state.costCenters.find(c => c.id === user.costCenterId) : null;
+            const cc = getUserCC(user);
             const ulb = getEffectiveULB(user);
             const max = ulb.value || Math.floor(maxCredits / state.users.length * 3);
             const usage = state.usage[user.id] || 0;
@@ -1141,10 +1237,10 @@
                 <td>
                     <div class="simulation-usage-input">
                         <input type="range" min="0" max="${max}" value="${usage}"
-                            oninput="updateUsage('${user.id}', this.value); this.parentElement.querySelector('.usage-value').textContent = formatNum(parseInt(this.value))">
-                        <span class="usage-value">${formatNum(usage)}</span>
+                            oninput="updateUsage('${user.id}', this.value); this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                        <span class="usage-value">${fmt(usage)}</span>
                         <input type="number" min="0" value="${usage}" style="width:80px"
-                            onchange="updateUsage('${user.id}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = formatNum(parseInt(this.value))">
+                            onchange="updateUsage('${user.id}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
                     </div>
                 </td>
             </tr>`;
@@ -1172,15 +1268,15 @@
         e.target.classList.add('active');
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
-
-        // Refresh panel data
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
         if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
+        if (panel === 'budgets') renderBudgets();
+        if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
     });
 
     // ─── Utilities ───────────────────────────────────────────────────────────────
-    function formatNum(n) {
+    function fmt(n) {
         if (n === null || n === undefined) return '—';
         return n.toLocaleString();
     }
@@ -1188,15 +1284,18 @@
     // ─── Render All ──────────────────────────────────────────────────────────────
     function renderAll() {
         renderEnterprise();
+        renderCCTeamDropdown();
         renderCostCenters();
         renderUserCCDropdown();
+        renderUserOrgDropdown();
+        renderUserTeamDropdown();
         renderUsers();
+        renderBudgets();
         renderPoolView();
         renderSimulationInputs();
         runAggregateSimulation();
     }
 
-    // ─── Init ────────────────────────────────────────────────────────────────────
     renderAll();
     </script>
 </body>
