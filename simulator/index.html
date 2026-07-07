@@ -193,8 +193,8 @@
 
     <nav id="mainNav">
         <button class="active" data-panel="enterprise">🏢 Enterprise</button>
-        <button data-panel="costcenters">📂 Cost Centers</button>
-        <button data-panel="users">👥 Users</button>
+        <button data-panel="costcenters" id="tab-costcenters">📂 Cost Centers</button>
+        <button data-panel="users" id="tab-users">👥 Users</button>
         <button data-panel="budgets">💰 Budgets</button>
         <button data-panel="pool">📊 Pool View</button>
         <button data-panel="simulate">⚡ Simulate</button>
@@ -210,10 +210,18 @@
                     <div class="form-group">
                         <label>Copilot Business Seats (3,000 credits/seat/mo)</label>
                         <input type="number" id="businessSeats" value="0" min="0" onchange="updateEnterprise()">
+                        <label class="checkbox-label" style="margin-top: 6px">
+                            <input type="checkbox" id="autoBusinessSeats" onchange="toggleAutoSeats('business')">
+                            Auto (calculate from users)
+                        </label>
                     </div>
                     <div class="form-group">
                         <label>Copilot Enterprise Seats (7,000 credits/seat/mo)</label>
                         <input type="number" id="enterpriseSeats" value="0" min="0" onchange="updateEnterprise()">
+                        <label class="checkbox-label" style="margin-top: 6px">
+                            <input type="checkbox" id="autoEnterpriseSeats" onchange="toggleAutoSeats('enterprise')">
+                            Auto (calculate from users)
+                        </label>
                     </div>
                 </div>
                 <div class="form-row" style="margin-top: 12px">
@@ -371,14 +379,26 @@
                 </div>
 
                 <div class="section-divider"></div>
-                <h3>Cost Center ULBs</h3>
-                <p class="help-text" style="margin-bottom: 8px">Per-user budget for members of each cost center. Overrides universal ULB.</p>
-                <div id="ccULBList"></div>
-
-                <div class="section-divider"></div>
-                <h3>Individual ULBs</h3>
-                <p class="help-text" style="margin-bottom: 8px">Per-user budget for specific users. Overrides both cost center and universal ULBs.</p>
-                <div id="individualULBList"></div>
+                <h3>Add User-Level Budget</h3>
+                <div class="inline-form" style="margin-bottom: 12px">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="ulbType" onchange="renderULBTargets()">
+                            <option value="individual">Individual User</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target</label>
+                        <select id="ulbTarget"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget (credits)</label>
+                        <input type="number" id="ulbValue" min="0" placeholder="e.g., 5000">
+                    </div>
+                    <button class="btn-primary" onclick="addULB()">+ Add</button>
+                </div>
+                <div id="configuredULBList"></div>
             </div>
 
             <div class="card">
@@ -401,14 +421,33 @@
                 </div>
 
                 <div class="section-divider"></div>
-                <h3>Organization Budgets</h3>
-                <p class="help-text" style="margin-bottom: 8px">Cap metered charges per organization.</p>
-                <div id="orgBudgetList"></div>
-
-                <div class="section-divider"></div>
-                <h3>Cost Center Budgets</h3>
-                <p class="help-text" style="margin-bottom: 8px">Cap metered charges per cost center.</p>
-                <div id="ccBudgetList"></div>
+                <h3>Add Overage Budget</h3>
+                <div class="inline-form" style="margin-bottom: 12px">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="overageBudgetType" onchange="renderOverageTargets()">
+                            <option value="org">Organization</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target</label>
+                        <select id="overageTarget"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget ($)</label>
+                        <input type="number" id="overageBudgetValue" min="0" step="50" placeholder="e.g., 500">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="overageHardStop" checked>
+                            Hard stop
+                        </label>
+                    </div>
+                    <button class="btn-primary" onclick="addOverageBudget()">+ Add</button>
+                </div>
+                <div id="configuredOverageBudgetList"></div>
             </div>
         </div>
 
@@ -552,18 +591,50 @@
 
     // ─── Enterprise ──────────────────────────────────────────────────────────────
     function updateEnterprise() {
-        state.enterprise.businessSeats = parseInt(document.getElementById('businessSeats').value) || 0;
-        state.enterprise.enterpriseSeats = parseInt(document.getElementById('enterpriseSeats').value) || 0;
+        if (!state.enterprise.autoBusinessSeats) {
+            state.enterprise.businessSeats = parseInt(document.getElementById('businessSeats').value) || 0;
+        }
+        if (!state.enterprise.autoEnterpriseSeats) {
+            state.enterprise.enterpriseSeats = parseInt(document.getElementById('enterpriseSeats').value) || 0;
+        }
         state.enterprise.meteredEnabled = document.getElementById('meteredEnabled').checked;
         saveState();
         renderEnterpriseStats();
         renderCCPoolToggles();
     }
 
+    function toggleAutoSeats(type) {
+        if (type === 'business') {
+            state.enterprise.autoBusinessSeats = document.getElementById('autoBusinessSeats').checked;
+        } else {
+            state.enterprise.autoEnterpriseSeats = document.getElementById('autoEnterpriseSeats').checked;
+        }
+        recalcAutoSeats();
+        saveState();
+        renderEnterprise();
+    }
+
+    function recalcAutoSeats() {
+        if (state.enterprise.autoBusinessSeats) {
+            state.enterprise.businessSeats = state.users.filter(u => u.license !== 'enterprise').length;
+        }
+        if (state.enterprise.autoEnterpriseSeats) {
+            state.enterprise.enterpriseSeats = state.users.filter(u => u.license === 'enterprise').length;
+        }
+        saveState();
+    }
+
     function renderEnterprise() {
         document.getElementById('businessSeats').value = state.enterprise.businessSeats;
         document.getElementById('enterpriseSeats').value = state.enterprise.enterpriseSeats;
         document.getElementById('meteredEnabled').checked = state.enterprise.meteredEnabled;
+        // Auto seats
+        const autoBiz = state.enterprise.autoBusinessSeats || false;
+        const autoEnt = state.enterprise.autoEnterpriseSeats || false;
+        document.getElementById('autoBusinessSeats').checked = autoBiz;
+        document.getElementById('autoEnterpriseSeats').checked = autoEnt;
+        document.getElementById('businessSeats').disabled = autoBiz;
+        document.getElementById('enterpriseSeats').disabled = autoEnt;
         renderEnterpriseStats();
         renderTeams();
         renderOrgs();
@@ -628,7 +699,7 @@
         saveState();
         renderOrgs();
         renderUserOrgDropdown();
-        renderOrgBudgets();
+        renderBudgets();
     }
 
     function deleteOrg(id) {
@@ -640,7 +711,7 @@
         saveState();
         renderOrgs();
         renderUserOrgDropdown();
-        renderOrgBudgets();
+        renderBudgets();
         renderCCOrgDropdown();
     }
 
@@ -719,6 +790,7 @@
         renderCCPoolToggles();
         renderEnterpriseStats();
         renderBudgets();
+        renderTabCounts();
     }
 
     function deleteCostCenter(id) {
@@ -730,6 +802,7 @@
         renderCCPoolToggles();
         renderEnterpriseStats();
         renderBudgets();
+        renderTabCounts();
     }
 
     function updateCC(id, field, value) {
@@ -909,6 +982,8 @@
         renderCCPoolToggles();
         renderBudgets();
         renderCCUserDropdown();
+        renderTabCounts();
+        recalcAutoSeats();
     }
 
     function bulkCreateUsers() {
@@ -1022,32 +1097,119 @@
         saveState();
     }
 
-    function updateCCULB(ccId, value) {
-        const cc = state.costCenters.find(c => c.id === ccId);
-        if (cc) cc.ulb = value === '' ? null : parseInt(value);
-        saveState();
+    function renderULBTargets() {
+        const type = document.getElementById('ulbType').value;
+        const sel = document.getElementById('ulbTarget');
+        if (type === 'individual') {
+            const usersWithoutULB = state.users.filter(u => u.individualULB === null);
+            sel.innerHTML = usersWithoutULB.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        } else {
+            const ccsWithoutULB = state.costCenters.filter(cc => cc.ulb === null);
+            sel.innerHTML = ccsWithoutULB.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+        }
     }
 
-    function updateIndividualULB(userId, value) {
-        const user = state.users.find(u => u.id === userId);
-        if (user) user.individualULB = value === '' ? null : parseInt(value);
+    function addULB() {
+        const type = document.getElementById('ulbType').value;
+        const target = document.getElementById('ulbTarget').value;
+        const value = parseInt(document.getElementById('ulbValue').value);
+        if (!target) return alert('Select a target');
+        if (isNaN(value) || value < 0) return alert('Enter a valid budget value');
+
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === target);
+            if (user) user.individualULB = value;
+        } else {
+            const cc = state.costCenters.find(c => c.id === target);
+            if (cc) cc.ulb = value;
+        }
+        document.getElementById('ulbValue').value = '';
+        saveState();
+        renderBudgets();
+        renderUsers();
+    }
+
+    function removeULB(type, id) {
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === id);
+            if (user) user.individualULB = null;
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) cc.ulb = null;
+        }
+        saveState();
+        renderBudgets();
+        renderUsers();
+    }
+
+    function renderOverageTargets() {
+        const type = document.getElementById('overageBudgetType').value;
+        const sel = document.getElementById('overageTarget');
+        if (type === 'org') {
+            const orgsWithoutBudget = state.orgs.filter(o => o.budget === null);
+            sel.innerHTML = orgsWithoutBudget.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+        } else {
+            const ccsWithoutBudget = state.costCenters.filter(cc => cc.budget === null);
+            sel.innerHTML = ccsWithoutBudget.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+        }
+    }
+
+    function addOverageBudget() {
+        const type = document.getElementById('overageBudgetType').value;
+        const target = document.getElementById('overageTarget').value;
+        const value = parseFloat(document.getElementById('overageBudgetValue').value);
+        const hardStop = document.getElementById('overageHardStop').checked;
+        if (!target) return alert('Select a target');
+        if (isNaN(value) || value < 0) return alert('Enter a valid budget value');
+
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === target);
+            if (org) { org.budget = value; org.budgetHardStop = hardStop; }
+        } else {
+            const cc = state.costCenters.find(c => c.id === target);
+            if (cc) { cc.budget = value; cc.budgetHardStop = hardStop; }
+        }
+        document.getElementById('overageBudgetValue').value = '';
+        saveState();
+        renderBudgets();
+    }
+
+    function removeOverageBudget(type, id) {
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === id);
+            if (org) { org.budget = null; org.budgetHardStop = true; }
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) { cc.budget = null; cc.budgetHardStop = true; }
+        }
+        saveState();
+        renderBudgets();
+    }
+
+    function updateConfiguredULB(type, id, value) {
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === id);
+            if (user) user.individualULB = value === '' ? null : parseInt(value);
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) cc.ulb = value === '' ? null : parseInt(value);
+        }
         saveState();
         renderUsers();
     }
 
-    function updateOrgBudget(orgId, field, value) {
-        const org = state.orgs.find(o => o.id === orgId);
-        if (!org) return;
-        if (field === 'budget') org.budget = value === '' ? null : parseFloat(value);
-        else if (field === 'budgetHardStop') org.budgetHardStop = value;
-        saveState();
-    }
-
-    function updateCCBudget(ccId, field, value) {
-        const cc = state.costCenters.find(c => c.id === ccId);
-        if (!cc) return;
-        if (field === 'budget') cc.budget = value === '' ? null : parseFloat(value);
-        else if (field === 'budgetHardStop') cc.budgetHardStop = value;
+    function updateConfiguredOverage(type, id, field, value) {
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === id);
+            if (!org) return;
+            if (field === 'budget') org.budget = value === '' ? null : parseFloat(value);
+            else if (field === 'hardStop') org.budgetHardStop = value;
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (!cc) return;
+            if (field === 'budget') cc.budget = value === '' ? null : parseFloat(value);
+            else if (field === 'hardStop') cc.budgetHardStop = value;
+        }
         saveState();
     }
 
@@ -1057,59 +1219,68 @@
         document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
         document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
 
-        // CC ULBs
-        const ccUlbEl = document.getElementById('ccULBList');
-        if (state.costCenters.length === 0) {
-            ccUlbEl.innerHTML = '<p class="help-text">No cost centers. Create them in the Cost Centers tab.</p>';
+        // Refresh target dropdowns
+        renderULBTargets();
+        renderOverageTargets();
+
+        // Configured ULBs table
+        const ulbEl = document.getElementById('configuredULBList');
+        const configuredIndividualULBs = state.users.filter(u => u.individualULB !== null);
+        const configuredCCULBs = state.costCenters.filter(cc => cc.ulb !== null);
+
+        if (configuredIndividualULBs.length === 0 && configuredCCULBs.length === 0) {
+            ulbEl.innerHTML = '<p class="help-text">No user-level budgets configured yet. Use the form above to add one.</p>';
         } else {
-            ccUlbEl.innerHTML = '<table><thead><tr><th>Cost Center</th><th>ULB (credits per user)</th></tr></thead><tbody>' +
-                state.costCenters.map(cc => `<tr>
+            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget (credits)</th><th></th></tr></thead><tbody>';
+            configuredCCULBs.forEach(cc => {
+                html += `<tr>
+                    <td><span class="badge badge-info">Cost Center</span></td>
                     <td>${cc.name}</td>
-                    <td><input type="number" value="${cc.ulb ?? ''}" placeholder="Use universal" min="0" style="width:150px" onchange="updateCCULB('${cc.id}', this.value)"></td>
-                </tr>`).join('') + '</tbody></table>';
+                    <td><input type="number" value="${cc.ulb}" min="0" style="width:120px" onchange="updateConfiguredULB('costcenter','${cc.id}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('costcenter','${cc.id}')">✕</button></td>
+                </tr>`;
+            });
+            configuredIndividualULBs.forEach(u => {
+                html += `<tr>
+                    <td><span class="badge badge-warning">Individual</span></td>
+                    <td>${u.name}</td>
+                    <td><input type="number" value="${u.individualULB}" min="0" style="width:120px" onchange="updateConfiguredULB('individual','${u.id}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('individual','${u.id}')">✕</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            ulbEl.innerHTML = html;
         }
 
-        // Individual ULBs
-        const indUlbEl = document.getElementById('individualULBList');
-        if (state.users.length === 0) {
-            indUlbEl.innerHTML = '<p class="help-text">No users. Create them in the Users tab.</p>';
-        } else {
-            indUlbEl.innerHTML = '<table><thead><tr><th>User</th><th>Cost Center</th><th>Individual ULB (credits)</th><th>Effective</th></tr></thead><tbody>' +
-                state.users.map(u => {
-                    const ulb = getEffectiveULB(u);
-                    return `<tr>
-                        <td>${u.name}</td>
-                        <td>${u.costCenterId ? (state.costCenters.find(c => c.id === u.costCenterId)?.name || '—') : '—'}</td>
-                        <td><input type="number" value="${u.individualULB ?? ''}" placeholder="Use CC/Universal" min="0" style="width:150px" onchange="updateIndividualULB('${u.id}', this.value)"></td>
-                        <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
-                    </tr>`;
-                }).join('') + '</tbody></table>';
-        }
+        // Configured Overage Budgets table
+        const overageEl = document.getElementById('configuredOverageBudgetList');
+        const configuredOrgBudgets = state.orgs.filter(o => o.budget !== null);
+        const configuredCCBudgets = state.costCenters.filter(cc => cc.budget !== null);
 
-        // Org budgets
-        const orgBudgetEl = document.getElementById('orgBudgetList');
-        if (state.orgs.length === 0) {
-            orgBudgetEl.innerHTML = '<p class="help-text">No organizations. Create them in the Enterprise tab.</p>';
+        if (configuredOrgBudgets.length === 0 && configuredCCBudgets.length === 0) {
+            overageEl.innerHTML = '<p class="help-text">No overage budgets configured yet. Use the form above to add one.</p>';
         } else {
-            orgBudgetEl.innerHTML = '<table><thead><tr><th>Organization</th><th>Budget ($)</th><th>Hard Stop</th></tr></thead><tbody>' +
-                state.orgs.map(o => `<tr>
+            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget ($)</th><th>Hard Stop</th><th></th></tr></thead><tbody>';
+            configuredOrgBudgets.forEach(o => {
+                html += `<tr>
+                    <td><span class="badge badge-info">Organization</span></td>
                     <td>${o.name}</td>
-                    <td><input type="number" value="${o.budget ?? ''}" placeholder="No limit" min="0" style="width:120px" onchange="updateOrgBudget('${o.id}', 'budget', this.value)"></td>
-                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateOrgBudget('${o.id}', 'budgetHardStop', this.checked)"> Yes</label></td>
-                </tr>`).join('') + '</tbody></table>';
-        }
-
-        // CC budgets
-        const ccBudgetEl = document.getElementById('ccBudgetList');
-        if (state.costCenters.length === 0) {
-            ccBudgetEl.innerHTML = '<p class="help-text">No cost centers. Create them in the Cost Centers tab.</p>';
-        } else {
-            ccBudgetEl.innerHTML = '<table><thead><tr><th>Cost Center</th><th>Budget ($)</th><th>Hard Stop</th></tr></thead><tbody>' +
-                state.costCenters.map(cc => `<tr>
+                    <td><input type="number" value="${o.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('org','${o.id}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('org','${o.id}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('org','${o.id}')">✕</button></td>
+                </tr>`;
+            });
+            configuredCCBudgets.forEach(cc => {
+                html += `<tr>
+                    <td><span class="badge badge-warning">Cost Center</span></td>
                     <td>${cc.name}</td>
-                    <td><input type="number" value="${cc.budget ?? ''}" placeholder="No limit" min="0" style="width:120px" onchange="updateCCBudget('${cc.id}', 'budget', this.value)"></td>
-                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateCCBudget('${cc.id}', 'budgetHardStop', this.checked)"> Yes</label></td>
-                </tr>`).join('') + '</tbody></table>';
+                    <td><input type="number" value="${cc.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('costcenter','${cc.id}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('costcenter','${cc.id}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('costcenter','${cc.id}')">✕</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            overageEl.innerHTML = html;
         }
     }
 
@@ -1474,6 +1645,12 @@
         if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
     });
 
+    // ─── Tab Counts ────────────────────────────────────────────────────────────
+    function renderTabCounts() {
+        document.getElementById('tab-users').textContent = `👥 Users${state.users.length ? ' (' + state.users.length + ')' : ''}`;
+        document.getElementById('tab-costcenters').textContent = `📂 Cost Centers${state.costCenters.length ? ' (' + state.costCenters.length + ')' : ''}`;
+    }
+
     // ─── Utilities ───────────────────────────────────────────────────────────────
     function fmt(n) {
         if (n === null || n === undefined) return '—';
@@ -1495,6 +1672,7 @@
         renderPoolView();
         renderSimulationInputs();
         runAggregateSimulation();
+        renderTabCounts();
     }
 
     renderAll();
