@@ -210,19 +210,18 @@
                     <div class="form-group">
                         <label>Copilot Business Seats (3,000 credits/seat/mo)</label>
                         <input type="number" id="businessSeats" value="0" min="0" onchange="updateEnterprise()">
-                        <label class="checkbox-label" style="margin-top: 6px">
-                            <input type="checkbox" id="autoBusinessSeats" onchange="toggleAutoSeats('business')">
-                            Auto (calculate from users)
-                        </label>
                     </div>
                     <div class="form-group">
                         <label>Copilot Enterprise Seats (7,000 credits/seat/mo)</label>
                         <input type="number" id="enterpriseSeats" value="0" min="0" onchange="updateEnterprise()">
-                        <label class="checkbox-label" style="margin-top: 6px">
-                            <input type="checkbox" id="autoEnterpriseSeats" onchange="toggleAutoSeats('enterprise')">
-                            Auto (calculate from users)
-                        </label>
                     </div>
+                </div>
+                <div style="margin-top: 8px">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoSeats" onchange="toggleAutoSeats()">
+                        Auto (calculate seat counts from users)
+                    </label>
+                    <p class="help-text">When enabled, seat counts are derived from the users you have configured and inputs are disabled.</p>
                 </div>
                 <div class="form-row" style="margin-top: 12px">
                     <div class="form-group">
@@ -591,10 +590,8 @@
 
     // ─── Enterprise ──────────────────────────────────────────────────────────────
     function updateEnterprise() {
-        if (!state.enterprise.autoBusinessSeats) {
+        if (!state.enterprise.autoSeats) {
             state.enterprise.businessSeats = parseInt(document.getElementById('businessSeats').value) || 0;
-        }
-        if (!state.enterprise.autoEnterpriseSeats) {
             state.enterprise.enterpriseSeats = parseInt(document.getElementById('enterpriseSeats').value) || 0;
         }
         state.enterprise.meteredEnabled = document.getElementById('meteredEnabled').checked;
@@ -603,25 +600,19 @@
         renderCCPoolToggles();
     }
 
-    function toggleAutoSeats(type) {
-        if (type === 'business') {
-            state.enterprise.autoBusinessSeats = document.getElementById('autoBusinessSeats').checked;
-        } else {
-            state.enterprise.autoEnterpriseSeats = document.getElementById('autoEnterpriseSeats').checked;
-        }
+    function toggleAutoSeats() {
+        state.enterprise.autoSeats = document.getElementById('autoSeats').checked;
         recalcAutoSeats();
         saveState();
         renderEnterprise();
     }
 
     function recalcAutoSeats() {
-        if (state.enterprise.autoBusinessSeats) {
+        if (state.enterprise.autoSeats) {
             state.enterprise.businessSeats = state.users.filter(u => u.license !== 'enterprise').length;
-        }
-        if (state.enterprise.autoEnterpriseSeats) {
             state.enterprise.enterpriseSeats = state.users.filter(u => u.license === 'enterprise').length;
+            saveState();
         }
-        saveState();
     }
 
     function renderEnterprise() {
@@ -629,12 +620,10 @@
         document.getElementById('enterpriseSeats').value = state.enterprise.enterpriseSeats;
         document.getElementById('meteredEnabled').checked = state.enterprise.meteredEnabled;
         // Auto seats
-        const autoBiz = state.enterprise.autoBusinessSeats || false;
-        const autoEnt = state.enterprise.autoEnterpriseSeats || false;
-        document.getElementById('autoBusinessSeats').checked = autoBiz;
-        document.getElementById('autoEnterpriseSeats').checked = autoEnt;
-        document.getElementById('businessSeats').disabled = autoBiz;
-        document.getElementById('enterpriseSeats').disabled = autoEnt;
+        const auto = state.enterprise.autoSeats || false;
+        document.getElementById('autoSeats').checked = auto;
+        document.getElementById('businessSeats').disabled = auto;
+        document.getElementById('enterpriseSeats').disabled = auto;
         renderEnterpriseStats();
         renderTeams();
         renderOrgs();
