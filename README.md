@@ -156,7 +156,7 @@ An interactive web-based tool to help administrators test and visualize budget c
 **[Open the Simulator →](https://philess.github.io/ghcp_ai_budget_coach/)**
 
 Features:
-- Configure enterprise settings (license type, pool size, metered overage policy)
+- Configure enterprise settings (Business/Enterprise seat counts, derived AI credit pool, metered overage policy)
 - Create cost centers with AI credit pools and budget caps
 - Add sample users with user-level budget precedence (individual > cost center > universal)
 - Visualize pool partitions across cost centers

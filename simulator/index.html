@@ -513,6 +513,57 @@
         };
     }
 
+    const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => HTML_ESCAPE_MAP[char]);
+    }
+
+    function escapeInlineArg(value) {
+        return escapeHtml(String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+    }
+
+    function optionHtml(value, label, selected = false) {
+        return `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+    }
+
+    function normalizeState(parsed) {
+        const defaults = defaultState();
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaults;
+
+        if (parsed.enterprise && parsed.enterprise.licenseType !== undefined) {
+            const seats = parsed.enterprise.totalSeats || 0;
+            if (parsed.enterprise.licenseType === 'enterprise') {
+                parsed.enterprise.enterpriseSeats = seats;
+                parsed.enterprise.businessSeats = 0;
+            } else {
+                parsed.enterprise.businessSeats = seats;
+                parsed.enterprise.enterpriseSeats = 0;
+            }
+            delete parsed.enterprise.licenseType;
+            delete parsed.enterprise.totalSeats;
+        }
+
+        const enterprise = parsed.enterprise && typeof parsed.enterprise === 'object' && !Array.isArray(parsed.enterprise)
+            ? parsed.enterprise
+            : {};
+
+        return {
+            ...defaults,
+            ...parsed,
+            enterprise: { ...defaults.enterprise, ...enterprise },
+            teams: Array.isArray(parsed.teams) ? parsed.teams : [],
+            orgs: Array.isArray(parsed.orgs) ? parsed.orgs : [],
+            costCenters: Array.isArray(parsed.costCenters) ? parsed.costCenters : [],
+            users: Array.isArray(parsed.users) ? parsed.users : [],
+            usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {}
+        };
+    }
+
+    function meteredCreditsFromBudget(amount) {
+        return Math.floor((Math.max(0, amount) * 100) + Number.EPSILON);
+    }
+
     function totalPool() {
         return (state.enterprise.businessSeats * 3000) + (state.enterprise.enterpriseSeats * 7000);
     }
@@ -534,23 +585,7 @@
         try {
             const saved = localStorage.getItem('budget-simulator-state');
             if (!saved) return null;
-            const parsed = JSON.parse(saved);
-            // Migration from old format
-            if (parsed.enterprise && parsed.enterprise.licenseType !== undefined) {
-                const seats = parsed.enterprise.totalSeats || 0;
-                if (parsed.enterprise.licenseType === 'enterprise') {
-                    parsed.enterprise.enterpriseSeats = seats;
-                    parsed.enterprise.businessSeats = 0;
-                } else {
-                    parsed.enterprise.businessSeats = seats;
-                    parsed.enterprise.enterpriseSeats = 0;
-                }
-                delete parsed.enterprise.licenseType;
-                delete parsed.enterprise.totalSeats;
-            }
-            if (!parsed.teams) parsed.teams = [];
-            if (!parsed.orgs) parsed.orgs = [];
-            return parsed;
+            return normalizeState(JSON.parse(saved));
         } catch { return null; }
     }
 
@@ -570,9 +605,7 @@
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                state = JSON.parse(e.target.result);
-                if (!state.teams) state.teams = [];
-                if (!state.orgs) state.orgs = [];
+                state = normalizeState(JSON.parse(e.target.result));
                 saveState();
                 renderAll();
             } catch (err) { alert('Invalid JSON file: ' + err.message); }
@@ -674,7 +707,7 @@
         el.innerHTML = '<table><thead><tr><th>Team</th><th>Members</th><th></th></tr></thead><tbody>' +
             state.teams.map(t => {
                 const members = state.users.filter(u => u.teamId === t.id);
-                return `<tr><td><strong>${t.name}</strong></td><td>${members.length > 0 ? members.map(u => u.name).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteTeam('${t.id}')">✕</button></td></tr>`;
+                return `<tr><td><strong>${escapeHtml(t.name)}</strong></td><td>${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteTeam('${escapeInlineArg(t.id)}')">✕</button></td></tr>`;
             }).join('') + '</tbody></table>';
     }
 
@@ -689,6 +722,7 @@
         renderOrgs();
         renderUserOrgDropdown();
         renderBudgets();
+        renderCCOrgDropdown();
     }
 
     function deleteOrg(id) {
@@ -710,7 +744,7 @@
         el.innerHTML = '<table><thead><tr><th>Organization</th><th>Members</th><th></th></tr></thead><tbody>' +
             state.orgs.map(o => {
                 const members = state.users.filter(u => u.orgId === o.id);
-                return `<tr><td><strong>${o.name}</strong></td><td>${members.length > 0 ? members.map(u => u.name).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteOrg('${o.id}')">✕</button></td></tr>`;
+                return `<tr><td><strong>${escapeHtml(o.name)}</strong></td><td>${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteOrg('${escapeInlineArg(o.id)}')">✕</button></td></tr>`;
             }).join('') + '</tbody></table>';
     }
 
@@ -731,11 +765,11 @@
         }
         el.innerHTML = '<table><thead><tr><th>Cost Center</th><th>Pool Enabled</th><th>Members</th><th>Pool Size</th></tr></thead><tbody>' +
             state.costCenters.map(cc => {
-                const members = getCCMembers(cc);
+                const members = getAssignedCCMembers(cc);
                 const poolSize = getCCPoolSize(cc);
                 return `<tr>
-                    <td><strong>${cc.name}</strong></td>
-                    <td><label class="checkbox-label"><input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="toggleCCPool('${cc.id}', this.checked)"> ${cc.poolEnabled ? 'Active' : 'Inactive'}</label></td>
+                    <td><strong>${escapeHtml(cc.name)}</strong></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="toggleCCPool('${escapeInlineArg(cc.id)}', this.checked)"> ${cc.poolEnabled ? 'Active' : 'Inactive'}</label></td>
                     <td>${members.length}</td>
                     <td>${cc.poolEnabled ? fmt(poolSize) + ' credits' : '—'}</td>
                 </tr>`;
@@ -828,26 +862,30 @@
         return state.users.filter(u => memberSet.has(u.id));
     }
 
+    function getAssignedCCMembers(cc) {
+        return state.users.filter(u => getUserCC(u)?.id === cc.id);
+    }
+
     function getCCPoolSize(cc) {
         if (!cc.poolEnabled) return 0;
-        return getCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
+        return getAssignedCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
     }
 
     function renderCCTeamDropdown() {
         const sel = document.getElementById('ccTeam');
-        sel.innerHTML = state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        sel.innerHTML = state.teams.map(t => optionHtml(t.id, t.name)).join('');
         sel.selectedIndex = -1;
     }
 
     function renderCCOrgDropdown() {
         const sel = document.getElementById('ccOrgs');
-        sel.innerHTML = state.orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+        sel.innerHTML = state.orgs.map(o => optionHtml(o.id, o.name)).join('');
         sel.selectedIndex = -1;
     }
 
     function renderCCUserDropdown() {
         const sel = document.getElementById('ccUsers');
-        sel.innerHTML = state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        sel.innerHTML = state.users.map(u => optionHtml(u.id, u.name)).join('');
         sel.selectedIndex = -1;
     }
 
@@ -862,50 +900,47 @@
             const teamIds = cc.teamIds || (cc.teamId ? [cc.teamId] : []);
             const orgIds = cc.orgIds || [];
             const userIds = cc.userIds || [];
-            const teamNames = teamIds.map(tid => state.teams.find(t => t.id === tid)?.name).filter(Boolean);
-            const orgNames = orgIds.map(oid => state.orgs.find(o => o.id === oid)?.name).filter(Boolean);
-            const directUsers = userIds.map(uid => state.users.find(u => u.id === uid)?.name).filter(Boolean);
 
             return `<div class="card">
-                <h2>${cc.name} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
+                <h2>${escapeHtml(cc.name)} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Name</label>
-                        <input type="text" value="${cc.name}" onchange="updateCC('${cc.id}','name',this.value)">
+                        <input type="text" value="${escapeHtml(cc.name)}" onchange="updateCC('${escapeInlineArg(cc.id)}','name',this.value)">
                     </div>
                     <div class="form-group">
                         <label>Teams</label>
-                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','teamIds',Array.from(this.selectedOptions).map(o=>o.value))">
-                            ${state.teams.map(t => `<option value="${t.id}" ${teamIds.includes(t.id) ? 'selected' : ''}>${t.name}</option>`).join('')}
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','teamIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.teams.map(t => optionHtml(t.id, t.name, teamIds.includes(t.id))).join('')}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Organizations</label>
-                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','orgIds',Array.from(this.selectedOptions).map(o=>o.value))">
-                            ${state.orgs.map(o => `<option value="${o.id}" ${orgIds.includes(o.id) ? 'selected' : ''}>${o.name}</option>`).join('')}
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','orgIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.orgs.map(o => optionHtml(o.id, o.name, orgIds.includes(o.id))).join('')}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Direct Users</label>
-                        <select multiple style="min-height:50px" onchange="updateCC('${cc.id}','userIds',Array.from(this.selectedOptions).map(o=>o.value))">
-                            ${state.users.map(u => `<option value="${u.id}" ${userIds.includes(u.id) ? 'selected' : ''}>${u.name}</option>`).join('')}
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','userIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.users.map(u => optionHtml(u.id, u.name, userIds.includes(u.id))).join('')}
                         </select>
                     </div>
                 </div>
                 <div class="form-row" style="margin-top: 8px">
                     <div class="form-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${cc.id}','overagesAllowed',this.checked)">
+                            <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${escapeInlineArg(cc.id)}','overagesAllowed',this.checked)">
                             Overages allowed (fall through to enterprise pool when CC pool exhausted)
                         </label>
                     </div>
                 </div>
                 <div style="margin-top: 8px">
                     <label style="font-size: 0.8125rem; color: var(--color-text-muted)">Resolved Members (${members.length}): </label>
-                    <span style="font-size: 0.8125rem">${members.length > 0 ? members.map(u => u.name).join(', ') : '<em>None</em>'}</span>
+                    <span style="font-size: 0.8125rem">${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '<em>None</em>'}</span>
                 </div>
                 <div style="margin-top: 12px">
-                    <button class="btn-danger btn-sm" onclick="deleteCostCenter('${cc.id}')">Delete Cost Center</button>
+                    <button class="btn-danger btn-sm" onclick="deleteCostCenter('${escapeInlineArg(cc.id)}')">Delete Cost Center</button>
                 </div>
             </div>`;
         }).join('');
@@ -1025,17 +1060,17 @@
 
     function renderUserCCDropdown() {
         document.getElementById('userCC').innerHTML = '<option value="">(None)</option>' +
-            state.costCenters.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+            state.costCenters.map(cc => optionHtml(cc.id, cc.name)).join('');
     }
 
     function renderUserOrgDropdown() {
         document.getElementById('userOrg').innerHTML = '<option value="">(None)</option>' +
-            state.orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+            state.orgs.map(o => optionHtml(o.id, o.name)).join('');
     }
 
     function renderUserTeamDropdown() {
         document.getElementById('userTeam').innerHTML = '<option value="">(None)</option>' +
-            state.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            state.teams.map(t => optionHtml(t.id, t.name)).join('');
     }
 
     function renderUsers() {
@@ -1052,24 +1087,24 @@
             const ulb = getEffectiveULB(u);
 
             if (editingUserId === u.id) {
-                html += `<tr id="edit-${u.id}" style="background:var(--color-surface-raised)">
-                    <td><strong>${u.name}</strong></td>
+                html += `<tr id="edit-${escapeHtml(u.id)}" style="background:var(--color-surface-raised)">
+                    <td><strong>${escapeHtml(u.name)}</strong></td>
                     <td><select data-field="license"><option value="business" ${u.license !== 'enterprise' ? 'selected' : ''}>Business</option><option value="enterprise" ${u.license === 'enterprise' ? 'selected' : ''}>Enterprise</option></select></td>
-                    <td><select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => `<option value="${c.id}" ${u.costCenterId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></td>
-                    <td><select data-field="org"><option value="">(None)</option>${state.orgs.map(o => `<option value="${o.id}" ${u.orgId === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}</select></td>
-                    <td><select data-field="team"><option value="">(None)</option>${state.teams.map(t => `<option value="${t.id}" ${u.teamId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select></td>
+                    <td><select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => optionHtml(c.id, c.name, u.costCenterId === c.id)).join('')}</select></td>
+                    <td><select data-field="org"><option value="">(None)</option>${state.orgs.map(o => optionHtml(o.id, o.name, u.orgId === o.id)).join('')}</select></td>
+                    <td><select data-field="team"><option value="">(None)</option>${state.teams.map(t => optionHtml(t.id, t.name, u.teamId === t.id)).join('')}</select></td>
                     <td>${ulb.value !== null ? fmt(ulb.value) : '∞'}</td>
-                    <td><button class="btn-primary btn-sm" onclick="saveUserEdit('${u.id}')">💾</button> <button class="btn-sm" onclick="editUser(null)">✕</button></td>
+                    <td><button class="btn-primary btn-sm" onclick="saveUserEdit('${escapeInlineArg(u.id)}')">💾</button> <button class="btn-sm" onclick="editUser(null)">✕</button></td>
                 </tr>`;
             } else {
                 html += `<tr>
-                    <td><strong>${u.name}</strong></td>
+                    <td><strong>${escapeHtml(u.name)}</strong></td>
                     <td><span class="badge badge-info">${u.license || 'business'}</span></td>
-                    <td>${cc ? cc.name : '—'}</td>
-                    <td>${org ? org.name : '—'}</td>
-                    <td>${team ? team.name : '—'}</td>
-                    <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + ulb.source + ')</small>' : '∞'}</td>
-                    <td><button class="btn-sm" onclick="editUser('${u.id}')" title="Edit">✏️</button> <button class="btn-danger btn-sm" onclick="deleteUser('${u.id}')">✕</button></td>
+                    <td>${cc ? escapeHtml(cc.name) : '—'}</td>
+                    <td>${org ? escapeHtml(org.name) : '—'}</td>
+                    <td>${team ? escapeHtml(team.name) : '—'}</td>
+                    <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + escapeHtml(ulb.source) + ')</small>' : '∞'}</td>
+                    <td><button class="btn-sm" onclick="editUser('${escapeInlineArg(u.id)}')" title="Edit">✏️</button> <button class="btn-danger btn-sm" onclick="deleteUser('${escapeInlineArg(u.id)}')">✕</button></td>
                 </tr>`;
             }
         });
@@ -1091,10 +1126,10 @@
         const sel = document.getElementById('ulbTarget');
         if (type === 'individual') {
             const usersWithoutULB = state.users.filter(u => u.individualULB === null);
-            sel.innerHTML = usersWithoutULB.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            sel.innerHTML = usersWithoutULB.map(u => optionHtml(u.id, u.name)).join('');
         } else {
             const ccsWithoutULB = state.costCenters.filter(cc => cc.ulb === null);
-            sel.innerHTML = ccsWithoutULB.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+            sel.innerHTML = ccsWithoutULB.map(cc => optionHtml(cc.id, cc.name)).join('');
         }
     }
 
@@ -1136,10 +1171,10 @@
         const sel = document.getElementById('overageTarget');
         if (type === 'org') {
             const orgsWithoutBudget = state.orgs.filter(o => o.budget === null);
-            sel.innerHTML = orgsWithoutBudget.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+            sel.innerHTML = orgsWithoutBudget.map(o => optionHtml(o.id, o.name)).join('');
         } else {
             const ccsWithoutBudget = state.costCenters.filter(cc => cc.budget === null);
-            sel.innerHTML = ccsWithoutBudget.map(cc => `<option value="${cc.id}">${cc.name}</option>`).join('');
+            sel.innerHTML = ccsWithoutBudget.map(cc => optionHtml(cc.id, cc.name)).join('');
         }
     }
 
@@ -1224,17 +1259,17 @@
             configuredCCULBs.forEach(cc => {
                 html += `<tr>
                     <td><span class="badge badge-info">Cost Center</span></td>
-                    <td>${cc.name}</td>
-                    <td><input type="number" value="${cc.ulb}" min="0" style="width:120px" onchange="updateConfiguredULB('costcenter','${cc.id}',this.value)"></td>
-                    <td><button class="btn-danger btn-sm" onclick="removeULB('costcenter','${cc.id}')">✕</button></td>
+                    <td>${escapeHtml(cc.name)}</td>
+                    <td><input type="number" value="${cc.ulb}" min="0" style="width:120px" onchange="updateConfiguredULB('costcenter','${escapeInlineArg(cc.id)}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('costcenter','${escapeInlineArg(cc.id)}')">✕</button></td>
                 </tr>`;
             });
             configuredIndividualULBs.forEach(u => {
                 html += `<tr>
                     <td><span class="badge badge-warning">Individual</span></td>
-                    <td>${u.name}</td>
-                    <td><input type="number" value="${u.individualULB}" min="0" style="width:120px" onchange="updateConfiguredULB('individual','${u.id}',this.value)"></td>
-                    <td><button class="btn-danger btn-sm" onclick="removeULB('individual','${u.id}')">✕</button></td>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td><input type="number" value="${u.individualULB}" min="0" style="width:120px" onchange="updateConfiguredULB('individual','${escapeInlineArg(u.id)}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('individual','${escapeInlineArg(u.id)}')">✕</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -1253,19 +1288,19 @@
             configuredOrgBudgets.forEach(o => {
                 html += `<tr>
                     <td><span class="badge badge-info">Organization</span></td>
-                    <td>${o.name}</td>
-                    <td><input type="number" value="${o.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('org','${o.id}','budget',this.value)"></td>
-                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('org','${o.id}','hardStop',this.checked)"> Yes</label></td>
-                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('org','${o.id}')">✕</button></td>
+                    <td>${escapeHtml(o.name)}</td>
+                    <td><input type="number" value="${o.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('org','${escapeInlineArg(o.id)}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('org','${escapeInlineArg(o.id)}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('org','${escapeInlineArg(o.id)}')">✕</button></td>
                 </tr>`;
             });
             configuredCCBudgets.forEach(cc => {
                 html += `<tr>
                     <td><span class="badge badge-warning">Cost Center</span></td>
-                    <td>${cc.name}</td>
-                    <td><input type="number" value="${cc.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('costcenter','${cc.id}','budget',this.value)"></td>
-                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('costcenter','${cc.id}','hardStop',this.checked)"> Yes</label></td>
-                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('costcenter','${cc.id}')">✕</button></td>
+                    <td>${escapeHtml(cc.name)}</td>
+                    <td><input type="number" value="${cc.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('costcenter','${escapeInlineArg(cc.id)}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('costcenter','${escapeInlineArg(cc.id)}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('costcenter','${escapeInlineArg(cc.id)}')">✕</button></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -1299,7 +1334,7 @@
         let barHtml = '<div class="pool-bar">';
         segments.forEach(seg => {
             const pct = (seg.size / pool * 100).toFixed(1);
-            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${seg.label}: ${fmt(seg.size)} credits (${pct}%)">${pct > 8 ? seg.label : ''}</div>`;
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${escapeHtml(`${seg.label}: ${fmt(seg.size)} credits (${pct}%)`)}">${pct > 8 ? escapeHtml(seg.label) : ''}</div>`;
         });
         if (unreserved > 0) {
             const pct = (unreserved / pool * 100).toFixed(1);
@@ -1309,7 +1344,7 @@
 
         let legendHtml = '<div class="pool-legend">';
         segments.forEach(seg => {
-            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${seg.label}: ${fmt(seg.size)}</div>`;
+            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${escapeHtml(seg.label)}: ${fmt(seg.size)}</div>`;
         });
         legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:var(--color-text-muted)"></div>Unreserved: ${fmt(unreserved)}</div>`;
         legendHtml += '</div>';
@@ -1318,15 +1353,15 @@
             <thead><tr><th>Cost Center</th><th>Pool</th><th>Members</th><th>Pool Size</th><th>% of Total</th></tr></thead>
             <tbody>
                 ${state.costCenters.map(cc => `<tr>
-                    <td>${cc.name}</td>
+                    <td>${escapeHtml(cc.name)}</td>
                     <td>${cc.poolEnabled ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-warning">Inactive</span>'}</td>
-                    <td>${getCCMembers(cc).length}</td>
+                    <td>${getAssignedCCMembers(cc).length}</td>
                     <td>${fmt(getCCPoolSize(cc))}</td>
                     <td>${pool > 0 ? (getCCPoolSize(cc) / pool * 100).toFixed(1) : 0}%</td>
                 </tr>`).join('')}
                 <tr style="font-weight:600">
                     <td>Unreserved</td><td></td>
-                    <td>${state.users.filter(u => !u.costCenterId && !state.costCenters.some(cc => cc.teamId && u.teamId === cc.teamId)).length}</td>
+                    <td>${state.users.filter(u => !getUserCC(u)).length}</td>
                     <td>${fmt(unreserved)}</td>
                     <td>${pool > 0 ? (unreserved / pool * 100).toFixed(1) : 0}%</td>
                 </tr>
@@ -1441,7 +1476,7 @@
             if (cc && cc.budget !== null) {
                 const ccUsed = poolState.ccMetered[cc.id] || 0;
                 const ccRemaining = cc.budget - ccUsed;
-                const affordable = Math.floor(ccRemaining / 0.01);
+                const affordable = meteredCreditsFromBudget(ccRemaining);
                 if (affordable <= 0 && cc.budgetHardStop) {
                     result.status = 'blocked';
                     result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
@@ -1455,7 +1490,7 @@
             if (org && org.budget !== null) {
                 const orgUsed = poolState.orgMetered[org.id] || 0;
                 const orgRemaining = org.budget - orgUsed;
-                const affordable = Math.floor(orgRemaining / 0.01);
+                const affordable = meteredCreditsFromBudget(orgRemaining);
                 if (affordable <= 0 && org.budgetHardStop) {
                     result.status = 'blocked';
                     result.reason = `Org budget exhausted ($${org.budget}, ${org.name})`;
@@ -1466,7 +1501,7 @@
 
             // Enterprise budget check
             const entRemaining = state.enterprise.enterpriseBudget - poolState.enterpriseMetered;
-            const entAffordable = Math.floor(entRemaining / 0.01);
+            const entAffordable = meteredCreditsFromBudget(entRemaining);
             if (entAffordable <= 0 && state.enterprise.enterpriseHardStop) {
                 result.status = 'blocked';
                 result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
@@ -1530,11 +1565,11 @@
                           r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
                           '<span class="badge badge-success">Served</span>';
             html += `<tr class="${rowClass}">
-                <td><strong>${r.user}</strong></td>
+                <td><strong>${escapeHtml(r.user)}</strong></td>
                 <td>${fmt(r.usage)}</td>
                 <td>${badge}</td>
                 <td>${r.ulbRemaining !== null ? fmt(r.ulbRemaining) : '∞'}</td>
-                <td>${r.status === 'blocked' ? r.reason : r.source}</td>
+                <td>${escapeHtml(r.status === 'blocked' ? r.reason : r.source)}</td>
             </tr>`;
         });
         html += '</tbody></table>';
@@ -1591,15 +1626,15 @@
             const max = ulb.value || Math.floor(maxCredits / state.users.length * 3);
             const usage = state.usage[user.id] || 0;
             html += `<tr>
-                <td><strong>${user.name}</strong></td>
-                <td>${cc ? cc.name : '—'}</td>
+                <td><strong>${escapeHtml(user.name)}</strong></td>
+                <td>${cc ? escapeHtml(cc.name) : '—'}</td>
                 <td>
                     <div class="simulation-usage-input">
                         <input type="range" min="0" max="${max}" value="${usage}"
-                            oninput="updateUsage('${user.id}', this.value); this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                            oninput="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
                         <span class="usage-value">${fmt(usage)}</span>
                         <input type="number" min="0" value="${usage}" style="width:80px"
-                            onchange="updateUsage('${user.id}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                            onchange="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
                     </div>
                 </td>
             </tr>`;
