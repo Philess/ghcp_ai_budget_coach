@@ -148,3 +148,18 @@ sequenceDiagram
 - [Getting started with budget controls](https://docs.github.com/en/enterprise-cloud@latest/copilot/tutorials/budgets/getting-started-with-budget-controls)
 - [Optimizing your budget configuration](https://docs.github.com/en/enterprise-cloud@latest/copilot/tutorials/budgets/optimizing-your-budget-configuration)
 - [About cost centers](https://docs.github.com/en/enterprise-cloud@latest/billing/using-the-new-billing-platform/about-cost-centers)
+
+## 🧪 Budget Simulator
+
+An interactive web-based tool to help administrators test and visualize budget configurations before deploying them.
+
+**[Open the Simulator →](https://philess.github.io/ghcp_ai_budget_coach/)**
+
+Features:
+- Configure enterprise settings (Business/Enterprise seat counts, derived AI credit pool, metered overage policy)
+- Create cost centers with AI credit pools and budget caps
+- Add sample users with user-level budget precedence (individual > cost center > universal)
+- Visualize pool partitions across cost centers
+- Simulate per-user credit consumption and see who gets blocked and why
+- Simulate aggregate pool/overage consumption
+- Save/load configurations (localStorage + JSON export/import)

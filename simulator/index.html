@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Copilot AI Credit Budget Simulator</title>
+    <style>
+        :root {
+            --color-bg: #0d1117;
+            --color-surface: #161b22;
+            --color-surface-raised: #1c2128;
+            --color-border: #30363d;
+            --color-text: #e6edf3;
+            --color-text-muted: #8b949e;
+            --color-accent: #58a6ff;
+            --color-accent-emphasis: #1f6feb;
+            --color-success: #3fb950;
+            --color-warning: #d29922;
+            --color-danger: #f85149;
+            --color-info: #58a6ff;
+            --radius: 6px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        header h1 { font-size: 1.25rem; font-weight: 600; }
+
+        header .actions { margin-left: auto; display: flex; gap: 8px; }
+
+        nav {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            padding: 0 24px;
+            overflow-x: auto;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        nav button:hover { color: var(--color-text); }
+        nav button.active { color: var(--color-text); border-bottom-color: var(--color-accent); }
+
+        main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
+        .card h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: 4px; font-weight: 500; }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            color: var(--color-text);
+            font-size: 0.875rem;
+        }
+
+        input:focus, select:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15); }
+        input[type="checkbox"] { width: auto; margin-right: 8px; }
+
+        .checkbox-label { display: flex; align-items: center; font-size: 0.875rem; cursor: pointer; }
+
+        button {
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface-raised);
+            color: var(--color-text);
+            transition: background 0.15s;
+        }
+
+        button:hover { background: var(--color-border); }
+        .btn-primary { background: var(--color-accent-emphasis); border-color: var(--color-accent-emphasis); color: #fff; }
+        .btn-primary:hover { background: #388bfd; }
+        .btn-danger { background: transparent; border-color: var(--color-danger); color: var(--color-danger); }
+        .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
+        .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--color-border); }
+        th { font-weight: 600; color: var(--color-text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; }
+        .badge-success { background: rgba(63, 185, 80, 0.15); color: var(--color-success); }
+        .badge-danger { background: rgba(248, 81, 73, 0.15); color: var(--color-danger); }
+        .badge-warning { background: rgba(210, 153, 34, 0.15); color: var(--color-warning); }
+        .badge-info { background: rgba(88, 166, 255, 0.15); color: var(--color-info); }
+
+        .pool-bar { height: 32px; background: var(--color-bg); border-radius: var(--radius); overflow: hidden; display: flex; border: 1px solid var(--color-border); margin: 8px 0; }
+        .pool-segment { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 600; color: #fff; min-width: 2px; transition: width 0.3s ease; }
+
+        .pool-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.75rem; }
+        .pool-legend-item { display: flex; align-items: center; gap: 6px; }
+        .pool-legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px; text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--color-accent); }
+        .stat-label { font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase; margin-top: 2px; }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--color-text-muted); }
+        .empty-state p { margin-top: 8px; font-size: 0.875rem; }
+
+        .result-blocked { background: rgba(248, 81, 73, 0.05); }
+        .result-metered { background: rgba(210, 153, 34, 0.05); }
+
+        .inline-form { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; margin-bottom: 12px; }
+        .inline-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+
+        .help-text { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; }
+
+        .progress-bar { height: 8px; background: var(--color-bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--color-border); }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+
+        .simulation-usage-input { display: flex; align-items: center; gap: 8px; }
+        .simulation-usage-input input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
+        .simulation-usage-input .usage-value { min-width: 70px; text-align: right; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+
+        .section-divider { border-top: 1px solid var(--color-border); margin: 20px 0; padding-top: 16px; }
+
+        .tag { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 12px; font-size: 0.75rem; background: var(--color-surface-raised); border: 1px solid var(--color-border); }
+        .tag .remove { cursor: pointer; margin-left: 4px; color: var(--color-text-muted); }
+        .tag .remove:hover { color: var(--color-danger); }
+
+        @media (max-width: 768px) {
+            header { padding: 12px 16px; }
+            nav { padding: 0 16px; }
+            main { padding: 16px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🤖 AI Credit Budget Simulator</h1>
+        <div class="actions">
+            <button onclick="exportConfig()">📥 Export</button>
+            <button onclick="document.getElementById('importFile').click()">📤 Import</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+            <button onclick="resetAll()" class="btn-danger">🗑️ Reset</button>
+        </div>
+    </header>
+
+    <nav id="mainNav">
+        <button class="active" data-panel="enterprise">🏢 Enterprise</button>
+        <button data-panel="costcenters" id="tab-costcenters">📂 Cost Centers</button>
+        <button data-panel="users" id="tab-users">👥 Users</button>
+        <button data-panel="budgets">💰 Budgets</button>
+        <button data-panel="pool">📊 Pool View</button>
+        <button data-panel="simulate">⚡ Simulate</button>
+    </nav>
+
+    <main>
+        <!-- ═══════════════ ENTERPRISE TAB ═══════════════ -->
+        <div id="panel-enterprise" class="panel active">
+            <div class="card">
+                <h2>🏢 License Seats</h2>
+                <p class="help-text" style="margin-bottom: 12px">Configure how many Copilot Business and Enterprise seats your enterprise has. The AI credit pool is calculated from these.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Copilot Business Seats (3,000 credits/seat/mo)</label>
+                        <input type="number" id="businessSeats" value="0" min="0" onchange="updateEnterprise()">
+                    </div>
+                    <div class="form-group">
+                        <label>Copilot Enterprise Seats (7,000 credits/seat/mo)</label>
+                        <input type="number" id="enterpriseSeats" value="0" min="0" onchange="updateEnterprise()">
+                    </div>
+                </div>
+                <div style="margin-top: 8px">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoSeats" onchange="toggleAutoSeats()">
+                        Auto (calculate seat counts from users)
+                    </label>
+                    <p class="help-text">When enabled, seat counts are derived from the users you have configured and inputs are disabled.</p>
+                </div>
+                <div class="form-row" style="margin-top: 12px">
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="meteredEnabled" checked onchange="updateEnterprise()">
+                            Metered usage policy enabled (overage at $0.01/credit)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Enterprise Summary</h2>
+                <div class="stat-grid" id="enterpriseStats"></div>
+            </div>
+
+            <div class="card">
+                <h2>👥 Enterprise Teams</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Team Name</label>
+                        <input type="text" id="teamName" placeholder="e.g., engineers">
+                    </div>
+                    <button class="btn-primary" onclick="addTeam()">+ Add Team</button>
+                </div>
+                <div id="teamsList"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏛️ Organizations</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label>Organization Name</label>
+                        <input type="text" id="orgName" placeholder="e.g., acme-corp">
+                    </div>
+                    <button class="btn-primary" onclick="addOrg()">+ Add Organization</button>
+                </div>
+                <div id="orgsList"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏊 AI Credit Pool Reservations per Cost Center</h2>
+                <p class="help-text" style="margin-bottom: 12px">Enable or disable the AI credit pool reservation for each cost center. When enabled, a cost center gets a reserved portion of the shared pool based on its member count × credits per seat.</p>
+                <div id="ccPoolToggles"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════ COST CENTERS TAB ═══════════════ -->
+        <div id="panel-costcenters" class="panel">
+            <div class="card">
+                <h2>📂 Create Cost Center</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="ccName" placeholder="e.g., Engineering">
+                    </div>
+                    <div class="form-group">
+                        <label>Teams</label>
+                        <select id="ccTeam" multiple style="min-height:60px"></select>
+                        <p class="help-text">Hold Ctrl/Cmd to select multiple</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Organizations</label>
+                        <select id="ccOrgs" multiple style="min-height:60px"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Users (direct assignment)</label>
+                        <select id="ccUsers" multiple style="min-height:60px"></select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-primary" onclick="addCostCenter()">+ Add Cost Center</button>
+                </div>
+            </div>
+            <div id="costCentersList"></div>
+        </div>
+
+        <!-- ═══════════════ USERS TAB ═══════════════ -->
+        <div id="panel-users" class="panel">
+            <div class="card">
+                <h2>👥 Add User</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="userName" placeholder="e.g., alice">
+                    </div>
+                    <div class="form-group">
+                        <label>Cost Center</label>
+                        <select id="userCC"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Organization</label>
+                        <select id="userOrg"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Team</label>
+                        <select id="userTeam"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <select id="userLicense">
+                            <option value="business">Business</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-primary" onclick="addUser()">+ Add User</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ Bulk Create Users</h2>
+                <p class="help-text" style="margin-bottom: 12px">Generate multiple users at once. They are automatically distributed round-robin across existing teams and organizations. Cost center must be assigned manually.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Number of users</label>
+                        <input type="number" id="bulkCount" value="10" min="1" max="500">
+                    </div>
+                    <div class="form-group">
+                        <label>Name prefix</label>
+                        <input type="text" id="bulkPrefix" value="user" placeholder="e.g., dev">
+                    </div>
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <select id="bulkLicense">
+                            <option value="business">Business</option>
+                            <option value="enterprise">Enterprise</option>
+                            <option value="mixed">Mixed (alternate)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-primary" onclick="bulkCreateUsers()">⚡ Generate Users</button>
+                </div>
+            </div>
+
+            <div id="usersList"></div>
+        </div>
+
+        <!-- ═══════════════ BUDGETS TAB ═══════════════ -->
+        <div id="panel-budgets" class="panel">
+            <div class="card">
+                <h2>🎯 User-Level Budgets (ULB)</h2>
+                <p class="help-text" style="margin-bottom: 16px">ULBs cap individual user consumption across both pool and metered phases. Always a hard stop. Precedence: Individual > Cost Center > Universal.</p>
+
+                <h3>Universal ULB</h3>
+                <div class="form-row" style="margin-bottom: 16px">
+                    <div class="form-group">
+                        <label>Default per-user budget (credits)</label>
+                        <input type="number" id="universalULB" placeholder="No limit" min="0" onchange="updateBudgets()">
+                        <p class="help-text">Applies to all licensed users unless overridden</p>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3>Add User-Level Budget</h3>
+                <div class="inline-form" style="margin-bottom: 12px">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="ulbType" onchange="renderULBTargets()">
+                            <option value="individual">Individual User</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target</label>
+                        <select id="ulbTarget"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget (credits)</label>
+                        <input type="number" id="ulbValue" min="0" placeholder="e.g., 5000">
+                    </div>
+                    <button class="btn-primary" onclick="addULB()">+ Add</button>
+                </div>
+                <div id="configuredULBList"></div>
+            </div>
+
+            <div class="card">
+                <h2>💳 Overage Budgets</h2>
+                <p class="help-text" style="margin-bottom: 16px">These budgets cap metered charges ($0.01/credit) once the pool is exhausted. Can be configured with or without hard stop.</p>
+
+                <h3>Enterprise Budget</h3>
+                <div class="form-row" style="margin-bottom: 16px">
+                    <div class="form-group">
+                        <label>Enterprise metered budget ($)</label>
+                        <input type="number" id="enterpriseBudget" value="1000" min="0" step="50" onchange="updateBudgets()">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enterpriseHardStop" checked onchange="updateBudgets()">
+                            Hard stop when exhausted
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+                <h3>Add Overage Budget</h3>
+                <div class="inline-form" style="margin-bottom: 12px">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="overageBudgetType" onchange="renderOverageTargets()">
+                            <option value="org">Organization</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target</label>
+                        <select id="overageTarget"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget ($)</label>
+                        <input type="number" id="overageBudgetValue" min="0" step="50" placeholder="e.g., 500">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="overageHardStop" checked>
+                            Hard stop
+                        </label>
+                    </div>
+                    <button class="btn-primary" onclick="addOverageBudget()">+ Add</button>
+                </div>
+                <div id="configuredOverageBudgetList"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════ POOL VIEW TAB ═══════════════ -->
+        <div id="panel-pool" class="panel">
+            <div class="card">
+                <h2>📊 Pool Reservation View</h2>
+                <p class="help-text" style="margin-bottom: 12px">Shows how the enterprise shared pool is partitioned across cost centers with AI credit pools enabled.</p>
+                <div id="poolVisualization"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
+        <div id="panel-simulate" class="panel">
+            <div class="card">
+                <h2>⚡ Usage Simulation</h2>
+                <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
+                <div id="simulationInputs"></div>
+                <div style="margin-top: 16px; display: flex; gap: 8px;">
+                    <button class="btn-primary" onclick="runSimulation()">▶️ Run Simulation</button>
+                    <button onclick="resetUsage()">Reset Usage</button>
+                </div>
+            </div>
+
+            <div class="card" id="simulationResultsCard" style="display:none">
+                <h2>📋 Simulation Results</h2>
+                <div class="stat-grid" id="simSummaryStats"></div>
+                <div id="simulationResults"></div>
+            </div>
+
+            <div class="card">
+                <h2>🏊 Pool & Overage Simulation</h2>
+                <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Credits Consumed (all users combined)</label>
+                        <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
+                    </div>
+                </div>
+                <div id="aggregateResults"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // ─── State ───────────────────────────────────────────────────────────────────
+    let state = loadState() || defaultState();
+
+    function defaultState() {
+        return {
+            enterprise: {
+                businessSeats: 0,
+                enterpriseSeats: 0,
+                meteredEnabled: true,
+                enterpriseBudget: 1000,
+                enterpriseHardStop: true,
+                universalULB: null
+            },
+            teams: [],
+            orgs: [],
+            costCenters: [],
+            users: [],
+            usage: {}
+        };
+    }
+
+    const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => HTML_ESCAPE_MAP[char]);
+    }
+
+    function escapeInlineArg(value) {
+        return escapeHtml(String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n'));
+    }
+
+    function optionHtml(value, label, selected = false) {
+        return `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+    }
+
+    function normalizeState(parsed) {
+        const defaults = defaultState();
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaults;
+
+        if (parsed.enterprise && parsed.enterprise.licenseType !== undefined) {
+            const seats = parsed.enterprise.totalSeats || 0;
+            if (parsed.enterprise.licenseType === 'enterprise') {
+                parsed.enterprise.enterpriseSeats = seats;
+                parsed.enterprise.businessSeats = 0;
+            } else {
+                parsed.enterprise.businessSeats = seats;
+                parsed.enterprise.enterpriseSeats = 0;
+            }
+            delete parsed.enterprise.licenseType;
+            delete parsed.enterprise.totalSeats;
+        }
+
+        const enterprise = parsed.enterprise && typeof parsed.enterprise === 'object' && !Array.isArray(parsed.enterprise)
+            ? parsed.enterprise
+            : {};
+
+        return {
+            ...defaults,
+            ...parsed,
+            enterprise: { ...defaults.enterprise, ...enterprise },
+            teams: Array.isArray(parsed.teams) ? parsed.teams : [],
+            orgs: Array.isArray(parsed.orgs) ? parsed.orgs : [],
+            costCenters: Array.isArray(parsed.costCenters) ? parsed.costCenters : [],
+            users: Array.isArray(parsed.users) ? parsed.users : [],
+            usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {}
+        };
+    }
+
+    function meteredCreditsFromBudget(amount) {
+        return Math.floor((Math.max(0, amount) * 100) + Number.EPSILON);
+    }
+
+    function totalPool() {
+        return (state.enterprise.businessSeats * 3000) + (state.enterprise.enterpriseSeats * 7000);
+    }
+
+    function totalSeats() {
+        return state.enterprise.businessSeats + state.enterprise.enterpriseSeats;
+    }
+
+    function userCreditsPerSeat(user) {
+        return user.license === 'enterprise' ? 7000 : 3000;
+    }
+
+    // ─── Persistence ─────────────────────────────────────────────────────────────
+    function saveState() {
+        localStorage.setItem('budget-simulator-state', JSON.stringify(state));
+    }
+
+    function loadState() {
+        try {
+            const saved = localStorage.getItem('budget-simulator-state');
+            if (!saved) return null;
+            return normalizeState(JSON.parse(saved));
+        } catch { return null; }
+    }
+
+    function exportConfig() {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'budget-simulator-config.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importConfig(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                state = normalizeState(JSON.parse(e.target.result));
+                saveState();
+                renderAll();
+            } catch (err) { alert('Invalid JSON file: ' + err.message); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function resetAll() {
+        if (!confirm('Reset all configuration? This cannot be undone.')) return;
+        state = defaultState();
+        saveState();
+        renderAll();
+    }
+
+    // ─── Enterprise ──────────────────────────────────────────────────────────────
+    function updateEnterprise() {
+        if (!state.enterprise.autoSeats) {
+            state.enterprise.businessSeats = parseInt(document.getElementById('businessSeats').value) || 0;
+            state.enterprise.enterpriseSeats = parseInt(document.getElementById('enterpriseSeats').value) || 0;
+        }
+        state.enterprise.meteredEnabled = document.getElementById('meteredEnabled').checked;
+        saveState();
+        renderEnterpriseStats();
+        renderCCPoolToggles();
+    }
+
+    function toggleAutoSeats() {
+        state.enterprise.autoSeats = document.getElementById('autoSeats').checked;
+        recalcAutoSeats();
+        saveState();
+        renderEnterprise();
+    }
+
+    function recalcAutoSeats() {
+        if (state.enterprise.autoSeats) {
+            state.enterprise.businessSeats = state.users.filter(u => u.license !== 'enterprise').length;
+            state.enterprise.enterpriseSeats = state.users.filter(u => u.license === 'enterprise').length;
+            saveState();
+        }
+    }
+
+    function renderEnterprise() {
+        document.getElementById('businessSeats').value = state.enterprise.businessSeats;
+        document.getElementById('enterpriseSeats').value = state.enterprise.enterpriseSeats;
+        document.getElementById('meteredEnabled').checked = state.enterprise.meteredEnabled;
+        // Auto seats
+        const auto = state.enterprise.autoSeats || false;
+        document.getElementById('autoSeats').checked = auto;
+        document.getElementById('businessSeats').disabled = auto;
+        document.getElementById('enterpriseSeats').disabled = auto;
+        renderEnterpriseStats();
+        renderTeams();
+        renderOrgs();
+        renderCCPoolToggles();
+    }
+
+    function renderEnterpriseStats() {
+        const pool = totalPool();
+        const reserved = state.costCenters.filter(cc => cc.poolEnabled).reduce((s, cc) => s + getCCPoolSize(cc), 0);
+        document.getElementById('enterpriseStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value">${fmt(pool)}</div><div class="stat-label">Total Pool Credits</div></div>
+            <div class="stat-card"><div class="stat-value">${state.enterprise.businessSeats}</div><div class="stat-label">Business Seats</div></div>
+            <div class="stat-card"><div class="stat-value">${state.enterprise.enterpriseSeats}</div><div class="stat-label">Enterprise Seats</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(reserved)}</div><div class="stat-label">Reserved (CC Pools)</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(pool - reserved)}</div><div class="stat-label">Unreserved Pool</div></div>
+        `;
+    }
+
+    // ─── Teams ───────────────────────────────────────────────────────────────────
+    function addTeam() {
+        const name = document.getElementById('teamName').value.trim();
+        if (!name) return;
+        if (state.teams.some(t => t.name === name)) return alert('Team already exists');
+        state.teams.push({ id: 'team_' + Date.now(), name });
+        document.getElementById('teamName').value = '';
+        saveState();
+        renderTeams();
+        renderCCTeamDropdown();
+        renderUserTeamDropdown();
+    }
+
+    function deleteTeam(id) {
+        state.teams = state.teams.filter(t => t.id !== id);
+        state.users.forEach(u => { if (u.teamId === id) u.teamId = null; });
+        state.costCenters.forEach(cc => {
+            if (cc.teamId === id) cc.teamId = null;
+            if (cc.teamIds) cc.teamIds = cc.teamIds.filter(tid => tid !== id);
+        });
+        saveState();
+        renderTeams();
+        renderCCTeamDropdown();
+        renderUserTeamDropdown();
+    }
+
+    function renderTeams() {
+        const el = document.getElementById('teamsList');
+        if (state.teams.length === 0) { el.innerHTML = '<p class="help-text">No teams yet.</p>'; return; }
+        el.innerHTML = '<table><thead><tr><th>Team</th><th>Members</th><th></th></tr></thead><tbody>' +
+            state.teams.map(t => {
+                const members = state.users.filter(u => u.teamId === t.id);
+                return `<tr><td><strong>${escapeHtml(t.name)}</strong></td><td>${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteTeam('${escapeInlineArg(t.id)}')">✕</button></td></tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    // ─── Organizations ───────────────────────────────────────────────────────────
+    function addOrg() {
+        const name = document.getElementById('orgName').value.trim();
+        if (!name) return;
+        if (state.orgs.some(o => o.name === name)) return alert('Organization already exists');
+        state.orgs.push({ id: 'org_' + Date.now(), name, budget: null, budgetHardStop: true });
+        document.getElementById('orgName').value = '';
+        saveState();
+        renderOrgs();
+        renderUserOrgDropdown();
+        renderBudgets();
+        renderCCOrgDropdown();
+    }
+
+    function deleteOrg(id) {
+        state.orgs = state.orgs.filter(o => o.id !== id);
+        state.users.forEach(u => { if (u.orgId === id) u.orgId = null; });
+        state.costCenters.forEach(cc => {
+            if (cc.orgIds) cc.orgIds = cc.orgIds.filter(oid => oid !== id);
+        });
+        saveState();
+        renderOrgs();
+        renderUserOrgDropdown();
+        renderBudgets();
+        renderCCOrgDropdown();
+    }
+
+    function renderOrgs() {
+        const el = document.getElementById('orgsList');
+        if (state.orgs.length === 0) { el.innerHTML = '<p class="help-text">No organizations yet.</p>'; return; }
+        el.innerHTML = '<table><thead><tr><th>Organization</th><th>Members</th><th></th></tr></thead><tbody>' +
+            state.orgs.map(o => {
+                const members = state.users.filter(u => u.orgId === o.id);
+                return `<tr><td><strong>${escapeHtml(o.name)}</strong></td><td>${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '—'}</td><td><button class="btn-danger btn-sm" onclick="deleteOrg('${escapeInlineArg(o.id)}')">✕</button></td></tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    // ─── CC Pool Toggles (on Enterprise tab) ─────────────────────────────────────
+    function toggleCCPool(ccId, enabled) {
+        const cc = state.costCenters.find(c => c.id === ccId);
+        if (cc) cc.poolEnabled = enabled;
+        saveState();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+    }
+
+    function renderCCPoolToggles() {
+        const el = document.getElementById('ccPoolToggles');
+        if (state.costCenters.length === 0) {
+            el.innerHTML = '<p class="help-text">No cost centers yet. Create them in the Cost Centers tab.</p>';
+            return;
+        }
+        el.innerHTML = '<table><thead><tr><th>Cost Center</th><th>Pool Enabled</th><th>Members</th><th>Pool Size</th></tr></thead><tbody>' +
+            state.costCenters.map(cc => {
+                const members = getAssignedCCMembers(cc);
+                const poolSize = getCCPoolSize(cc);
+                return `<tr>
+                    <td><strong>${escapeHtml(cc.name)}</strong></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.poolEnabled ? 'checked' : ''} onchange="toggleCCPool('${escapeInlineArg(cc.id)}', this.checked)"> ${cc.poolEnabled ? 'Active' : 'Inactive'}</label></td>
+                    <td>${members.length}</td>
+                    <td>${cc.poolEnabled ? fmt(poolSize) + ' credits' : '—'}</td>
+                </tr>`;
+            }).join('') + '</tbody></table>';
+    }
+
+    // ─── Cost Centers ────────────────────────────────────────────────────────────
+    function addCostCenter() {
+        const name = document.getElementById('ccName').value.trim();
+        if (!name) return alert('Name is required');
+        if (state.costCenters.some(cc => cc.name === name)) return alert('Cost center already exists');
+
+        const teamSelect = document.getElementById('ccTeam');
+        const orgSelect = document.getElementById('ccOrgs');
+        const userSelect = document.getElementById('ccUsers');
+        const teamIds = Array.from(teamSelect.selectedOptions).map(o => o.value).filter(Boolean);
+        const orgIds = Array.from(orgSelect.selectedOptions).map(o => o.value).filter(Boolean);
+        const userIds = Array.from(userSelect.selectedOptions).map(o => o.value).filter(Boolean);
+
+        state.costCenters.push({
+            id: 'cc_' + Date.now(),
+            name,
+            teamIds,
+            orgIds,
+            userIds,
+            // Legacy compat
+            teamId: teamIds[0] || null,
+            poolEnabled: false,
+            overagesAllowed: true,
+            budget: null,
+            budgetHardStop: true,
+            ulb: null
+        });
+        document.getElementById('ccName').value = '';
+        teamSelect.selectedIndex = -1;
+        orgSelect.selectedIndex = -1;
+        userSelect.selectedIndex = -1;
+        saveState();
+        renderCostCenters();
+        renderUserCCDropdown();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+        renderBudgets();
+        renderTabCounts();
+    }
+
+    function deleteCostCenter(id) {
+        state.costCenters = state.costCenters.filter(cc => cc.id !== id);
+        state.users.forEach(u => { if (u.costCenterId === id) u.costCenterId = null; });
+        saveState();
+        renderCostCenters();
+        renderUserCCDropdown();
+        renderCCPoolToggles();
+        renderEnterpriseStats();
+        renderBudgets();
+        renderTabCounts();
+    }
+
+    function updateCC(id, field, value) {
+        const cc = state.costCenters.find(c => c.id === id);
+        if (!cc) return;
+        if (field === 'overagesAllowed') cc[field] = value;
+        else if (field === 'name') cc.name = value;
+        else if (field === 'teamIds') { cc.teamIds = value; cc.teamId = value[0] || null; }
+        else if (field === 'orgIds') cc.orgIds = value;
+        else if (field === 'userIds') cc.userIds = value;
+        saveState();
+        renderCostCenters();
+        renderEnterpriseStats();
+        renderCCPoolToggles();
+    }
+
+    function getCCMembers(cc) {
+        const memberSet = new Set();
+        // Users directly assigned to CC
+        state.users.filter(u => u.costCenterId === cc.id).forEach(u => memberSet.add(u.id));
+        // Users in CC's userIds list
+        if (cc.userIds) cc.userIds.forEach(uid => memberSet.add(uid));
+        // Users in assigned teams
+        const teamIds = cc.teamIds || (cc.teamId ? [cc.teamId] : []);
+        teamIds.forEach(tid => {
+            state.users.filter(u => u.teamId === tid).forEach(u => memberSet.add(u.id));
+        });
+        // Users in assigned orgs
+        if (cc.orgIds) {
+            cc.orgIds.forEach(oid => {
+                state.users.filter(u => u.orgId === oid).forEach(u => memberSet.add(u.id));
+            });
+        }
+        return state.users.filter(u => memberSet.has(u.id));
+    }
+
+    function getAssignedCCMembers(cc) {
+        return state.users.filter(u => getUserCC(u)?.id === cc.id);
+    }
+
+    function getCCPoolSize(cc) {
+        if (!cc.poolEnabled) return 0;
+        return getAssignedCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
+    }
+
+    function renderCCTeamDropdown() {
+        const sel = document.getElementById('ccTeam');
+        sel.innerHTML = state.teams.map(t => optionHtml(t.id, t.name)).join('');
+        sel.selectedIndex = -1;
+    }
+
+    function renderCCOrgDropdown() {
+        const sel = document.getElementById('ccOrgs');
+        sel.innerHTML = state.orgs.map(o => optionHtml(o.id, o.name)).join('');
+        sel.selectedIndex = -1;
+    }
+
+    function renderCCUserDropdown() {
+        const sel = document.getElementById('ccUsers');
+        sel.innerHTML = state.users.map(u => optionHtml(u.id, u.name)).join('');
+        sel.selectedIndex = -1;
+    }
+
+    function renderCostCenters() {
+        const container = document.getElementById('costCentersList');
+        if (state.costCenters.length === 0) {
+            container.innerHTML = '<div class="card empty-state"><p>No cost centers yet. Add one above.</p></div>';
+            return;
+        }
+        container.innerHTML = state.costCenters.map(cc => {
+            const members = getCCMembers(cc);
+            const teamIds = cc.teamIds || (cc.teamId ? [cc.teamId] : []);
+            const orgIds = cc.orgIds || [];
+            const userIds = cc.userIds || [];
+
+            return `<div class="card">
+                <h2>${escapeHtml(cc.name)} ${cc.poolEnabled ? '<span class="badge badge-success">Pool Active</span>' : '<span class="badge badge-warning">No Pool</span>'}</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" value="${escapeHtml(cc.name)}" onchange="updateCC('${escapeInlineArg(cc.id)}','name',this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>Teams</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','teamIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.teams.map(t => optionHtml(t.id, t.name, teamIds.includes(t.id))).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Organizations</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','orgIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.orgs.map(o => optionHtml(o.id, o.name, orgIds.includes(o.id))).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Direct Users</label>
+                        <select multiple style="min-height:50px" onchange="updateCC('${escapeInlineArg(cc.id)}','userIds',Array.from(this.selectedOptions).map(o=>o.value))">
+                            ${state.users.map(u => optionHtml(u.id, u.name, userIds.includes(u.id))).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-top: 8px">
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" ${cc.overagesAllowed ? 'checked' : ''} onchange="updateCC('${escapeInlineArg(cc.id)}','overagesAllowed',this.checked)">
+                            Overages allowed (fall through to enterprise pool when CC pool exhausted)
+                        </label>
+                    </div>
+                </div>
+                <div style="margin-top: 8px">
+                    <label style="font-size: 0.8125rem; color: var(--color-text-muted)">Resolved Members (${members.length}): </label>
+                    <span style="font-size: 0.8125rem">${members.length > 0 ? members.map(u => escapeHtml(u.name)).join(', ') : '<em>None</em>'}</span>
+                </div>
+                <div style="margin-top: 12px">
+                    <button class="btn-danger btn-sm" onclick="deleteCostCenter('${escapeInlineArg(cc.id)}')">Delete Cost Center</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────────
+    let editingUserId = null;
+
+    function addUser() {
+        const name = document.getElementById('userName').value.trim();
+        if (!name) return alert('Username is required');
+        if (state.users.some(u => u.name === name)) return alert('User already exists');
+        state.users.push({
+            id: 'user_' + Date.now(),
+            name,
+            costCenterId: document.getElementById('userCC').value || null,
+            orgId: document.getElementById('userOrg').value || null,
+            teamId: document.getElementById('userTeam').value || null,
+            license: document.getElementById('userLicense').value,
+            individualULB: null
+        });
+        document.getElementById('userName').value = '';
+        saveState();
+        refreshAfterUserChange();
+    }
+
+    function deleteUser(id) {
+        state.users = state.users.filter(u => u.id !== id);
+        delete state.usage[id];
+        // Remove from CC userIds
+        state.costCenters.forEach(cc => {
+            if (cc.userIds) cc.userIds = cc.userIds.filter(uid => uid !== id);
+        });
+        saveState();
+        refreshAfterUserChange();
+    }
+
+    function editUser(id) {
+        editingUserId = editingUserId === id ? null : id;
+        renderUsers();
+    }
+
+    function saveUserEdit(id) {
+        const user = state.users.find(u => u.id === id);
+        if (!user) return;
+        const row = document.getElementById('edit-' + id);
+        if (!row) return;
+        user.costCenterId = row.querySelector('[data-field="cc"]').value || null;
+        user.orgId = row.querySelector('[data-field="org"]').value || null;
+        user.teamId = row.querySelector('[data-field="team"]').value || null;
+        user.license = row.querySelector('[data-field="license"]').value;
+        editingUserId = null;
+        saveState();
+        refreshAfterUserChange();
+    }
+
+    function refreshAfterUserChange() {
+        renderUsers();
+        renderCostCenters();
+        renderTeams();
+        renderOrgs();
+        renderEnterpriseStats();
+        renderCCPoolToggles();
+        renderBudgets();
+        renderCCUserDropdown();
+        renderTabCounts();
+        recalcAutoSeats();
+    }
+
+    function bulkCreateUsers() {
+        const count = parseInt(document.getElementById('bulkCount').value) || 0;
+        const prefix = document.getElementById('bulkPrefix').value.trim() || 'user';
+        const licenseMode = document.getElementById('bulkLicense').value;
+        if (count <= 0) return alert('Enter a positive number');
+
+        const existingNumbers = state.users
+            .map(u => { const m = u.name.match(new RegExp(`^${prefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+            .filter(n => n > 0);
+        let nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+
+        const teams = state.teams.length > 0 ? state.teams : [null];
+        const orgs = state.orgs.length > 0 ? state.orgs : [null];
+
+        for (let i = 0; i < count; i++) {
+            const name = `${prefix}-${nextNum + i}`;
+            if (state.users.some(u => u.name === name)) continue;
+
+            const team = teams[i % teams.length];
+            const org = orgs[i % orgs.length];
+            let license = 'business';
+            if (licenseMode === 'enterprise') license = 'enterprise';
+            else if (licenseMode === 'mixed') license = i % 2 === 0 ? 'business' : 'enterprise';
+
+            state.users.push({
+                id: 'user_' + (Date.now() + i),
+                name,
+                costCenterId: null,
+                orgId: org ? org.id : null,
+                teamId: team ? team.id : null,
+                license,
+                individualULB: null
+            });
+        }
+        saveState();
+        refreshAfterUserChange();
+    }
+
+    function getEffectiveULB(user) {
+        if (user.individualULB !== null) return { value: user.individualULB, source: 'Individual' };
+        if (user.costCenterId) {
+            const cc = state.costCenters.find(c => c.id === user.costCenterId);
+            if (cc && cc.ulb !== null) return { value: cc.ulb, source: `CC: ${cc.name}` };
+        }
+        if (state.enterprise.universalULB !== null) return { value: state.enterprise.universalULB, source: 'Universal' };
+        return { value: null, source: 'None' };
+    }
+
+    function renderUserCCDropdown() {
+        document.getElementById('userCC').innerHTML = '<option value="">(None)</option>' +
+            state.costCenters.map(cc => optionHtml(cc.id, cc.name)).join('');
+    }
+
+    function renderUserOrgDropdown() {
+        document.getElementById('userOrg').innerHTML = '<option value="">(None)</option>' +
+            state.orgs.map(o => optionHtml(o.id, o.name)).join('');
+    }
+
+    function renderUserTeamDropdown() {
+        document.getElementById('userTeam').innerHTML = '<option value="">(None)</option>' +
+            state.teams.map(t => optionHtml(t.id, t.name)).join('');
+    }
+
+    function renderUsers() {
+        const container = document.getElementById('usersList');
+        if (state.users.length === 0) {
+            container.innerHTML = '<div class="card empty-state"><p>No users yet. Add one above.</p></div>';
+            return;
+        }
+        let html = `<div class="card"><p style="margin-bottom:8px; font-size:0.8125rem; color:var(--color-text-muted)">${state.users.length} user(s)</p><table><thead><tr><th>User</th><th>License</th><th>Cost Center</th><th>Org</th><th>Team</th><th>Effective ULB</th><th></th></tr></thead><tbody>`;
+        state.users.forEach(u => {
+            const cc = u.costCenterId ? state.costCenters.find(c => c.id === u.costCenterId) : null;
+            const org = u.orgId ? state.orgs.find(o => o.id === u.orgId) : null;
+            const team = u.teamId ? state.teams.find(t => t.id === u.teamId) : null;
+            const ulb = getEffectiveULB(u);
+
+            if (editingUserId === u.id) {
+                html += `<tr id="edit-${escapeHtml(u.id)}" style="background:var(--color-surface-raised)">
+                    <td><strong>${escapeHtml(u.name)}</strong></td>
+                    <td><select data-field="license"><option value="business" ${u.license !== 'enterprise' ? 'selected' : ''}>Business</option><option value="enterprise" ${u.license === 'enterprise' ? 'selected' : ''}>Enterprise</option></select></td>
+                    <td><select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => optionHtml(c.id, c.name, u.costCenterId === c.id)).join('')}</select></td>
+                    <td><select data-field="org"><option value="">(None)</option>${state.orgs.map(o => optionHtml(o.id, o.name, u.orgId === o.id)).join('')}</select></td>
+                    <td><select data-field="team"><option value="">(None)</option>${state.teams.map(t => optionHtml(t.id, t.name, u.teamId === t.id)).join('')}</select></td>
+                    <td>${ulb.value !== null ? fmt(ulb.value) : '∞'}</td>
+                    <td><button class="btn-primary btn-sm" onclick="saveUserEdit('${escapeInlineArg(u.id)}')">💾</button> <button class="btn-sm" onclick="editUser(null)">✕</button></td>
+                </tr>`;
+            } else {
+                html += `<tr>
+                    <td><strong>${escapeHtml(u.name)}</strong></td>
+                    <td><span class="badge badge-info">${u.license || 'business'}</span></td>
+                    <td>${cc ? escapeHtml(cc.name) : '—'}</td>
+                    <td>${org ? escapeHtml(org.name) : '—'}</td>
+                    <td>${team ? escapeHtml(team.name) : '—'}</td>
+                    <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + escapeHtml(ulb.source) + ')</small>' : '∞'}</td>
+                    <td><button class="btn-sm" onclick="editUser('${escapeInlineArg(u.id)}')" title="Edit">✏️</button> <button class="btn-danger btn-sm" onclick="deleteUser('${escapeInlineArg(u.id)}')">✕</button></td>
+                </tr>`;
+            }
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    // ─── Budgets Tab ─────────────────────────────────────────────────────────────
+    function updateBudgets() {
+        const ulbVal = document.getElementById('universalULB').value;
+        state.enterprise.universalULB = ulbVal ? parseInt(ulbVal) : null;
+        state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
+        state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
+        saveState();
+    }
+
+    function renderULBTargets() {
+        const type = document.getElementById('ulbType').value;
+        const sel = document.getElementById('ulbTarget');
+        if (type === 'individual') {
+            const usersWithoutULB = state.users.filter(u => u.individualULB === null);
+            sel.innerHTML = usersWithoutULB.map(u => optionHtml(u.id, u.name)).join('');
+        } else {
+            const ccsWithoutULB = state.costCenters.filter(cc => cc.ulb === null);
+            sel.innerHTML = ccsWithoutULB.map(cc => optionHtml(cc.id, cc.name)).join('');
+        }
+    }
+
+    function addULB() {
+        const type = document.getElementById('ulbType').value;
+        const target = document.getElementById('ulbTarget').value;
+        const value = parseInt(document.getElementById('ulbValue').value);
+        if (!target) return alert('Select a target');
+        if (isNaN(value) || value < 0) return alert('Enter a valid budget value');
+
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === target);
+            if (user) user.individualULB = value;
+        } else {
+            const cc = state.costCenters.find(c => c.id === target);
+            if (cc) cc.ulb = value;
+        }
+        document.getElementById('ulbValue').value = '';
+        saveState();
+        renderBudgets();
+        renderUsers();
+    }
+
+    function removeULB(type, id) {
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === id);
+            if (user) user.individualULB = null;
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) cc.ulb = null;
+        }
+        saveState();
+        renderBudgets();
+        renderUsers();
+    }
+
+    function renderOverageTargets() {
+        const type = document.getElementById('overageBudgetType').value;
+        const sel = document.getElementById('overageTarget');
+        if (type === 'org') {
+            const orgsWithoutBudget = state.orgs.filter(o => o.budget === null);
+            sel.innerHTML = orgsWithoutBudget.map(o => optionHtml(o.id, o.name)).join('');
+        } else {
+            const ccsWithoutBudget = state.costCenters.filter(cc => cc.budget === null);
+            sel.innerHTML = ccsWithoutBudget.map(cc => optionHtml(cc.id, cc.name)).join('');
+        }
+    }
+
+    function addOverageBudget() {
+        const type = document.getElementById('overageBudgetType').value;
+        const target = document.getElementById('overageTarget').value;
+        const value = parseFloat(document.getElementById('overageBudgetValue').value);
+        const hardStop = document.getElementById('overageHardStop').checked;
+        if (!target) return alert('Select a target');
+        if (isNaN(value) || value < 0) return alert('Enter a valid budget value');
+
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === target);
+            if (org) { org.budget = value; org.budgetHardStop = hardStop; }
+        } else {
+            const cc = state.costCenters.find(c => c.id === target);
+            if (cc) { cc.budget = value; cc.budgetHardStop = hardStop; }
+        }
+        document.getElementById('overageBudgetValue').value = '';
+        saveState();
+        renderBudgets();
+    }
+
+    function removeOverageBudget(type, id) {
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === id);
+            if (org) { org.budget = null; org.budgetHardStop = true; }
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) { cc.budget = null; cc.budgetHardStop = true; }
+        }
+        saveState();
+        renderBudgets();
+    }
+
+    function updateConfiguredULB(type, id, value) {
+        if (type === 'individual') {
+            const user = state.users.find(u => u.id === id);
+            if (user) user.individualULB = value === '' ? null : parseInt(value);
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (cc) cc.ulb = value === '' ? null : parseInt(value);
+        }
+        saveState();
+        renderUsers();
+    }
+
+    function updateConfiguredOverage(type, id, field, value) {
+        if (type === 'org') {
+            const org = state.orgs.find(o => o.id === id);
+            if (!org) return;
+            if (field === 'budget') org.budget = value === '' ? null : parseFloat(value);
+            else if (field === 'hardStop') org.budgetHardStop = value;
+        } else {
+            const cc = state.costCenters.find(c => c.id === id);
+            if (!cc) return;
+            if (field === 'budget') cc.budget = value === '' ? null : parseFloat(value);
+            else if (field === 'hardStop') cc.budgetHardStop = value;
+        }
+        saveState();
+    }
+
+    function renderBudgets() {
+        // Universal ULB
+        document.getElementById('universalULB').value = state.enterprise.universalULB ?? '';
+        document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
+        document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
+
+        // Refresh target dropdowns
+        renderULBTargets();
+        renderOverageTargets();
+
+        // Configured ULBs table
+        const ulbEl = document.getElementById('configuredULBList');
+        const configuredIndividualULBs = state.users.filter(u => u.individualULB !== null);
+        const configuredCCULBs = state.costCenters.filter(cc => cc.ulb !== null);
+
+        if (configuredIndividualULBs.length === 0 && configuredCCULBs.length === 0) {
+            ulbEl.innerHTML = '<p class="help-text">No user-level budgets configured yet. Use the form above to add one.</p>';
+        } else {
+            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget (credits)</th><th></th></tr></thead><tbody>';
+            configuredCCULBs.forEach(cc => {
+                html += `<tr>
+                    <td><span class="badge badge-info">Cost Center</span></td>
+                    <td>${escapeHtml(cc.name)}</td>
+                    <td><input type="number" value="${cc.ulb}" min="0" style="width:120px" onchange="updateConfiguredULB('costcenter','${escapeInlineArg(cc.id)}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('costcenter','${escapeInlineArg(cc.id)}')">✕</button></td>
+                </tr>`;
+            });
+            configuredIndividualULBs.forEach(u => {
+                html += `<tr>
+                    <td><span class="badge badge-warning">Individual</span></td>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td><input type="number" value="${u.individualULB}" min="0" style="width:120px" onchange="updateConfiguredULB('individual','${escapeInlineArg(u.id)}',this.value)"></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeULB('individual','${escapeInlineArg(u.id)}')">✕</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            ulbEl.innerHTML = html;
+        }
+
+        // Configured Overage Budgets table
+        const overageEl = document.getElementById('configuredOverageBudgetList');
+        const configuredOrgBudgets = state.orgs.filter(o => o.budget !== null);
+        const configuredCCBudgets = state.costCenters.filter(cc => cc.budget !== null);
+
+        if (configuredOrgBudgets.length === 0 && configuredCCBudgets.length === 0) {
+            overageEl.innerHTML = '<p class="help-text">No overage budgets configured yet. Use the form above to add one.</p>';
+        } else {
+            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget ($)</th><th>Hard Stop</th><th></th></tr></thead><tbody>';
+            configuredOrgBudgets.forEach(o => {
+                html += `<tr>
+                    <td><span class="badge badge-info">Organization</span></td>
+                    <td>${escapeHtml(o.name)}</td>
+                    <td><input type="number" value="${o.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('org','${escapeInlineArg(o.id)}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${o.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('org','${escapeInlineArg(o.id)}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('org','${escapeInlineArg(o.id)}')">✕</button></td>
+                </tr>`;
+            });
+            configuredCCBudgets.forEach(cc => {
+                html += `<tr>
+                    <td><span class="badge badge-warning">Cost Center</span></td>
+                    <td>${escapeHtml(cc.name)}</td>
+                    <td><input type="number" value="${cc.budget}" min="0" step="50" style="width:120px" onchange="updateConfiguredOverage('costcenter','${escapeInlineArg(cc.id)}','budget',this.value)"></td>
+                    <td><label class="checkbox-label"><input type="checkbox" ${cc.budgetHardStop !== false ? 'checked' : ''} onchange="updateConfiguredOverage('costcenter','${escapeInlineArg(cc.id)}','hardStop',this.checked)"> Yes</label></td>
+                    <td><button class="btn-danger btn-sm" onclick="removeOverageBudget('costcenter','${escapeInlineArg(cc.id)}')">✕</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            overageEl.innerHTML = html;
+        }
+    }
+
+    // ─── Pool Visualization ──────────────────────────────────────────────────────
+    function renderPoolView() {
+        const container = document.getElementById('poolVisualization');
+        const pool = totalPool();
+        if (pool === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Configure enterprise seats first.</p></div>';
+            return;
+        }
+
+        const colors = ['#1f6feb', '#238636', '#a371f7', '#d29922', '#f85149', '#58a6ff', '#3fb950', '#db61a2'];
+        const segments = [];
+        let reserved = 0;
+
+        state.costCenters.forEach((cc, i) => {
+            if (!cc.poolEnabled) return;
+            const size = getCCPoolSize(cc);
+            if (size === 0) return;
+            reserved += size;
+            segments.push({ label: cc.name, size, color: colors[i % colors.length] });
+        });
+
+        const unreserved = pool - reserved;
+
+        let barHtml = '<div class="pool-bar">';
+        segments.forEach(seg => {
+            const pct = (seg.size / pool * 100).toFixed(1);
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:${seg.color}" title="${escapeHtml(`${seg.label}: ${fmt(seg.size)} credits (${pct}%)`)}">${pct > 8 ? escapeHtml(seg.label) : ''}</div>`;
+        });
+        if (unreserved > 0) {
+            const pct = (unreserved / pool * 100).toFixed(1);
+            barHtml += `<div class="pool-segment" style="width:${pct}%; background:var(--color-text-muted)" title="Unreserved: ${fmt(unreserved)} credits (${pct}%)">${pct > 8 ? 'Unreserved' : ''}</div>`;
+        }
+        barHtml += '</div>';
+
+        let legendHtml = '<div class="pool-legend">';
+        segments.forEach(seg => {
+            legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:${seg.color}"></div>${escapeHtml(seg.label)}: ${fmt(seg.size)}</div>`;
+        });
+        legendHtml += `<div class="pool-legend-item"><div class="pool-legend-swatch" style="background:var(--color-text-muted)"></div>Unreserved: ${fmt(unreserved)}</div>`;
+        legendHtml += '</div>';
+
+        const detailsHtml = `<table style="margin-top: 16px">
+            <thead><tr><th>Cost Center</th><th>Pool</th><th>Members</th><th>Pool Size</th><th>% of Total</th></tr></thead>
+            <tbody>
+                ${state.costCenters.map(cc => `<tr>
+                    <td>${escapeHtml(cc.name)}</td>
+                    <td>${cc.poolEnabled ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-warning">Inactive</span>'}</td>
+                    <td>${getAssignedCCMembers(cc).length}</td>
+                    <td>${fmt(getCCPoolSize(cc))}</td>
+                    <td>${pool > 0 ? (getCCPoolSize(cc) / pool * 100).toFixed(1) : 0}%</td>
+                </tr>`).join('')}
+                <tr style="font-weight:600">
+                    <td>Unreserved</td><td></td>
+                    <td>${state.users.filter(u => !getUserCC(u)).length}</td>
+                    <td>${fmt(unreserved)}</td>
+                    <td>${pool > 0 ? (unreserved / pool * 100).toFixed(1) : 0}%</td>
+                </tr>
+            </tbody>
+        </table>`;
+
+        container.innerHTML = barHtml + legendHtml + detailsHtml;
+    }
+
+    // ─── Simulation Engine ───────────────────────────────────────────────────────
+    function initPoolState() {
+        const pool = totalPool();
+        const ccPools = {};
+        let totalReserved = 0;
+        state.costCenters.forEach(cc => {
+            if (cc.poolEnabled) {
+                const size = getCCPoolSize(cc);
+                ccPools[cc.id] = size;
+                totalReserved += size;
+            }
+        });
+        return { ccPools, enterprisePool: pool - totalReserved, enterpriseMetered: 0, ccMetered: {}, orgMetered: {} };
+    }
+
+    function getUserCC(user) {
+        if (user.costCenterId) return state.costCenters.find(c => c.id === user.costCenterId) || null;
+        // Check if user is in a team that's assigned to a CC
+        if (user.teamId) {
+            const cc = state.costCenters.find(c => {
+                const tids = c.teamIds || (c.teamId ? [c.teamId] : []);
+                return tids.includes(user.teamId);
+            });
+            if (cc) return cc;
+        }
+        // Check if user is in an org assigned to a CC
+        if (user.orgId) {
+            const cc = state.costCenters.find(c => c.orgIds && c.orgIds.includes(user.orgId));
+            if (cc) return cc;
+        }
+        // Check if user is directly listed in a CC's userIds
+        const cc = state.costCenters.find(c => c.userIds && c.userIds.includes(user.id));
+        if (cc) return cc;
+        return null;
+    }
+
+    function evaluateUser(user, userUsage, poolState) {
+        const result = {
+            user: user.name,
+            usage: userUsage,
+            status: 'served',
+            source: '',
+            reason: '',
+            meteredCost: 0,
+            ulbRemaining: null,
+            creditsFromCC: 0,
+            creditsFromEntPool: 0,
+            creditsMetered: 0
+        };
+
+        if (userUsage === 0) {
+            result.source = 'No usage';
+            const ulb = getEffectiveULB(user);
+            result.ulbRemaining = ulb.value;
+            return result;
+        }
+
+        // Step 1: ULB check
+        const ulb = getEffectiveULB(user);
+        if (ulb.value !== null && userUsage > ulb.value) {
+            result.status = 'blocked';
+            result.reason = `ULB exceeded (${fmt(ulb.value)} limit via ${ulb.source})`;
+            result.ulbRemaining = 0;
+            return result;
+        }
+        result.ulbRemaining = ulb.value !== null ? ulb.value - userUsage : null;
+
+        let remaining = userUsage;
+        const cc = getUserCC(user);
+
+        // Step 2: CC pool
+        if (cc && cc.poolEnabled) {
+            const available = poolState.ccPools[cc.id] || 0;
+            const drawn = Math.min(remaining, available);
+            poolState.ccPools[cc.id] -= drawn;
+            result.creditsFromCC = drawn;
+            remaining -= drawn;
+
+            if (remaining > 0 && !cc.overagesAllowed) {
+                result.status = 'blocked';
+                result.reason = `CC pool exhausted & overages not allowed (${cc.name})`;
+                return result;
+            }
+        }
+
+        // Step 3: Enterprise pool
+        if (remaining > 0) {
+            const drawn = Math.min(remaining, poolState.enterprisePool);
+            poolState.enterprisePool -= drawn;
+            result.creditsFromEntPool = drawn;
+            remaining -= drawn;
+        }
+
+        // Step 4: Metered phase
+        if (remaining > 0) {
+            if (!state.enterprise.meteredEnabled) {
+                result.status = 'blocked';
+                result.reason = 'Pool exhausted & metered usage not enabled';
+                return result;
+            }
+
+            // CC budget check
+            if (cc && cc.budget !== null) {
+                const ccUsed = poolState.ccMetered[cc.id] || 0;
+                const ccRemaining = cc.budget - ccUsed;
+                const affordable = meteredCreditsFromBudget(ccRemaining);
+                if (affordable <= 0 && cc.budgetHardStop) {
+                    result.status = 'blocked';
+                    result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
+                    return result;
+                }
+                if (remaining > affordable && cc.budgetHardStop) remaining = Math.max(0, affordable);
+            }
+
+            // Org budget check
+            const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+            if (org && org.budget !== null) {
+                const orgUsed = poolState.orgMetered[org.id] || 0;
+                const orgRemaining = org.budget - orgUsed;
+                const affordable = meteredCreditsFromBudget(orgRemaining);
+                if (affordable <= 0 && org.budgetHardStop) {
+                    result.status = 'blocked';
+                    result.reason = `Org budget exhausted ($${org.budget}, ${org.name})`;
+                    return result;
+                }
+                if (remaining > affordable && org.budgetHardStop) remaining = Math.max(0, affordable);
+            }
+
+            // Enterprise budget check
+            const entRemaining = state.enterprise.enterpriseBudget - poolState.enterpriseMetered;
+            const entAffordable = meteredCreditsFromBudget(entRemaining);
+            if (entAffordable <= 0 && state.enterprise.enterpriseHardStop) {
+                result.status = 'blocked';
+                result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
+                return result;
+            }
+            if (remaining > entAffordable && state.enterprise.enterpriseHardStop) remaining = Math.max(0, entAffordable);
+
+            if (remaining <= 0) {
+                result.status = 'blocked';
+                result.reason = 'All applicable budgets exhausted';
+                return result;
+            }
+
+            result.creditsMetered = remaining;
+            result.meteredCost = remaining * 0.01;
+            if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + result.meteredCost;
+            if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + result.meteredCost;
+            poolState.enterpriseMetered += result.meteredCost;
+
+            result.status = 'metered';
+            result.source = `${fmt(result.creditsFromCC)} CC pool + ${fmt(result.creditsFromEntPool)} ent. pool + ${fmt(remaining)} metered ($${result.meteredCost.toFixed(2)})`;
+            return result;
+        }
+
+        result.status = 'served';
+        if (result.creditsFromCC > 0 && result.creditsFromEntPool > 0) {
+            result.source = `CC pool (${fmt(result.creditsFromCC)}) + Ent. pool (${fmt(result.creditsFromEntPool)})`;
+        } else if (result.creditsFromCC > 0) {
+            result.source = 'CC pool';
+        } else {
+            result.source = 'Enterprise pool';
+        }
+        return result;
+    }
+
+    function runSimulation() {
+        const poolState = initPoolState();
+        const results = state.users.map(user => evaluateUser(user, state.usage[user.id] || 0, poolState));
+        renderSimulationResults(results, poolState);
+    }
+
+    function renderSimulationResults(results, poolState) {
+        document.getElementById('simulationResultsCard').style.display = 'block';
+        const served = results.filter(r => r.status === 'served').length;
+        const metered = results.filter(r => r.status === 'metered').length;
+        const blocked = results.filter(r => r.status === 'blocked').length;
+        const totalMeteredCost = results.reduce((s, r) => s + r.meteredCost, 0);
+
+        document.getElementById('simSummaryStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-success)">${served}</div><div class="stat-label">Served (Pool)</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-warning)">${metered}</div><div class="stat-label">Metered</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--color-danger)">${blocked}</div><div class="stat-label">Blocked</div></div>
+            <div class="stat-card"><div class="stat-value">$${totalMeteredCost.toFixed(2)}</div><div class="stat-label">Total Metered Cost</div></div>
+            <div class="stat-card"><div class="stat-value">${fmt(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
+        `;
+
+        let html = '<table><thead><tr><th>User</th><th>Usage</th><th>Status</th><th>ULB Remaining</th><th>Details</th></tr></thead><tbody>';
+        results.forEach(r => {
+            const rowClass = r.status === 'blocked' ? 'result-blocked' : r.status === 'metered' ? 'result-metered' : '';
+            const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
+                          r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
+                          '<span class="badge badge-success">Served</span>';
+            html += `<tr class="${rowClass}">
+                <td><strong>${escapeHtml(r.user)}</strong></td>
+                <td>${fmt(r.usage)}</td>
+                <td>${badge}</td>
+                <td>${r.ulbRemaining !== null ? fmt(r.ulbRemaining) : '∞'}</td>
+                <td>${escapeHtml(r.status === 'blocked' ? r.reason : r.source)}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('simulationResults').innerHTML = html;
+    }
+
+    // ─── Aggregate Simulation ────────────────────────────────────────────────────
+    function runAggregateSimulation() {
+        const totalUsage = parseInt(document.getElementById('aggregateUsage').value) || 0;
+        const pool = totalPool();
+        const container = document.getElementById('aggregateResults');
+
+        const poolConsumed = Math.min(totalUsage, pool);
+        const poolRemaining = pool - poolConsumed;
+        const overage = Math.max(0, totalUsage - pool);
+        const meteredCost = overage * 0.01;
+        const budgetRemaining = Math.max(0, state.enterprise.enterpriseBudget - meteredCost);
+        const budgetExhausted = meteredCost >= state.enterprise.enterpriseBudget;
+        const maxBeforeBlock = pool + (state.enterprise.meteredEnabled ?
+            (state.enterprise.enterpriseHardStop ? state.enterprise.enterpriseBudget / 0.01 : Infinity) : 0);
+        const poolPct = pool > 0 ? Math.min(100, poolConsumed / pool * 100) : 0;
+
+        container.innerHTML = `
+            <div class="stat-grid" style="margin-top: 12px">
+                <div class="stat-card"><div class="stat-value">${fmt(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${fmt(overage)}</div><div class="stat-label">Overage Credits</div></div>
+                <div class="stat-card"><div class="stat-value">$${meteredCost.toFixed(2)}</div><div class="stat-label">Metered Cost</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">$${budgetRemaining.toFixed(2)}</div><div class="stat-label">Budget Remaining</div></div>
+            </div>
+            <div style="margin-top: 12px">
+                <label style="font-size: 0.75rem; color: var(--color-text-muted)">Pool consumption: ${poolPct.toFixed(1)}%</label>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${poolPct}%; background: ${poolPct >= 100 ? 'var(--color-danger)' : poolPct >= 75 ? 'var(--color-warning)' : 'var(--color-success)'}"></div>
+                </div>
+            </div>
+            ${budgetExhausted ? `<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Enterprise budget exhausted! ${state.enterprise.enterpriseHardStop ? 'Users will be BLOCKED.' : 'Metered charges continue uncapped.'}</p>` : ''}
+            ${!state.enterprise.meteredEnabled && overage > 0 ? '<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Pool exhausted & metered usage disabled — users BLOCKED.</p>' : ''}
+            <p class="help-text" style="margin-top: 8px">Max credits before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : fmt(maxBeforeBlock)}</p>
+        `;
+    }
+
+    // ─── Simulation Inputs ───────────────────────────────────────────────────────
+    function renderSimulationInputs() {
+        const container = document.getElementById('simulationInputs');
+        if (state.users.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
+            return;
+        }
+        const maxCredits = totalPool() || 100000;
+        let html = '<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (credits)</th></tr></thead><tbody>';
+        state.users.forEach(user => {
+            const cc = getUserCC(user);
+            const ulb = getEffectiveULB(user);
+            const max = ulb.value || Math.floor(maxCredits / state.users.length * 3);
+            const usage = state.usage[user.id] || 0;
+            html += `<tr>
+                <td><strong>${escapeHtml(user.name)}</strong></td>
+                <td>${cc ? escapeHtml(cc.name) : '—'}</td>
+                <td>
+                    <div class="simulation-usage-input">
+                        <input type="range" min="0" max="${max}" value="${usage}"
+                            oninput="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                        <span class="usage-value">${fmt(usage)}</span>
+                        <input type="number" min="0" value="${usage}" style="width:80px"
+                            onchange="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                    </div>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function updateUsage(userId, value) {
+        state.usage[userId] = parseInt(value) || 0;
+        saveState();
+    }
+
+    function resetUsage() {
+        state.usage = {};
+        saveState();
+        renderSimulationInputs();
+        document.getElementById('simulationResultsCard').style.display = 'none';
+    }
+
+    // ─── Navigation ──────────────────────────────────────────────────────────────
+    document.getElementById('mainNav').addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
+        const panel = e.target.dataset.panel;
+        if (panel === 'pool') renderPoolView();
+        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
+        if (panel === 'budgets') renderBudgets();
+        if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
+    });
+
+    // ─── Tab Counts ────────────────────────────────────────────────────────────
+    function renderTabCounts() {
+        document.getElementById('tab-users').textContent = `👥 Users${state.users.length ? ' (' + state.users.length + ')' : ''}`;
+        document.getElementById('tab-costcenters').textContent = `📂 Cost Centers${state.costCenters.length ? ' (' + state.costCenters.length + ')' : ''}`;
+    }
+
+    // ─── Utilities ───────────────────────────────────────────────────────────────
+    function fmt(n) {
+        if (n === null || n === undefined) return '—';
+        return n.toLocaleString();
+    }
+
+    // ─── Render All ──────────────────────────────────────────────────────────────
+    function renderAll() {
+        renderEnterprise();
+        renderCCTeamDropdown();
+        renderCCOrgDropdown();
+        renderCCUserDropdown();
+        renderCostCenters();
+        renderUserCCDropdown();
+        renderUserOrgDropdown();
+        renderUserTeamDropdown();
+        renderUsers();
+        renderBudgets();
+        renderPoolView();
+        renderSimulationInputs();
+        runAggregateSimulation();
+        renderTabCounts();
+    }
+
+    renderAll();
+    </script>
+</body>
+</html>
