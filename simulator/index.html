@@ -165,6 +165,28 @@
         .simulation-usage-input { display: flex; align-items: center; gap: 8px; }
         .simulation-usage-input input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
         .simulation-usage-input .usage-value { min-width: 70px; text-align: right; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+        .simulation-global-controls { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+        .simulation-global-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .simulation-global-metrics { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--color-text-muted); }
+        .simulation-global-slider { display: flex; align-items: center; gap: 12px; }
+        .simulation-global-slider input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
+        .simulation-global-value { min-width: 72px; text-align: right; font-size: 0.9375rem; font-weight: 600; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+
+        .user-panel-list { display: flex; flex-direction: column; gap: 12px; }
+        .user-panel { border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-bg); overflow: hidden; }
+        .user-panel-summary { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 16px; cursor: pointer; list-style: none; }
+        .user-panel-summary::-webkit-details-marker { display: none; }
+        .user-panel-summary::after { content: '▸'; color: var(--color-text-muted); font-size: 0.875rem; line-height: 1; transition: transform 0.15s ease; }
+        .user-panel[open] .user-panel-summary::after { transform: rotate(90deg); }
+        .user-panel-summary-main { min-width: 0; }
+        .user-panel-summary-main strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+        .user-panel-summary-meta { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+        .user-panel-body { border-top: 1px solid var(--color-border); padding: 16px; }
+        .user-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+        .user-panel-field { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px; }
+        .user-panel-field-label { font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .user-panel-field-value { font-size: 0.875rem; word-break: break-word; }
+        .user-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
         .section-divider { border-top: 1px solid var(--color-border); margin: 20px 0; padding-top: 16px; }
 
@@ -177,6 +199,10 @@
             nav { padding: 0 16px; }
             main { padding: 16px; }
             .form-row { grid-template-columns: 1fr; }
+            .simulation-global-slider { flex-direction: column; align-items: stretch; }
+            .simulation-global-value { text-align: left; min-width: 0; }
+            .user-panel-summary { flex-direction: column; }
+            .user-panel-summary-meta { justify-content: flex-start; }
         }
     </style>
 </head>
@@ -240,25 +266,25 @@
 
             <div class="card">
                 <h2>👥 Enterprise Teams</h2>
-                <div class="inline-form">
+                <form class="inline-form" onsubmit="handleFormSubmit(event, addTeam)">
                     <div class="form-group">
                         <label>Team Name</label>
                         <input type="text" id="teamName" placeholder="e.g., engineers">
                     </div>
-                    <button class="btn-primary" onclick="addTeam()">+ Add Team</button>
-                </div>
+                    <button type="submit" class="btn-primary">+ Add Team</button>
+                </form>
                 <div id="teamsList"></div>
             </div>
 
             <div class="card">
                 <h2>🏛️ Organizations</h2>
-                <div class="inline-form">
+                <form class="inline-form" onsubmit="handleFormSubmit(event, addOrg)">
                     <div class="form-group">
                         <label>Organization Name</label>
                         <input type="text" id="orgName" placeholder="e.g., acme-corp">
                     </div>
-                    <button class="btn-primary" onclick="addOrg()">+ Add Organization</button>
-                </div>
+                    <button type="submit" class="btn-primary">+ Add Organization</button>
+                </form>
                 <div id="orgsList"></div>
             </div>
 
@@ -273,28 +299,30 @@
         <div id="panel-costcenters" class="panel">
             <div class="card">
                 <h2>📂 Create Cost Center</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" id="ccName" placeholder="e.g., Engineering">
+                <form onsubmit="handleFormSubmit(event, addCostCenter)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="ccName" placeholder="e.g., Engineering">
+                        </div>
+                        <div class="form-group">
+                            <label>Teams</label>
+                            <select id="ccTeam" multiple style="min-height:60px"></select>
+                            <p class="help-text">Hold Ctrl/Cmd to select multiple</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Organizations</label>
+                            <select id="ccOrgs" multiple style="min-height:60px"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Users (direct assignment)</label>
+                            <select id="ccUsers" multiple style="min-height:60px"></select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Teams</label>
-                        <select id="ccTeam" multiple style="min-height:60px"></select>
-                        <p class="help-text">Hold Ctrl/Cmd to select multiple</p>
+                    <div style="margin-top: 12px">
+                        <button type="submit" class="btn-primary">+ Add Cost Center</button>
                     </div>
-                    <div class="form-group">
-                        <label>Organizations</label>
-                        <select id="ccOrgs" multiple style="min-height:60px"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Users (direct assignment)</label>
-                        <select id="ccUsers" multiple style="min-height:60px"></select>
-                    </div>
-                </div>
-                <div style="margin-top: 12px">
-                    <button class="btn-primary" onclick="addCostCenter()">+ Add Cost Center</button>
-                </div>
+                </form>
             </div>
             <div id="costCentersList"></div>
         </div>
@@ -302,61 +330,55 @@
         <!-- ═══════════════ USERS TAB ═══════════════ -->
         <div id="panel-users" class="panel">
             <div class="card">
-                <h2>👥 Add User</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" id="userName" placeholder="e.g., alice">
+                <h2>👥 Create Users</h2>
+                <p id="userCreateHelp" class="help-text" style="margin-bottom: 12px">Create one user or switch to bulk mode to generate multiple users with the same assignments.</p>
+                <form id="userCreateForm" onsubmit="handleFormSubmit(event, submitUserCreation)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Creation Mode</label>
+                            <select id="userCreateMode" onchange="updateUserCreateMode()">
+                                <option value="single">Single user</option>
+                                <option value="bulk">Bulk users</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="singleUserFields">
+                            <label>Username</label>
+                            <input type="text" id="userName" placeholder="e.g., alice">
+                        </div>
+                        <div class="form-group" id="bulkCountGroup" hidden>
+                            <label>Number of users</label>
+                            <input type="number" id="bulkCount" value="10" min="1" max="500" disabled>
+                        </div>
+                        <div class="form-group" id="bulkPrefixGroup" hidden>
+                            <label>Name prefix</label>
+                            <input type="text" id="bulkPrefix" value="user" placeholder="e.g., dev" disabled>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Cost Center</label>
-                        <select id="userCC"></select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cost Center</label>
+                            <select id="userCC"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Organization</label>
+                            <select id="userOrg"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Team</label>
+                            <select id="userTeam"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>License Type</label>
+                            <select id="userLicense">
+                                <option value="business">Business</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Organization</label>
-                        <select id="userOrg"></select>
+                    <div style="margin-top: 12px">
+                        <button id="userCreateSubmit" type="submit" class="btn-primary">+ Add User</button>
                     </div>
-                    <div class="form-group">
-                        <label>Team</label>
-                        <select id="userTeam"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>License Type</label>
-                        <select id="userLicense">
-                            <option value="business">Business</option>
-                            <option value="enterprise">Enterprise</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="margin-top: 12px">
-                    <button class="btn-primary" onclick="addUser()">+ Add User</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>⚡ Bulk Create Users</h2>
-                <p class="help-text" style="margin-bottom: 12px">Generate multiple users at once. They are automatically distributed round-robin across existing teams and organizations. Cost center must be assigned manually.</p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Number of users</label>
-                        <input type="number" id="bulkCount" value="10" min="1" max="500">
-                    </div>
-                    <div class="form-group">
-                        <label>Name prefix</label>
-                        <input type="text" id="bulkPrefix" value="user" placeholder="e.g., dev">
-                    </div>
-                    <div class="form-group">
-                        <label>License Type</label>
-                        <select id="bulkLicense">
-                            <option value="business">Business</option>
-                            <option value="enterprise">Enterprise</option>
-                            <option value="mixed">Mixed (alternate)</option>
-                        </select>
-                    </div>
-                </div>
-                <div style="margin-top: 12px">
-                    <button class="btn-primary" onclick="bulkCreateUsers()">⚡ Generate Users</button>
-                </div>
+                </form>
             </div>
 
             <div id="usersList"></div>
@@ -379,7 +401,7 @@
 
                 <div class="section-divider"></div>
                 <h3>Add User-Level Budget</h3>
-                <div class="inline-form" style="margin-bottom: 12px">
+                <form class="inline-form" style="margin-bottom: 12px" onsubmit="handleFormSubmit(event, addULB)">
                     <div class="form-group">
                         <label>Type</label>
                         <select id="ulbType" onchange="renderULBTargets()">
@@ -395,8 +417,8 @@
                         <label>Budget (credits)</label>
                         <input type="number" id="ulbValue" min="0" placeholder="e.g., 5000">
                     </div>
-                    <button class="btn-primary" onclick="addULB()">+ Add</button>
-                </div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </form>
                 <div id="configuredULBList"></div>
             </div>
 
@@ -421,7 +443,7 @@
 
                 <div class="section-divider"></div>
                 <h3>Add Overage Budget</h3>
-                <div class="inline-form" style="margin-bottom: 12px">
+                <form class="inline-form" style="margin-bottom: 12px" onsubmit="handleFormSubmit(event, addOverageBudget)">
                     <div class="form-group">
                         <label>Type</label>
                         <select id="overageBudgetType" onchange="renderOverageTargets()">
@@ -444,8 +466,8 @@
                             Hard stop
                         </label>
                     </div>
-                    <button class="btn-primary" onclick="addOverageBudget()">+ Add</button>
-                </div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </form>
                 <div id="configuredOverageBudgetList"></div>
             </div>
         </div>
@@ -464,11 +486,14 @@
             <div class="card">
                 <h2>⚡ Usage Simulation</h2>
                 <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
-                <div id="simulationInputs"></div>
-                <div style="margin-top: 16px; display: flex; gap: 8px;">
-                    <button class="btn-primary" onclick="runSimulation()">▶️ Run Simulation</button>
-                    <button onclick="resetUsage()">Reset Usage</button>
-                </div>
+                <form onsubmit="handleFormSubmit(event, runSimulation)">
+                    <div id="simulationGlobalControls"></div>
+                    <div id="simulationInputs"></div>
+                    <div style="margin-top: 16px; display: flex; gap: 8px;">
+                        <button type="submit" class="btn-primary">▶️ Run Simulation</button>
+                        <button type="button" onclick="resetUsage()">Reset Usage</button>
+                    </div>
+                </form>
             </div>
 
             <div class="card" id="simulationResultsCard" style="display:none">
@@ -587,6 +612,51 @@
             if (!saved) return null;
             return normalizeState(JSON.parse(saved));
         } catch { return null; }
+    }
+
+    function handleFormSubmit(event, action) {
+        event.preventDefault();
+        action();
+    }
+
+    function getUserAssignments() {
+        return {
+            costCenterId: document.getElementById('userCC').value || null,
+            orgId: document.getElementById('userOrg').value || null,
+            teamId: document.getElementById('userTeam').value || null,
+            license: document.getElementById('userLicense').value
+        };
+    }
+
+    function updateUserCreateMode() {
+        const isSingle = document.getElementById('userCreateMode').value === 'single';
+        const singleGroup = document.getElementById('singleUserFields');
+        const bulkCountGroup = document.getElementById('bulkCountGroup');
+        const bulkPrefixGroup = document.getElementById('bulkPrefixGroup');
+        const userNameInput = document.getElementById('userName');
+        const bulkCountInput = document.getElementById('bulkCount');
+        const bulkPrefixInput = document.getElementById('bulkPrefix');
+        const helpText = document.getElementById('userCreateHelp');
+        const submitButton = document.getElementById('userCreateSubmit');
+
+        singleGroup.hidden = !isSingle;
+        bulkCountGroup.hidden = isSingle;
+        bulkPrefixGroup.hidden = isSingle;
+        userNameInput.disabled = !isSingle;
+        bulkCountInput.disabled = isSingle;
+        bulkPrefixInput.disabled = isSingle;
+        helpText.textContent = isSingle
+            ? 'Create one user or switch to bulk mode to generate multiple users with the same assignments.'
+            : 'Generate multiple users at once. Every created user will inherit the selected cost center, organization, team, and license.';
+        submitButton.textContent = isSingle ? '+ Add User' : '⚡ Generate Users';
+    }
+
+    function submitUserCreation() {
+        if (document.getElementById('userCreateMode').value === 'bulk') {
+            bulkCreateUsers();
+            return;
+        }
+        addUser();
     }
 
     function exportConfig() {
@@ -948,18 +1018,24 @@
 
     // ─── Users ───────────────────────────────────────────────────────────────────
     let editingUserId = null;
+    const userPanelState = {};
+
+    function setUserPanelOpen(id, isOpen) {
+        userPanelState[id] = isOpen;
+    }
 
     function addUser() {
         const name = document.getElementById('userName').value.trim();
         if (!name) return alert('Username is required');
         if (state.users.some(u => u.name === name)) return alert('User already exists');
+        const assignments = getUserAssignments();
         state.users.push({
             id: 'user_' + Date.now(),
             name,
-            costCenterId: document.getElementById('userCC').value || null,
-            orgId: document.getElementById('userOrg').value || null,
-            teamId: document.getElementById('userTeam').value || null,
-            license: document.getElementById('userLicense').value,
+            costCenterId: assignments.costCenterId,
+            orgId: assignments.orgId,
+            teamId: assignments.teamId,
+            license: assignments.license,
             individualULB: null
         });
         document.getElementById('userName').value = '';
@@ -980,6 +1056,7 @@
 
     function editUser(id) {
         editingUserId = editingUserId === id ? null : id;
+        if (id) userPanelState[id] = true;
         renderUsers();
     }
 
@@ -993,6 +1070,7 @@
         user.teamId = row.querySelector('[data-field="team"]').value || null;
         user.license = row.querySelector('[data-field="license"]').value;
         editingUserId = null;
+        userPanelState[id] = true;
         saveState();
         refreshAfterUserChange();
     }
@@ -1008,12 +1086,15 @@
         renderCCUserDropdown();
         renderTabCounts();
         recalcAutoSeats();
+        renderSimulationInputs();
+        runAggregateSimulation();
+        document.getElementById('simulationResultsCard').style.display = 'none';
     }
 
     function bulkCreateUsers() {
         const count = parseInt(document.getElementById('bulkCount').value) || 0;
         const prefix = document.getElementById('bulkPrefix').value.trim() || 'user';
-        const licenseMode = document.getElementById('bulkLicense').value;
+        const assignments = getUserAssignments();
         if (count <= 0) return alert('Enter a positive number');
 
         const existingNumbers = state.users
@@ -1021,26 +1102,17 @@
             .filter(n => n > 0);
         let nextNum = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
 
-        const teams = state.teams.length > 0 ? state.teams : [null];
-        const orgs = state.orgs.length > 0 ? state.orgs : [null];
-
         for (let i = 0; i < count; i++) {
             const name = `${prefix}-${nextNum + i}`;
             if (state.users.some(u => u.name === name)) continue;
 
-            const team = teams[i % teams.length];
-            const org = orgs[i % orgs.length];
-            let license = 'business';
-            if (licenseMode === 'enterprise') license = 'enterprise';
-            else if (licenseMode === 'mixed') license = i % 2 === 0 ? 'business' : 'enterprise';
-
             state.users.push({
                 id: 'user_' + (Date.now() + i),
                 name,
-                costCenterId: null,
-                orgId: org ? org.id : null,
-                teamId: team ? team.id : null,
-                license,
+                costCenterId: assignments.costCenterId,
+                orgId: assignments.orgId,
+                teamId: assignments.teamId,
+                license: assignments.license,
                 individualULB: null
             });
         }
@@ -1079,36 +1151,101 @@
             container.innerHTML = '<div class="card empty-state"><p>No users yet. Add one above.</p></div>';
             return;
         }
-        let html = `<div class="card"><p style="margin-bottom:8px; font-size:0.8125rem; color:var(--color-text-muted)">${state.users.length} user(s)</p><table><thead><tr><th>User</th><th>License</th><th>Cost Center</th><th>Org</th><th>Team</th><th>Effective ULB</th><th></th></tr></thead><tbody>`;
+        let html = `<div class="card"><p style="margin-bottom:8px; font-size:0.8125rem; color:var(--color-text-muted)">${state.users.length} user(s)</p><div class="user-panel-list">`;
         state.users.forEach(u => {
             const cc = u.costCenterId ? state.costCenters.find(c => c.id === u.costCenterId) : null;
             const org = u.orgId ? state.orgs.find(o => o.id === u.orgId) : null;
             const team = u.teamId ? state.teams.find(t => t.id === u.teamId) : null;
             const ulb = getEffectiveULB(u);
+            const panelOpen = userPanelState[u.id] !== false;
+            const summaryMeta = [
+                `<span class="badge badge-info">${escapeHtml(u.license || 'business')}</span>`,
+                `<span class="tag">CC: ${cc ? escapeHtml(cc.name) : 'None'}</span>`,
+                `<span class="tag">Org: ${org ? escapeHtml(org.name) : 'None'}</span>`,
+                `<span class="tag">Team: ${team ? escapeHtml(team.name) : 'None'}</span>`
+            ].join('');
 
             if (editingUserId === u.id) {
-                html += `<tr id="edit-${escapeHtml(u.id)}" style="background:var(--color-surface-raised)">
-                    <td><strong>${escapeHtml(u.name)}</strong></td>
-                    <td><select data-field="license"><option value="business" ${u.license !== 'enterprise' ? 'selected' : ''}>Business</option><option value="enterprise" ${u.license === 'enterprise' ? 'selected' : ''}>Enterprise</option></select></td>
-                    <td><select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => optionHtml(c.id, c.name, u.costCenterId === c.id)).join('')}</select></td>
-                    <td><select data-field="org"><option value="">(None)</option>${state.orgs.map(o => optionHtml(o.id, o.name, u.orgId === o.id)).join('')}</select></td>
-                    <td><select data-field="team"><option value="">(None)</option>${state.teams.map(t => optionHtml(t.id, t.name, u.teamId === t.id)).join('')}</select></td>
-                    <td>${ulb.value !== null ? fmt(ulb.value) : '∞'}</td>
-                    <td><button class="btn-primary btn-sm" onclick="saveUserEdit('${escapeInlineArg(u.id)}')">💾</button> <button class="btn-sm" onclick="editUser(null)">✕</button></td>
-                </tr>`;
+                html += `<details class="user-panel" ${panelOpen ? 'open' : ''} ontoggle="setUserPanelOpen('${escapeInlineArg(u.id)}', this.open)">
+                    <summary class="user-panel-summary">
+                        <div class="user-panel-summary-main">
+                            <strong>${escapeHtml(u.name)}</strong>
+                            <div class="help-text">Edit this user's assignment and license details.</div>
+                        </div>
+                        <div class="user-panel-summary-meta">${summaryMeta}</div>
+                    </summary>
+                    <form id="edit-${escapeHtml(u.id)}" class="user-panel-body" onsubmit="event.preventDefault(); saveUserEdit('${escapeInlineArg(u.id)}')">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>License</label>
+                                <select data-field="license"><option value="business" ${u.license !== 'enterprise' ? 'selected' : ''}>Business</option><option value="enterprise" ${u.license === 'enterprise' ? 'selected' : ''}>Enterprise</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cost Center</label>
+                                <select data-field="cc"><option value="">(None)</option>${state.costCenters.map(c => optionHtml(c.id, c.name, u.costCenterId === c.id)).join('')}</select>
+                            </div>
+                            <div class="form-group">
+                                <label>Organization</label>
+                                <select data-field="org"><option value="">(None)</option>${state.orgs.map(o => optionHtml(o.id, o.name, u.orgId === o.id)).join('')}</select>
+                            </div>
+                            <div class="form-group">
+                                <label>Team</label>
+                                <select data-field="team"><option value="">(None)</option>${state.teams.map(t => optionHtml(t.id, t.name, u.teamId === t.id)).join('')}</select>
+                            </div>
+                        </div>
+                        <div class="user-panel-grid" style="margin-top: 12px">
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">Effective ULB</div>
+                                <div class="user-panel-field-value">${ulb.value !== null ? fmt(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
+                            </div>
+                        </div>
+                        <div class="user-panel-actions">
+                            <button type="submit" class="btn-primary btn-sm">💾 Save</button>
+                            <button type="button" class="btn-sm" onclick="editUser(null)">✕ Cancel</button>
+                        </div>
+                    </form>
+                </details>`;
             } else {
-                html += `<tr>
-                    <td><strong>${escapeHtml(u.name)}</strong></td>
-                    <td><span class="badge badge-info">${u.license || 'business'}</span></td>
-                    <td>${cc ? escapeHtml(cc.name) : '—'}</td>
-                    <td>${org ? escapeHtml(org.name) : '—'}</td>
-                    <td>${team ? escapeHtml(team.name) : '—'}</td>
-                    <td>${ulb.value !== null ? fmt(ulb.value) + ' <small>(' + escapeHtml(ulb.source) + ')</small>' : '∞'}</td>
-                    <td><button class="btn-sm" onclick="editUser('${escapeInlineArg(u.id)}')" title="Edit">✏️</button> <button class="btn-danger btn-sm" onclick="deleteUser('${escapeInlineArg(u.id)}')">✕</button></td>
-                </tr>`;
+                html += `<details class="user-panel" ${panelOpen ? 'open' : ''} ontoggle="setUserPanelOpen('${escapeInlineArg(u.id)}', this.open)">
+                    <summary class="user-panel-summary">
+                        <div class="user-panel-summary-main">
+                            <strong>${escapeHtml(u.name)}</strong>
+                            <div class="help-text">${ulb.value !== null ? `ULB: ${fmt(ulb.value)} via ${escapeHtml(ulb.source)}` : 'No user-level budget configured.'}</div>
+                        </div>
+                        <div class="user-panel-summary-meta">${summaryMeta}</div>
+                    </summary>
+                    <div class="user-panel-body">
+                        <div class="user-panel-grid">
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">License</div>
+                                <div class="user-panel-field-value">${escapeHtml(u.license || 'business')}</div>
+                            </div>
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">Cost Center</div>
+                                <div class="user-panel-field-value">${cc ? escapeHtml(cc.name) : '—'}</div>
+                            </div>
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">Organization</div>
+                                <div class="user-panel-field-value">${org ? escapeHtml(org.name) : '—'}</div>
+                            </div>
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">Team</div>
+                                <div class="user-panel-field-value">${team ? escapeHtml(team.name) : '—'}</div>
+                            </div>
+                            <div class="user-panel-field">
+                                <div class="user-panel-field-label">Effective ULB</div>
+                                <div class="user-panel-field-value">${ulb.value !== null ? fmt(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
+                            </div>
+                        </div>
+                        <div class="user-panel-actions">
+                            <button type="button" class="btn-sm" onclick="editUser('${escapeInlineArg(u.id)}')" title="Edit">✏️ Edit</button>
+                            <button type="button" class="btn-danger btn-sm" onclick="deleteUser('${escapeInlineArg(u.id)}')">✕ Delete</button>
+                        </div>
+                    </div>
+                </details>`;
             }
         });
-        html += '</tbody></table></div>';
+        html += '</div></div>';
         container.innerHTML = html;
     }
 
@@ -1576,6 +1713,108 @@
         document.getElementById('simulationResults').innerHTML = html;
     }
 
+    function getUserSimulationCapacity(user) {
+        const baseCredits = userCreditsPerSeat(user);
+        const ulb = getEffectiveULB(user);
+        return ulb.value !== null ? Math.min(baseCredits, ulb.value) : baseCredits;
+    }
+
+    function getTotalSimulationCapacity() {
+        return state.users.reduce((sum, user) => sum + getUserSimulationCapacity(user), 0);
+    }
+
+    function getTotalSimulationUsage() {
+        return state.users.reduce((sum, user) => sum + (state.usage[user.id] || 0), 0);
+    }
+
+    function normalizeUsageValue(value) {
+        return Math.max(0, parseInt(value, 10) || 0);
+    }
+
+    function getGlobalUsagePercent() {
+        const totalCapacity = getTotalSimulationCapacity();
+        return totalCapacity > 0 ? (getTotalSimulationUsage() / totalCapacity) * 100 : 0;
+    }
+
+    function getGlobalUsageSliderMax(percent = getGlobalUsagePercent()) {
+        return Math.max(100, Math.ceil(Math.max(percent, 100) / 25) * 25);
+    }
+
+    function updateUserUsageControls(user, usage) {
+        const wrapper = document.getElementById(`usage-${user.id}`);
+        if (!wrapper) return;
+        const max = Math.max(getUserSimulationCapacity(user), usage);
+        const range = wrapper.querySelector('[data-role="range"]');
+        const number = wrapper.querySelector('[data-role="number"]');
+        const display = wrapper.querySelector('[data-role="display"]');
+        range.max = max;
+        range.value = usage;
+        number.max = max;
+        number.value = usage;
+        display.textContent = fmt(usage);
+    }
+
+    function setUserUsageValue(userId, value) {
+        const usage = normalizeUsageValue(value);
+        state.usage[userId] = usage;
+        const user = state.users.find(entry => entry.id === userId);
+        if (user) updateUserUsageControls(user, usage);
+    }
+
+    function updateSimulationSummaryControls() {
+        const slider = document.getElementById('globalUsageRange');
+        const valueLabel = document.getElementById('globalUsageValue');
+        const totalsLabel = document.getElementById('globalUsageTotals');
+        const totalUsage = getTotalSimulationUsage();
+        const totalCapacity = getTotalSimulationCapacity();
+        const percent = getGlobalUsagePercent();
+
+        if (slider) {
+            slider.max = getGlobalUsageSliderMax(percent);
+            slider.value = percent.toFixed(1);
+        }
+        if (valueLabel) valueLabel.textContent = `${percent.toFixed(1)}%`;
+        if (totalsLabel) totalsLabel.textContent = `${fmt(totalUsage)} used of ${fmt(totalCapacity)} available credits`;
+
+        const aggregateInput = document.getElementById('aggregateUsage');
+        if (aggregateInput) aggregateInput.value = totalUsage;
+        runAggregateSimulation();
+    }
+
+    function handleUserUsageChange(userId, value) {
+        setUserUsageValue(userId, value);
+        saveState();
+        updateSimulationSummaryControls();
+        document.getElementById('simulationResultsCard').style.display = 'none';
+    }
+
+    function distributeGlobalUsage(percent) {
+        const sanitizedPercent = Math.max(0, parseFloat(percent) || 0);
+        const users = state.users.map(user => {
+            const capacity = getUserSimulationCapacity(user);
+            const raw = (capacity * sanitizedPercent) / 100;
+            const floorUsage = Math.floor(raw);
+            return { user, capacity, raw, usage: floorUsage, fraction: raw - floorUsage };
+        });
+
+        const targetTotal = Math.round(users.reduce((sum, entry) => sum + entry.capacity, 0) * sanitizedPercent / 100);
+        let assigned = users.reduce((sum, entry) => sum + entry.usage, 0);
+        users.sort((a, b) => b.fraction - a.fraction);
+
+        for (let i = 0; assigned < targetTotal && i < users.length; i++, assigned++) {
+            users[i].usage += 1;
+        }
+
+        return users;
+    }
+
+    function applyGlobalUsagePercent(value) {
+        distributeGlobalUsage(value).forEach(entry => setUserUsageValue(entry.user.id, entry.usage));
+        saveState();
+        updateSimulationSummaryControls();
+        document.getElementById('simulationResultsCard').style.display = 'none';
+    }
+
     // ─── Aggregate Simulation ────────────────────────────────────────────────────
     function runAggregateSimulation() {
         const totalUsage = parseInt(document.getElementById('aggregateUsage').value) || 0;
@@ -1614,38 +1853,61 @@
     // ─── Simulation Inputs ───────────────────────────────────────────────────────
     function renderSimulationInputs() {
         const container = document.getElementById('simulationInputs');
+        const globalControls = document.getElementById('simulationGlobalControls');
         if (state.users.length === 0) {
             container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
+            globalControls.innerHTML = '';
+            document.getElementById('aggregateUsage').value = 0;
+            runAggregateSimulation();
             return;
         }
-        const maxCredits = totalPool() || 100000;
+        const globalPercent = getGlobalUsagePercent();
+        const totalUsage = getTotalSimulationUsage();
+        const totalCapacity = getTotalSimulationCapacity();
+        globalControls.innerHTML = `
+            <div class="simulation-global-controls">
+                <div class="simulation-global-header">
+                    <div>
+                        <h3 style="margin-bottom: 4px">Global Usage Distribution</h3>
+                        <p class="help-text">Apply one percentage across all users' available credits, then fine-tune individual values as needed.</p>
+                    </div>
+                    <div class="simulation-global-metrics">
+                        <span id="globalUsageTotals">${fmt(totalUsage)} used of ${fmt(totalCapacity)} available credits</span>
+                    </div>
+                </div>
+                <div class="simulation-global-slider">
+                    <input type="range" id="globalUsageRange" min="0" max="${getGlobalUsageSliderMax(globalPercent)}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
+                    <span class="simulation-global-value" id="globalUsageValue">${globalPercent.toFixed(1)}%</span>
+                </div>
+            </div>`;
         let html = '<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (credits)</th></tr></thead><tbody>';
         state.users.forEach(user => {
             const cc = getUserCC(user);
-            const ulb = getEffectiveULB(user);
-            const max = ulb.value || Math.floor(maxCredits / state.users.length * 3);
+            const max = Math.max(getUserSimulationCapacity(user), state.usage[user.id] || 0);
             const usage = state.usage[user.id] || 0;
             html += `<tr>
                 <td><strong>${escapeHtml(user.name)}</strong></td>
                 <td>${cc ? escapeHtml(cc.name) : '—'}</td>
                 <td>
-                    <div class="simulation-usage-input">
+                    <div class="simulation-usage-input" id="usage-${escapeHtml(user.id)}">
                         <input type="range" min="0" max="${max}" value="${usage}"
-                            oninput="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
-                        <span class="usage-value">${fmt(usage)}</span>
-                        <input type="number" min="0" value="${usage}" style="width:80px"
-                            onchange="updateUsage('${escapeInlineArg(user.id)}', this.value); this.parentElement.querySelector('input[type=range]').value = this.value; this.parentElement.querySelector('.usage-value').textContent = fmt(parseInt(this.value))">
+                            data-role="range"
+                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
+                        <span class="usage-value" data-role="display">${fmt(usage)}</span>
+                        <input type="number" min="0" max="${max}" value="${usage}" style="width:80px"
+                            data-role="number"
+                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
                     </div>
                 </td>
             </tr>`;
         });
         html += '</tbody></table>';
         container.innerHTML = html;
+        updateSimulationSummaryControls();
     }
 
     function updateUsage(userId, value) {
-        state.usage[userId] = parseInt(value) || 0;
-        saveState();
+        handleUserUsageChange(userId, value);
     }
 
     function resetUsage() {
@@ -1697,6 +1959,7 @@
         renderSimulationInputs();
         runAggregateSimulation();
         renderTabCounts();
+        updateUserCreateMode();
     }
 
     renderAll();
