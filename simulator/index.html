@@ -496,7 +496,7 @@
                     <div style="margin-top: 16px; display: flex; gap: 8px;">
                         <button type="button" onclick="resetUsage()">Reset Usage</button>
                     </div>
-                    <p class="help-text">Simulation results update automatically when Values change.</p>
+                    <p class="help-text">Simulation results update automatically when values change.</p>
                 </form>
             </div>
 
@@ -591,7 +591,7 @@
     }
 
     const CREDITS_PER_DOLLAR = 100;
-    // Allow large what-if spikes while keeping accidental extreme input bounded.
+    // 10000% allows 100x capacity stress scenarios while still preventing accidental massive inputs.
     const MAX_GLOBAL_USAGE_PERCENT = 10000;
 
     function meteredCreditsFromBudget(amount) {
@@ -1781,7 +1781,7 @@
             : `${fmt(meteredCreditsFromBudget(amount))} AI credits`;
     }
 
-    function formatSimulationPercent(value) {
+    function normalizePercentValue(value) {
         const parsed = parseFloat(value);
         const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
         return sanitized.toFixed(1);
@@ -1827,9 +1827,9 @@
 
         if (slider) {
             slider.max = getGlobalUsageSliderMax(percent);
-            slider.value = formatSimulationPercent(percent);
+            slider.value = normalizePercentValue(percent);
         }
-        if (valueInput) valueInput.value = formatSimulationPercent(percent);
+        if (valueInput) valueInput.value = normalizePercentValue(percent);
         if (totalsLabel) totalsLabel.textContent = `${formatSimulationCredits(totalUsage)} used of ${formatSimulationCredits(totalCapacity)} available`;
         if (aggregateLabel) aggregateLabel.textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
 
@@ -1846,14 +1846,6 @@
         saveState();
         updateSimulationSummaryControls();
         runSimulation();
-    }
-
-    function handleUserUsageSliderChange(userId, value) {
-        applyUserUsageChange(userId, value);
-    }
-
-    function handleUserUsageNumberInputChange(userId, value) {
-        applyUserUsageChange(userId, simulationValueToCredits(value));
     }
 
     function distributeGlobalUsage(percent) {
@@ -1972,10 +1964,10 @@
                     <div class="simulation-usage-input" id="usage-${escapeHtml(user.id)}">
                         <input type="range" min="0" max="${max}" value="${usage}"
                             data-role="range"
-                            oninput="handleUserUsageSliderChange('${escapeInlineArg(user.id)}', this.value)">
+                            oninput="applyUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
                         <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}"
                             data-role="number"
-                            oninput="handleUserUsageNumberInputChange('${escapeInlineArg(user.id)}', this.value)">
+                            oninput="applyUserUsageChange('${escapeInlineArg(user.id)}', simulationValueToCredits(this.value))">
                     </div>
                 </td>
             </tr>`;
