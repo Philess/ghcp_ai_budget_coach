@@ -204,12 +204,196 @@
             .user-panel-summary { flex-direction: column; }
             .user-panel-summary-meta { justify-content: flex-start; }
         }
+
+        /* ─── Setup Wizard ─────────────────────────────────────────────────── */
+        .wizard-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.72);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .wizard-modal {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 780px;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .wizard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .wizard-header h2 { font-size: 1.05rem; font-weight: 600; }
+
+        .wizard-close {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        .wizard-close:hover { color: var(--color-text); background: none; }
+
+        .wizard-stepper {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--color-border);
+            overflow-x: auto;
+            flex-shrink: 0;
+            gap: 0;
+        }
+
+        .wizard-step-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: var(--color-text-muted);
+            white-space: nowrap;
+        }
+
+        .wizard-step-item.active { color: var(--color-accent); font-weight: 600; }
+        .wizard-step-item.completed { color: var(--color-success); }
+
+        .wizard-step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .wizard-step-item.active .wizard-step-num {
+            background: var(--color-accent-emphasis);
+            border-color: var(--color-accent-emphasis);
+            color: #fff;
+        }
+
+        .wizard-step-item.completed .wizard-step-num {
+            background: var(--color-success);
+            border-color: var(--color-success);
+            color: #fff;
+        }
+
+        .wizard-step-sep {
+            width: 16px;
+            height: 1px;
+            background: var(--color-border);
+            margin: 0 3px;
+            flex-shrink: 0;
+        }
+
+        .wizard-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .wizard-body h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .wizard-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-top: 1px solid var(--color-border);
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .wizard-error {
+            color: var(--color-danger);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+
+        .wizard-entry-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .wizard-entry-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            gap: 8px;
+        }
+
+        .wizard-entry-item-info { flex: 1; min-width: 0; }
+
+        .wizard-review-section { margin-bottom: 18px; }
+
+        .wizard-review-section h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .wizard-review-item {
+            padding: 7px 10px;
+            border-left: 2px solid var(--color-accent);
+            margin-bottom: 5px;
+            background: var(--color-bg);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-size: 0.8125rem;
+        }
+
+        .wizard-success { text-align: center; padding: 28px 20px; }
+        .wizard-success-icon { font-size: 2.8rem; margin-bottom: 12px; }
+
+        @media (max-width: 600px) {
+            .wizard-stepper { gap: 0; }
+            .wizard-step-item span:last-child { display: none; }
+            .wizard-step-sep { width: 10px; }
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
+            <button onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -515,6 +699,19 @@
             </div>
         </div>
     </main>
+
+    <!-- ═══════════════ SETUP WIZARD OVERLAY ═══════════════ -->
+    <div id="wizardOverlay" class="wizard-overlay" style="display:none" onclick="handleWizardOverlayClick(event)">
+        <div class="wizard-modal">
+            <div class="wizard-header">
+                <h2>🧙 Manual Setup Wizard</h2>
+                <button class="wizard-close" onclick="closeWizard()">✕</button>
+            </div>
+            <div class="wizard-stepper" id="wizardStepper"></div>
+            <div class="wizard-body" id="wizardBody"></div>
+            <div class="wizard-footer" id="wizardFooter"></div>
+        </div>
+    </div>
 
     <script>
     // ─── State ───────────────────────────────────────────────────────────────────
@@ -1960,6 +2157,830 @@
         runAggregateSimulation();
         renderTabCounts();
         updateUserCreateMode();
+    }
+
+    // ─── Setup Wizard ─────────────────────────────────────────────────────────────
+    const WIZARD_STEPS = [
+        { label: 'Organizations' },
+        { label: 'Teams' },
+        { label: 'Cost Centers' },
+        { label: 'Users' },
+        { label: 'User Budgets' },
+        { label: 'Overage Budgets' },
+        { label: 'Review' }
+    ];
+
+    let wizardStep = 0;
+    let wizardDone = false;
+    let wizardData = null;
+
+    function defaultWizardData() {
+        return {
+            orgs: [],
+            teams: [],
+            costCenters: [],
+            users: [],
+            userBudgets: {
+                universalULB: state.enterprise.universalULB !== null ? String(state.enterprise.universalULB) : '',
+                individual: [],
+                costCenter: []
+            },
+            overageBudgets: {
+                enterpriseBudget: state.enterprise.enterpriseBudget,
+                enterpriseHardStop: state.enterprise.enterpriseHardStop,
+                orgs: [],
+                costCenters: []
+            }
+        };
+    }
+
+    function openWizard() {
+        wizardStep = 0;
+        wizardDone = false;
+        wizardData = defaultWizardData();
+        document.getElementById('wizardOverlay').style.display = 'flex';
+        renderWizard();
+    }
+
+    function closeWizard() {
+        if (!wizardDone) {
+            const hasData = wizardData && (
+                wizardData.orgs.length > 0 || wizardData.teams.length > 0 ||
+                wizardData.costCenters.length > 0 || wizardData.users.length > 0 ||
+                wizardData.userBudgets.individual.length > 0 ||
+                wizardData.userBudgets.costCenter.length > 0 ||
+                wizardData.overageBudgets.orgs.length > 0 ||
+                wizardData.overageBudgets.costCenters.length > 0
+            );
+            if (hasData && !confirm('Close wizard? Unsaved entries will be lost.')) return;
+        }
+        document.getElementById('wizardOverlay').style.display = 'none';
+    }
+
+    function handleWizardOverlayClick(e) {
+        if (e.target === document.getElementById('wizardOverlay')) closeWizard();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('wizardOverlay').style.display !== 'none') closeWizard();
+    });
+
+    function renderWizard() {
+        renderWizardStepper();
+        renderWizardBody();
+        renderWizardFooter();
+    }
+
+    function renderWizardStepper() {
+        const el = document.getElementById('wizardStepper');
+        let html = '';
+        WIZARD_STEPS.forEach((step, i) => {
+            if (i > 0) html += '<div class="wizard-step-sep"></div>';
+            const cls = i === wizardStep ? 'active' : (i < wizardStep || wizardDone ? 'completed' : '');
+            const num = (i < wizardStep || wizardDone) ? '✓' : (i + 1);
+            html += `<div class="wizard-step-item ${cls}">
+                <span class="wizard-step-num">${num}</span>
+                <span>${escapeHtml(step.label)}</span>
+            </div>`;
+        });
+        el.innerHTML = html;
+    }
+
+    function renderWizardFooter() {
+        const el = document.getElementById('wizardFooter');
+        if (wizardDone) {
+            el.innerHTML = `<div></div><button class="btn-primary" onclick="closeWizard()">✓ Close</button>`;
+            return;
+        }
+        const isReview = wizardStep === WIZARD_STEPS.length - 1;
+        const backBtn = wizardStep > 0
+            ? `<button onclick="wizardBack()">← Back</button>`
+            : `<div></div>`;
+        const nextBtn = isReview
+            ? `<button class="btn-primary" onclick="confirmWizard()">✓ Confirm &amp; Create</button>`
+            : `<button class="btn-primary" onclick="wizardNext()">Next →</button>`;
+        el.innerHTML = `${backBtn}<div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:0.75rem;color:var(--color-text-muted)">Step ${wizardStep + 1} of ${WIZARD_STEPS.length}</span>
+            ${nextBtn}
+        </div>`;
+    }
+
+    function captureWizardStepValues(step) {
+        if (step === 4) {
+            const el = document.getElementById('wizardUniversalULB');
+            if (el) wizardData.userBudgets.universalULB = el.value;
+        }
+        if (step === 5) {
+            const budgetEl = document.getElementById('wizardEntBudget');
+            const hardStopEl = document.getElementById('wizardEntHardStop');
+            if (budgetEl) wizardData.overageBudgets.enterpriseBudget = parseFloat(budgetEl.value) || 0;
+            if (hardStopEl) wizardData.overageBudgets.enterpriseHardStop = hardStopEl.checked;
+        }
+    }
+
+    function wizardBack() {
+        captureWizardStepValues(wizardStep);
+        if (wizardStep > 0) { wizardStep--; renderWizard(); }
+    }
+
+    function wizardNext() {
+        captureWizardStepValues(wizardStep);
+        if (wizardStep < WIZARD_STEPS.length - 1) { wizardStep++; renderWizard(); }
+    }
+
+    function renderWizardBody() {
+        const el = document.getElementById('wizardBody');
+        const renderers = [
+            renderWizardStepOrgs, renderWizardStepTeams, renderWizardStepCostCenters,
+            renderWizardStepUsers, renderWizardStepUserBudgets,
+            renderWizardStepOverageBudgets, renderWizardStepReview
+        ];
+        el.innerHTML = renderers[wizardStep]();
+    }
+
+    // ─── Wizard Step 1: Organizations ─────────────────────────────────────────────
+    function wizardAddOrg() {
+        const input = document.getElementById('wizardOrgName');
+        const name = input.value.trim();
+        const errEl = document.getElementById('wizardOrgError');
+        if (!name) { errEl.textContent = 'Organization name is required.'; return; }
+        if (wizardData.orgs.some(o => o.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.orgs.some(o => o.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        wizardData.orgs.push({ name });
+        input.value = '';
+        errEl.textContent = '';
+        renderWizardOrgList();
+    }
+
+    function wizardRemoveOrg(name) {
+        wizardData.orgs = wizardData.orgs.filter(o => o.name !== name);
+        wizardData.costCenters.forEach(cc => { cc.orgNames = (cc.orgNames || []).filter(n => n !== name); });
+        wizardData.overageBudgets.orgs = wizardData.overageBudgets.orgs.filter(b => b.orgName !== name);
+        renderWizardOrgList();
+    }
+
+    function renderWizardOrgList() {
+        const el = document.getElementById('wizardOrgList');
+        if (!el) return;
+        if (wizardData.orgs.length === 0) { el.innerHTML = '<p class="help-text">No organizations added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.orgs.map(o =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+            <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOrg('${escapeInlineArg(o.name)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardStepOrgs() {
+        const listHtml = wizardData.orgs.length === 0
+            ? '<p class="help-text">No organizations added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.orgs.map(o =>
+                `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOrg('${escapeInlineArg(o.name)}')">✕</button></div>`
+            ).join('') + '</div>';
+        return `<h3>Step 1: Organizations</h3>
+            <p class="help-text" style="margin-bottom:16px">Add the GitHub organizations in your enterprise. These group users and scope overage budgets.</p>
+            <form onsubmit="event.preventDefault(); wizardAddOrg()">
+                <div class="inline-form">
+                    <div class="form-group" style="flex:1"><label>Organization Name</label>
+                        <input type="text" id="wizardOrgName" placeholder="e.g., acme-corp"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardOrgError"></div>
+            </form>
+            <div id="wizardOrgList">${listHtml}</div>`;
+    }
+
+    // ─── Wizard Step 2: Enterprise Teams ──────────────────────────────────────────
+    function wizardAddTeam() {
+        const input = document.getElementById('wizardTeamName');
+        const name = input.value.trim();
+        const errEl = document.getElementById('wizardTeamError');
+        if (!name) { errEl.textContent = 'Team name is required.'; return; }
+        if (wizardData.teams.some(t => t.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.teams.some(t => t.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        wizardData.teams.push({ name });
+        input.value = '';
+        errEl.textContent = '';
+        renderWizardTeamList();
+    }
+
+    function wizardRemoveTeam(name) {
+        wizardData.teams = wizardData.teams.filter(t => t.name !== name);
+        wizardData.costCenters.forEach(cc => { cc.teamNames = (cc.teamNames || []).filter(n => n !== name); });
+        wizardData.users.forEach(u => { if (u.teamName === name) u.teamName = ''; });
+        renderWizardTeamList();
+    }
+
+    function renderWizardTeamList() {
+        const el = document.getElementById('wizardTeamList');
+        if (!el) return;
+        if (wizardData.teams.length === 0) { el.innerHTML = '<p class="help-text">No teams added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.teams.map(t =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+            <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveTeam('${escapeInlineArg(t.name)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardStepTeams() {
+        const listHtml = wizardData.teams.length === 0
+            ? '<p class="help-text">No teams added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.teams.map(t =>
+                `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveTeam('${escapeInlineArg(t.name)}')">✕</button></div>`
+            ).join('') + '</div>';
+        return `<h3>Step 2: Enterprise Teams</h3>
+            <p class="help-text" style="margin-bottom:16px">Add teams that group users within your enterprise. Teams can be assigned to cost centers.</p>
+            <form onsubmit="event.preventDefault(); wizardAddTeam()">
+                <div class="inline-form">
+                    <div class="form-group" style="flex:1"><label>Team Name</label>
+                        <input type="text" id="wizardTeamName" placeholder="e.g., engineers"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardTeamError"></div>
+            </form>
+            <div id="wizardTeamList">${listHtml}</div>`;
+    }
+
+    // ─── Wizard Step 3: Cost Centers ──────────────────────────────────────────────
+    function wizardAddCostCenter() {
+        const nameInput = document.getElementById('wizardCCName');
+        const name = nameInput.value.trim();
+        const errEl = document.getElementById('wizardCCError');
+        if (!name) { errEl.textContent = 'Cost center name is required.'; return; }
+        if (wizardData.costCenters.some(cc => cc.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.costCenters.some(cc => cc.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        const teamSel = document.getElementById('wizardCCTeams');
+        const orgSel = document.getElementById('wizardCCOrgs');
+        const teamNames = teamSel ? Array.from(teamSel.selectedOptions).map(o => o.value) : [];
+        const orgNames = orgSel ? Array.from(orgSel.selectedOptions).map(o => o.value) : [];
+        wizardData.costCenters.push({ name, teamNames, orgNames });
+        nameInput.value = '';
+        if (teamSel) teamSel.selectedIndex = -1;
+        if (orgSel) orgSel.selectedIndex = -1;
+        errEl.textContent = '';
+        renderWizardCCList();
+    }
+
+    function wizardRemoveCC(name) {
+        wizardData.costCenters = wizardData.costCenters.filter(cc => cc.name !== name);
+        wizardData.users.forEach(u => { if (u.ccName === name) u.ccName = ''; });
+        wizardData.userBudgets.costCenter = wizardData.userBudgets.costCenter.filter(b => b.ccName !== name);
+        wizardData.overageBudgets.costCenters = wizardData.overageBudgets.costCenters.filter(b => b.ccName !== name);
+        renderWizardCCList();
+    }
+
+    function renderWizardCCList() {
+        const el = document.getElementById('wizardCCList');
+        if (!el) return;
+        if (wizardData.costCenters.length === 0) { el.innerHTML = '<p class="help-text">No cost centers added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.costCenters.map(cc => {
+            const parts = [];
+            if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+            if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+            return `<div class="wizard-entry-item">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
+                    ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}
+                </div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveCC('${escapeInlineArg(cc.name)}')">✕</button></div>`;
+        }).join('') + '</div>';
+    }
+
+    function renderWizardStepCostCenters() {
+        const allTeams = [...state.teams.map(t => t.name), ...wizardData.teams.map(t => t.name)];
+        const allOrgs = [...state.orgs.map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const teamOpts = allTeams.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const orgOpts = allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const listHtml = wizardData.costCenters.length === 0
+            ? '<p class="help-text">No cost centers added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.costCenters.map(cc => {
+                const parts = [];
+                if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+                if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
+                        ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}
+                    </div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveCC('${escapeInlineArg(cc.name)}')">✕</button></div>`;
+            }).join('') + '</div>';
+        return `<h3>Step 3: Cost Centers</h3>
+            <p class="help-text" style="margin-bottom:16px">Create cost centers and assign teams and organizations to them. Cost centers enable AI credit pool reservations and scoped budgets.</p>
+            <form onsubmit="event.preventDefault(); wizardAddCostCenter()">
+                <div class="form-row">
+                    <div class="form-group"><label>Cost Center Name</label>
+                        <input type="text" id="wizardCCName" placeholder="e.g., Engineering"></div>
+                    ${allTeams.length > 0 ? `<div class="form-group"><label>Teams</label>
+                        <select id="wizardCCTeams" multiple style="min-height:60px">${teamOpts}</select>
+                        <p class="help-text">Hold Ctrl/Cmd to select multiple</p></div>` : ''}
+                    ${allOrgs.length > 0 ? `<div class="form-group"><label>Organizations</label>
+                        <select id="wizardCCOrgs" multiple style="min-height:60px">${orgOpts}</select></div>` : ''}
+                </div>
+                <div style="margin-top:8px"><button type="submit" class="btn-primary">+ Add Cost Center</button></div>
+                <div class="wizard-error" id="wizardCCError"></div>
+            </form>
+            <div id="wizardCCList">${listHtml}</div>`;
+    }
+
+    // ─── Wizard Step 4: Users ─────────────────────────────────────────────────────
+    function wizardAddUser() {
+        const mode = document.getElementById('wizardUserMode').value;
+        const errEl = document.getElementById('wizardUserError');
+        const ccName = document.getElementById('wizardUserCC').value;
+        const orgName = document.getElementById('wizardUserOrg').value;
+        const teamName = document.getElementById('wizardUserTeam').value;
+        const license = document.getElementById('wizardUserLicense').value;
+
+        if (mode === 'bulk') {
+            const count = parseInt(document.getElementById('wizardBulkCount').value) || 0;
+            const prefix = document.getElementById('wizardBulkPrefix').value.trim() || 'user';
+            if (count <= 0 || count > 500) { errEl.textContent = 'Enter a number between 1 and 500.'; return; }
+            const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const existingNums = [...state.users, ...wizardData.users]
+                .map(u => { const m = u.name.match(new RegExp(`^${escapedPrefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+                .filter(n => n > 0);
+            let nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+            for (let i = 0; i < count; i++) {
+                const name = `${prefix}-${nextNum + i}`;
+                if (!state.users.some(u => u.name === name) && !wizardData.users.some(u => u.name === name)) {
+                    wizardData.users.push({ name, license, ccName, orgName, teamName });
+                }
+            }
+            errEl.textContent = '';
+        } else {
+            const name = document.getElementById('wizardUserName').value.trim();
+            if (!name) { errEl.textContent = 'Username is required.'; return; }
+            if (wizardData.users.some(u => u.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+            if (state.users.some(u => u.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+            wizardData.users.push({ name, license, ccName, orgName, teamName });
+            document.getElementById('wizardUserName').value = '';
+            errEl.textContent = '';
+        }
+        renderWizardUserList();
+    }
+
+    function wizardRemoveUser(name) {
+        wizardData.users = wizardData.users.filter(u => u.name !== name);
+        wizardData.userBudgets.individual = wizardData.userBudgets.individual.filter(b => b.userName !== name);
+        renderWizardUserList();
+    }
+
+    function wizardUpdateUserMode() {
+        const isSingle = document.getElementById('wizardUserMode').value === 'single';
+        document.getElementById('wizardSingleFields').hidden = !isSingle;
+        document.getElementById('wizardBulkFields').hidden = isSingle;
+        const btn = document.getElementById('wizardUserAddBtn');
+        if (btn) btn.textContent = isSingle ? '+ Add User' : '⚡ Generate Users';
+    }
+
+    function renderWizardUserList() {
+        const el = document.getElementById('wizardUserList');
+        if (!el) return;
+        if (wizardData.users.length === 0) { el.innerHTML = '<p class="help-text">No users added yet.</p>'; return; }
+        el.innerHTML = `<p class="help-text" style="margin-bottom:6px">${wizardData.users.length} user(s) added.</p>` +
+            '<div class="wizard-entry-list">' + wizardData.users.map(u => {
+                const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUser('${escapeInlineArg(u.name)}')">✕</button></div>`;
+            }).join('') + '</div>';
+    }
+
+    function renderWizardStepUsers() {
+        const allCC = [...state.costCenters.map(c => c.name), ...wizardData.costCenters.map(c => c.name)];
+        const allOrgs = [...state.orgs.map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const allTeams = [...state.teams.map(t => t.name), ...wizardData.teams.map(t => t.name)];
+        const ccOpts = '<option value="">(None)</option>' + allCC.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const orgOpts = '<option value="">(None)</option>' + allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const teamOpts = '<option value="">(None)</option>' + allTeams.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const listHtml = wizardData.users.length === 0
+            ? '<p class="help-text">No users added yet.</p>'
+            : `<p class="help-text" style="margin-bottom:6px">${wizardData.users.length} user(s) added.</p>` +
+              '<div class="wizard-entry-list">' + wizardData.users.map(u => {
+                const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUser('${escapeInlineArg(u.name)}')">✕</button></div>`;
+              }).join('') + '</div>';
+        return `<h3>Step 4: Users</h3>
+            <p class="help-text" style="margin-bottom:16px">Add individual users or generate multiple in bulk. Assign each user a license, cost center, organization, and team.</p>
+            <form onsubmit="event.preventDefault(); wizardAddUser()">
+                <div class="form-row">
+                    <div class="form-group"><label>Creation Mode</label>
+                        <select id="wizardUserMode" onchange="wizardUpdateUserMode()">
+                            <option value="single">Single user</option>
+                            <option value="bulk">Bulk users</option>
+                        </select></div>
+                    <div id="wizardSingleFields" class="form-group"><label>Username</label>
+                        <input type="text" id="wizardUserName" placeholder="e.g., alice"></div>
+                    <div id="wizardBulkFields" class="form-group" hidden><label>Count &amp; Prefix</label>
+                        <div style="display:flex;gap:6px">
+                            <input type="number" id="wizardBulkCount" value="10" min="1" max="500" style="width:72px">
+                            <input type="text" id="wizardBulkPrefix" value="user" placeholder="prefix" style="flex:1">
+                        </div></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>License</label>
+                        <select id="wizardUserLicense"><option value="business">Business</option><option value="enterprise">Enterprise</option></select></div>
+                    <div class="form-group"><label>Cost Center</label><select id="wizardUserCC">${ccOpts}</select></div>
+                    <div class="form-group"><label>Organization</label><select id="wizardUserOrg">${orgOpts}</select></div>
+                    <div class="form-group"><label>Team</label><select id="wizardUserTeam">${teamOpts}</select></div>
+                </div>
+                <div style="margin-top:8px">
+                    <button type="submit" id="wizardUserAddBtn" class="btn-primary">+ Add User</button></div>
+                <div class="wizard-error" id="wizardUserError"></div>
+            </form>
+            <div id="wizardUserList">${listHtml}</div>`;
+    }
+
+    // ─── Wizard Step 5: User-Level Budgets ────────────────────────────────────────
+    function wizardUpdateULBTargets() {
+        const typeEl = document.getElementById('wizardULBType');
+        const targetEl = document.getElementById('wizardULBTarget');
+        if (!typeEl || !targetEl) return;
+        const type = typeEl.value;
+        if (type === 'individual') {
+            const used = new Set(wizardData.userBudgets.individual.map(b => b.userName));
+            const allUsers = [
+                ...state.users.filter(u => u.individualULB === null && !used.has(u.name)).map(u => u.name),
+                ...wizardData.users.filter(u => !used.has(u.name)).map(u => u.name)
+            ];
+            targetEl.innerHTML = allUsers.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        } else {
+            const used = new Set(wizardData.userBudgets.costCenter.map(b => b.ccName));
+            const allCCs = [
+                ...state.costCenters.filter(cc => cc.ulb === null && !used.has(cc.name)).map(cc => cc.name),
+                ...wizardData.costCenters.filter(cc => !used.has(cc.name)).map(cc => cc.name)
+            ];
+            targetEl.innerHTML = allCCs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        }
+    }
+
+    function wizardAddUserBudget() {
+        const type = document.getElementById('wizardULBType').value;
+        const target = document.getElementById('wizardULBTarget').value;
+        const value = parseInt(document.getElementById('wizardULBValue').value);
+        const errEl = document.getElementById('wizardULBError');
+        if (!target) { errEl.textContent = 'Select a target.'; return; }
+        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ 0 credits).'; return; }
+        if (type === 'individual') {
+            if (wizardData.userBudgets.individual.some(b => b.userName === target)) { errEl.textContent = `"${target}" already has a budget.`; return; }
+            wizardData.userBudgets.individual.push({ userName: target, budget: value });
+        } else {
+            if (wizardData.userBudgets.costCenter.some(b => b.ccName === target)) { errEl.textContent = `"${target}" already has a budget.`; return; }
+            wizardData.userBudgets.costCenter.push({ ccName: target, budget: value });
+        }
+        document.getElementById('wizardULBValue').value = '';
+        errEl.textContent = '';
+        renderWizardULBList();
+        wizardUpdateULBTargets();
+    }
+
+    function wizardRemoveUserBudget(type, target) {
+        if (type === 'individual') wizardData.userBudgets.individual = wizardData.userBudgets.individual.filter(b => b.userName !== target);
+        else wizardData.userBudgets.costCenter = wizardData.userBudgets.costCenter.filter(b => b.ccName !== target);
+        renderWizardULBList();
+        wizardUpdateULBTargets();
+    }
+
+    function wizardULBListHtml() {
+        const items = [
+            ...wizardData.userBudgets.costCenter.map(b => ({ type: 'costcenter', target: b.ccName, budget: b.budget })),
+            ...wizardData.userBudgets.individual.map(b => ({ type: 'individual', target: b.userName, budget: b.budget }))
+        ];
+        if (items.length === 0) return '<p class="help-text">No user-level budgets added yet.</p>';
+        return '<div class="wizard-entry-list">' + items.map(b =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
+                <strong>${escapeHtml(b.target)}</strong>
+                <span class="badge ${b.type === 'individual' ? 'badge-warning' : 'badge-info'}" style="margin-left:6px">${b.type === 'individual' ? 'Individual' : 'Cost Center'}</span>
+                <span style="margin-left:6px;font-size:0.875rem">${fmt(b.budget)} credits</span>
+            </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUserBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardULBList() {
+        const el = document.getElementById('wizardULBList');
+        if (el) el.innerHTML = wizardULBListHtml();
+    }
+
+    function renderWizardStepUserBudgets() {
+        const allUsers = [...state.users.filter(u => u.individualULB === null).map(u => u.name), ...wizardData.users.map(u => u.name)];
+        const targetOpts = allUsers.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const universalVal = wizardData.userBudgets.universalULB !== null ? String(wizardData.userBudgets.universalULB) : '';
+        return `<h3>Step 5: User-Level Budgets</h3>
+            <p class="help-text" style="margin-bottom:16px">Optionally set per-user credit caps (ULBs). These are always hard stops. Precedence: Individual &gt; Cost Center &gt; Universal.</p>
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Universal ULB — applies to all users unless overridden (leave blank for no limit)</label>
+                <input type="number" id="wizardUniversalULB" placeholder="No limit" min="0" value="${escapeHtml(universalVal)}">
+            </div>
+            <div class="section-divider"></div>
+            <h3 style="margin:0 0 8px">Add Specific Budget</h3>
+            <form onsubmit="event.preventDefault(); wizardAddUserBudget()">
+                <div class="inline-form">
+                    <div class="form-group"><label>Type</label>
+                        <select id="wizardULBType" onchange="wizardUpdateULBTargets()">
+                            <option value="individual">Individual User</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select></div>
+                    <div class="form-group"><label>Target</label><select id="wizardULBTarget">${targetOpts}</select></div>
+                    <div class="form-group"><label>Budget (credits)</label>
+                        <input type="number" id="wizardULBValue" min="0" placeholder="e.g., 5000"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardULBError"></div>
+            </form>
+            <div id="wizardULBList">${wizardULBListHtml()}</div>`;
+    }
+
+    // ─── Wizard Step 6: Overage Budgets ───────────────────────────────────────────
+    function wizardUpdateOverageTargets() {
+        const typeEl = document.getElementById('wizardOverageType');
+        const targetEl = document.getElementById('wizardOverageTarget');
+        if (!typeEl || !targetEl) return;
+        const type = typeEl.value;
+        if (type === 'org') {
+            const used = new Set(wizardData.overageBudgets.orgs.map(b => b.orgName));
+            const all = [
+                ...state.orgs.filter(o => o.budget === null && !used.has(o.name)).map(o => o.name),
+                ...wizardData.orgs.filter(o => !used.has(o.name)).map(o => o.name)
+            ];
+            targetEl.innerHTML = all.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        } else {
+            const used = new Set(wizardData.overageBudgets.costCenters.map(b => b.ccName));
+            const all = [
+                ...state.costCenters.filter(cc => cc.budget === null && !used.has(cc.name)).map(cc => cc.name),
+                ...wizardData.costCenters.filter(cc => !used.has(cc.name)).map(cc => cc.name)
+            ];
+            targetEl.innerHTML = all.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        }
+    }
+
+    function wizardAddOverageBudget() {
+        const type = document.getElementById('wizardOverageType').value;
+        const target = document.getElementById('wizardOverageTarget').value;
+        const value = parseFloat(document.getElementById('wizardOverageValue').value);
+        const hardStop = document.getElementById('wizardOverageHardStop').checked;
+        const errEl = document.getElementById('wizardOverageError');
+        if (!target) { errEl.textContent = 'Select a target.'; return; }
+        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        if (type === 'org') {
+            if (wizardData.overageBudgets.orgs.some(b => b.orgName === target)) { errEl.textContent = `"${target}" already has an overage budget.`; return; }
+            wizardData.overageBudgets.orgs.push({ orgName: target, budget: value, hardStop });
+        } else {
+            if (wizardData.overageBudgets.costCenters.some(b => b.ccName === target)) { errEl.textContent = `"${target}" already has an overage budget.`; return; }
+            wizardData.overageBudgets.costCenters.push({ ccName: target, budget: value, hardStop });
+        }
+        document.getElementById('wizardOverageValue').value = '';
+        errEl.textContent = '';
+        renderWizardOverageList();
+        wizardUpdateOverageTargets();
+    }
+
+    function wizardRemoveOverageBudget(type, target) {
+        if (type === 'org') wizardData.overageBudgets.orgs = wizardData.overageBudgets.orgs.filter(b => b.orgName !== target);
+        else wizardData.overageBudgets.costCenters = wizardData.overageBudgets.costCenters.filter(b => b.ccName !== target);
+        renderWizardOverageList();
+        wizardUpdateOverageTargets();
+    }
+
+    function wizardOverageListHtml() {
+        const items = [
+            ...wizardData.overageBudgets.orgs.map(b => ({ type: 'org', target: b.orgName, budget: b.budget, hardStop: b.hardStop })),
+            ...wizardData.overageBudgets.costCenters.map(b => ({ type: 'costcenter', target: b.ccName, budget: b.budget, hardStop: b.hardStop }))
+        ];
+        if (items.length === 0) return '<p class="help-text">No scoped overage budgets added yet.</p>';
+        return '<div class="wizard-entry-list">' + items.map(b =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
+                <strong>${escapeHtml(b.target)}</strong>
+                <span class="badge ${b.type === 'org' ? 'badge-info' : 'badge-warning'}" style="margin-left:6px">${b.type === 'org' ? 'Organization' : 'Cost Center'}</span>
+                <span style="margin-left:6px;font-size:0.875rem">$${b.budget} · ${b.hardStop ? 'hard stop' : 'soft stop'}</span>
+            </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOverageBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardOverageList() {
+        const el = document.getElementById('wizardOverageList');
+        if (el) el.innerHTML = wizardOverageListHtml();
+    }
+
+    function renderWizardStepOverageBudgets() {
+        const allOrgs = [...state.orgs.filter(o => o.budget === null).map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const orgOpts = allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        return `<h3>Step 6: Overage Budgets</h3>
+            <p class="help-text" style="margin-bottom:16px">Configure metered dollar budgets that cap $0.01/credit charges once the credit pool is exhausted.</p>
+            <div class="form-row" style="margin-bottom:16px">
+                <div class="form-group"><label>Enterprise metered budget ($)</label>
+                    <input type="number" id="wizardEntBudget" value="${wizardData.overageBudgets.enterpriseBudget}" min="0" step="50"></div>
+                <div class="form-group"><label>&nbsp;</label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="wizardEntHardStop" ${wizardData.overageBudgets.enterpriseHardStop ? 'checked' : ''}>
+                        Hard stop when exhausted
+                    </label></div>
+            </div>
+            <div class="section-divider"></div>
+            <h3 style="margin:0 0 8px">Add Scoped Overage Budget</h3>
+            <form onsubmit="event.preventDefault(); wizardAddOverageBudget()">
+                <div class="inline-form">
+                    <div class="form-group"><label>Type</label>
+                        <select id="wizardOverageType" onchange="wizardUpdateOverageTargets()">
+                            <option value="org">Organization</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select></div>
+                    <div class="form-group"><label>Target</label><select id="wizardOverageTarget">${orgOpts}</select></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wizardOverageValue" min="0" step="50" placeholder="e.g., 500"></div>
+                    <div class="form-group"><label>&nbsp;</label>
+                        <label class="checkbox-label"><input type="checkbox" id="wizardOverageHardStop" checked> Hard stop</label></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardOverageError"></div>
+            </form>
+            <div id="wizardOverageList">${wizardOverageListHtml()}</div>`;
+    }
+
+    // ─── Wizard Step 7: Review ────────────────────────────────────────────────────
+    function renderWizardStepReview() {
+        const sections = [];
+
+        if (wizardData.orgs.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>🏛️ Organizations (${wizardData.orgs.length})</h3>
+                ${wizardData.orgs.map(o => `<div class="wizard-review-item">${escapeHtml(o.name)}</div>`).join('')}</div>`);
+        }
+        if (wizardData.teams.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>👥 Enterprise Teams (${wizardData.teams.length})</h3>
+                ${wizardData.teams.map(t => `<div class="wizard-review-item">${escapeHtml(t.name)}</div>`).join('')}</div>`);
+        }
+        if (wizardData.costCenters.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>📂 Cost Centers (${wizardData.costCenters.length})</h3>
+                ${wizardData.costCenters.map(cc => {
+                    const parts = [];
+                    if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+                    if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+                    return `<div class="wizard-review-item"><strong>${escapeHtml(cc.name)}</strong>
+                        ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}</div>`;
+                }).join('')}</div>`);
+        }
+        if (wizardData.users.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>👤 Users (${wizardData.users.length})</h3>
+                ${wizardData.users.map(u => {
+                    const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                    return `<div class="wizard-review-item"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>`;
+                }).join('')}</div>`);
+        }
+        const ulbTotal = wizardData.userBudgets.individual.length + wizardData.userBudgets.costCenter.length;
+        const hasUniversal = wizardData.userBudgets.universalULB !== '' && wizardData.userBudgets.universalULB !== null;
+        if (hasUniversal || ulbTotal > 0) {
+            let ulbHtml = '';
+            if (hasUniversal) ulbHtml += `<div class="wizard-review-item"><strong>Universal:</strong> ${fmt(parseInt(wizardData.userBudgets.universalULB))} credits/user</div>`;
+            wizardData.userBudgets.costCenter.forEach(b => {
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (Cost Center): ${fmt(b.budget)} credits</div>`;
+            });
+            wizardData.userBudgets.individual.forEach(b => {
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.userName)}</strong> (Individual): ${fmt(b.budget)} credits</div>`;
+            });
+            sections.push(`<div class="wizard-review-section"><h3>💰 User-Level Budgets</h3>${ulbHtml}</div>`);
+        }
+        const entBudgetChanged = wizardData.overageBudgets.enterpriseBudget !== state.enterprise.enterpriseBudget
+            || wizardData.overageBudgets.enterpriseHardStop !== state.enterprise.enterpriseHardStop;
+        const hasOvBudgets = wizardData.overageBudgets.orgs.length > 0 || wizardData.overageBudgets.costCenters.length > 0;
+        if (entBudgetChanged || hasOvBudgets) {
+            let ovHtml = '';
+            if (entBudgetChanged) ovHtml += `<div class="wizard-review-item"><strong>Enterprise:</strong> $${wizardData.overageBudgets.enterpriseBudget} ${wizardData.overageBudgets.enterpriseHardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            wizardData.overageBudgets.orgs.forEach(b => {
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.orgName)}</strong> (Org): $${b.budget} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            });
+            wizardData.overageBudgets.costCenters.forEach(b => {
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (CC): $${b.budget} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            });
+            sections.push(`<div class="wizard-review-section"><h3>💳 Overage Budgets</h3>${ovHtml}</div>`);
+        }
+
+        if (sections.length === 0) {
+            return `<h3>Step 7: Review &amp; Confirm</h3>
+                <div class="empty-state" style="padding:32px">
+                    <p>Nothing to create yet.</p>
+                    <p style="margin-top:8px">Go back and add organizations, teams, cost centers, users, or budgets.</p>
+                </div>`;
+        }
+        return `<h3>Step 7: Review &amp; Confirm</h3>
+            <p class="help-text" style="margin-bottom:16px">Review everything that will be created. Go back to make changes, or click <strong>Confirm &amp; Create</strong> to commit.</p>
+            ${sections.join('')}`;
+    }
+
+    // ─── Wizard: Confirm & Create ─────────────────────────────────────────────────
+    function confirmWizard() {
+        if (wizardDone) return;
+        captureWizardStepValues(5);
+
+        const skipped = [];
+        let idSeq = 0;
+        const uid = () => `_w${Date.now()}${idSeq++}`;
+
+        // 1. Organizations
+        wizardData.orgs.forEach(o => {
+            if (state.orgs.some(e => e.name === o.name)) { skipped.push(`Organization "${o.name}" already exists — skipped.`); return; }
+            state.orgs.push({ id: 'org' + uid(), name: o.name, budget: null, budgetHardStop: true });
+        });
+
+        // 2. Teams
+        wizardData.teams.forEach(t => {
+            if (state.teams.some(e => e.name === t.name)) { skipped.push(`Team "${t.name}" already exists — skipped.`); return; }
+            state.teams.push({ id: 'team' + uid(), name: t.name });
+        });
+
+        // 3. Cost Centers
+        wizardData.costCenters.forEach(cc => {
+            if (state.costCenters.some(e => e.name === cc.name)) { skipped.push(`Cost center "${cc.name}" already exists — skipped.`); return; }
+            const teamIds = (cc.teamNames || []).map(n => { const t = state.teams.find(t => t.name === n); return t ? t.id : null; }).filter(Boolean);
+            const orgIds = (cc.orgNames || []).map(n => { const o = state.orgs.find(o => o.name === n); return o ? o.id : null; }).filter(Boolean);
+            state.costCenters.push({
+                id: 'cc' + uid(), name: cc.name, teamIds, orgIds, userIds: [],
+                teamId: teamIds[0] || null, poolEnabled: false, overagesAllowed: true,
+                budget: null, budgetHardStop: true, ulb: null
+            });
+        });
+
+        // 4. Users
+        wizardData.users.forEach(u => {
+            if (state.users.some(e => e.name === u.name)) { skipped.push(`User "${u.name}" already exists — skipped.`); return; }
+            const cc = u.ccName ? state.costCenters.find(c => c.name === u.ccName) : null;
+            const org = u.orgName ? state.orgs.find(o => o.name === u.orgName) : null;
+            const team = u.teamName ? state.teams.find(t => t.name === u.teamName) : null;
+            state.users.push({
+                id: 'user' + uid(), name: u.name,
+                costCenterId: cc ? cc.id : null,
+                orgId: org ? org.id : null,
+                teamId: team ? team.id : null,
+                license: u.license || 'business',
+                individualULB: null
+            });
+        });
+
+        // 5. User-level budgets
+        const ulbVal = wizardData.userBudgets.universalULB;
+        if (ulbVal !== '' && ulbVal !== null) {
+            const parsed = parseInt(ulbVal);
+            if (!isNaN(parsed) && parsed >= 0) state.enterprise.universalULB = parsed;
+        }
+        wizardData.userBudgets.individual.forEach(b => {
+            const user = state.users.find(u => u.name === b.userName);
+            if (user) user.individualULB = b.budget;
+            else skipped.push(`User "${b.userName}" not found for ULB — skipped.`);
+        });
+        wizardData.userBudgets.costCenter.forEach(b => {
+            const cc = state.costCenters.find(c => c.name === b.ccName);
+            if (cc) cc.ulb = b.budget;
+            else skipped.push(`Cost center "${b.ccName}" not found for ULB — skipped.`);
+        });
+
+        // 6. Overage budgets
+        state.enterprise.enterpriseBudget = wizardData.overageBudgets.enterpriseBudget;
+        state.enterprise.enterpriseHardStop = wizardData.overageBudgets.enterpriseHardStop;
+        wizardData.overageBudgets.orgs.forEach(b => {
+            const org = state.orgs.find(o => o.name === b.orgName);
+            if (org) { org.budget = b.budget; org.budgetHardStop = b.hardStop; }
+            else skipped.push(`Organization "${b.orgName}" not found for overage budget — skipped.`);
+        });
+        wizardData.overageBudgets.costCenters.forEach(b => {
+            const cc = state.costCenters.find(c => c.name === b.ccName);
+            if (cc) { cc.budget = b.budget; cc.budgetHardStop = b.hardStop; }
+            else skipped.push(`Cost center "${b.ccName}" not found for overage budget — skipped.`);
+        });
+
+        recalcAutoSeats();
+        saveState();
+        renderAll();
+
+        wizardDone = true;
+        const skippedHtml = skipped.length > 0
+            ? `<div style="margin-top:16px;background:rgba(210,153,34,0.1);border:1px solid var(--color-warning);border-radius:var(--radius);padding:12px;text-align:left">
+                <strong style="color:var(--color-warning)">⚠️ ${skipped.length} item(s) skipped (already existed):</strong>
+                <ul style="margin-top:6px;padding-left:18px;font-size:0.8rem">${skipped.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+               </div>`
+            : '';
+        const createdParts = [
+            wizardData.orgs.length > 0 && `${wizardData.orgs.length} organization(s)`,
+            wizardData.teams.length > 0 && `${wizardData.teams.length} team(s)`,
+            wizardData.costCenters.length > 0 && `${wizardData.costCenters.length} cost center(s)`,
+            wizardData.users.length > 0 && `${wizardData.users.length} user(s)`,
+            (wizardData.userBudgets.individual.length + wizardData.userBudgets.costCenter.length > 0) && 'user-level budgets',
+            (wizardData.overageBudgets.orgs.length + wizardData.overageBudgets.costCenters.length > 0) && 'overage budgets'
+        ].filter(Boolean);
+
+        document.getElementById('wizardBody').innerHTML = `
+            <div class="wizard-success">
+                <div class="wizard-success-icon">✅</div>
+                <h2 style="margin-bottom:8px">Setup Complete!</h2>
+                <p style="color:var(--color-text-muted);margin-bottom:16px">Your configuration has been created and saved.</p>
+                ${createdParts.length > 0 ? `<p style="font-size:0.875rem;margin-bottom:12px">Created: ${createdParts.join(', ')}.</p>` : ''}
+                <p class="help-text" style="max-width:440px;margin:0 auto">
+                    💡 <strong>Next steps:</strong> Use the <strong>Enterprise</strong> tab to enable AI credit pool reservations for your cost centers,
+                    then head to <strong>Simulate</strong> to model usage patterns and verify your budget setup.
+                </p>
+                ${skippedHtml}
+            </div>`;
+        renderWizardStepper();
+        renderWizardFooter();
     }
 
     renderAll();
