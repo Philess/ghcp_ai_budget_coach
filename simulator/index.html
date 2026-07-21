@@ -204,12 +204,40 @@
             .user-panel-summary { flex-direction: column; }
             .user-panel-summary-meta { justify-content: flex-start; }
         }
+
+        /* ── Import Wizard ─────────────────────────────────────────────────── */
+        .wizard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .wizard-modal { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        .wizard-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid var(--color-border); gap: 12px; }
+        .wizard-header h2 { font-size: 1.0625rem; font-weight: 600; }
+        .wizard-step-indicator { display: flex; align-items: center; padding: 14px 24px; border-bottom: 1px solid var(--color-border); gap: 4px; overflow-x: auto; }
+        .wiz-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 700; background: var(--color-bg); border: 2px solid var(--color-border); color: var(--color-text-muted); }
+        .wiz-dot.active { border-color: var(--color-accent); color: var(--color-accent); }
+        .wiz-dot.done { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+        .wiz-line { flex: 1; min-width: 16px; height: 2px; background: var(--color-border); }
+        .wiz-line.done { background: var(--color-success); }
+        .wizard-content { padding: 24px; flex: 1; overflow-y: auto; }
+        .wizard-footer { display: flex; gap: 8px; justify-content: space-between; align-items: center; padding: 14px 24px; border-top: 1px solid var(--color-border); flex-shrink: 0; }
+        .wiz-error { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.4); border-radius: 6px; padding: 10px 14px; color: var(--color-danger); margin-bottom: 14px; font-size: 0.8125rem; line-height: 1.5; }
+        .wiz-info { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.3); border-radius: 6px; padding: 10px 14px; color: var(--color-text); margin-bottom: 14px; font-size: 0.8125rem; line-height: 1.5; }
+        .wiz-success { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); border-radius: 6px; padding: 10px 14px; color: var(--color-success); margin-bottom: 14px; font-size: 0.8125rem; line-height: 1.5; }
+        .wiz-org-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: background 0.1s; }
+        .wiz-org-item:hover { background: var(--color-surface-raised); }
+        .wiz-spinner { display: inline-block; border: 3px solid var(--color-border); border-top-color: var(--color-accent); border-radius: 50%; animation: wiz-spin 0.75s linear infinite; }
+        @keyframes wiz-spin { to { transform: rotate(360deg); } }
+        .wiz-result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 16px 0; }
+        .wiz-result-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; padding: 16px; text-align: center; }
+        .wiz-result-value { font-size: 1.75rem; font-weight: 700; }
+        .wiz-result-label { font-size: 0.6875rem; color: var(--color-text-muted); text-transform: uppercase; margin-top: 4px; }
+        .wiz-review-section { margin-bottom: 20px; }
+        .wiz-review-section h3 { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; }
     </style>
 </head>
 <body>
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
+            <button onclick="openImportWizard()" aria-label="Open GitHub Enterprise Import Wizard">🔗 Import from GitHub</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -503,7 +531,7 @@
             </div>
 
             <div class="card">
-                <h2>🏊 Pool & Overage Simulation</h2>
+                <h2>🏊 Pool &amp; Overage Simulation</h2>
                 <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
                 <div class="form-row">
                     <div class="form-group">
@@ -515,6 +543,22 @@
             </div>
         </div>
     </main>
+
+    <!-- ═══════════════ IMPORT WIZARD MODAL ═══════════════ -->
+    <div id="wizardOverlay" class="wizard-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="wizardTitle">
+        <div class="wizard-modal">
+            <div class="wizard-header">
+                <div>
+                    <h2 id="wizardTitle">🔗 GitHub Enterprise Import Wizard</h2>
+                    <p class="help-text" style="margin-top: 2px">Import organizations, teams, and users from GitHub into the simulator</p>
+                </div>
+                <button onclick="closeImportWizard()" title="Close wizard" aria-label="Close wizard">✕</button>
+            </div>
+            <div id="wizardIndicator"></div>
+            <div id="wizardBody" class="wizard-content"></div>
+            <div id="wizardFooter" class="wizard-footer"></div>
+        </div>
+    </div>
 
     <script>
     // ─── State ───────────────────────────────────────────────────────────────────
@@ -1960,6 +2004,636 @@
         runAggregateSimulation();
         renderTabCounts();
         updateUserCreateMode();
+    }
+
+    // ─── Import Wizard ───────────────────────────────────────────────────────────
+    // WZ holds all wizard state. The PAT (WZ.token) is never written to localStorage
+    // and is cleared when the wizard closes, so it is session-only.
+    let _wzIdSeq = 0;
+    const WZ = {
+        step: 1,
+        token: '',
+        authUser: null,
+        availableOrgs: [],
+        selectedOrgLogins: new Set(),
+        fetchedOrgs: [],
+        fetchedTeams: [],
+        fetchedUsers: [],
+        defaultLicense: 'business',
+        conflictMode: 'skip',
+        fetchProgress: { done: 0, total: 0, message: '' },
+        fetchFailed: false,
+        importResult: null,
+        wizardErrors: [],
+    };
+
+    function openImportWizard() {
+        Object.assign(WZ, {
+            step: 1, token: '', authUser: null,
+            availableOrgs: [], selectedOrgLogins: new Set(),
+            fetchedOrgs: [], fetchedTeams: [], fetchedUsers: [],
+            defaultLicense: 'business', conflictMode: 'skip',
+            fetchProgress: { done: 0, total: 0, message: '' },
+            fetchFailed: false, importResult: null, wizardErrors: [],
+        });
+        document.getElementById('wizardOverlay').style.display = 'flex';
+        renderWizard();
+    }
+
+    function closeImportWizard() {
+        document.getElementById('wizardOverlay').style.display = 'none';
+        WZ.token = '';
+    }
+
+    // ── Rendering ──
+
+    const WZ_STEPS = ['Authenticate', 'Select Orgs', 'Fetch Data', 'Review', 'Complete'];
+
+    function renderWizard() {
+        renderWizardIndicator();
+        renderWizardBody();
+        renderWizardFooter();
+    }
+
+    function renderWizardIndicator() {
+        const el = document.getElementById('wizardIndicator');
+        let html = '<div class="wizard-step-indicator">';
+        WZ_STEPS.forEach((label, i) => {
+            const n = i + 1;
+            const done = n < WZ.step;
+            const active = n === WZ.step;
+            html += `<div class="wiz-dot ${done ? 'done' : active ? 'active' : ''}" title="${escapeHtml(label)}">${done ? '✓' : n}</div>`;
+            if (n < WZ_STEPS.length) html += `<div class="wiz-line ${done ? 'done' : ''}"></div>`;
+        });
+        html += `<span style="margin-left:10px;font-size:0.8125rem;color:var(--color-text-muted);white-space:nowrap">${escapeHtml(WZ_STEPS[WZ.step - 1])}</span>`;
+        html += '</div>';
+        el.innerHTML = html;
+    }
+
+    function renderWizardBody() {
+        const el = document.getElementById('wizardBody');
+        switch (WZ.step) {
+            case 1: el.innerHTML = wzStep1Html(); break;
+            case 2: el.innerHTML = wzStep2Html(); break;
+            case 3: el.innerHTML = wzStep3Html(); break;
+            case 4: el.innerHTML = wzStep4Html(); break;
+            case 5: el.innerHTML = wzStep5Html(); break;
+            default: el.innerHTML = '';
+        }
+    }
+
+    function renderWizardFooter() {
+        const el = document.getElementById('wizardFooter');
+        let left = '';
+        let right = '';
+        switch (WZ.step) {
+            case 1:
+                left = `<button onclick="closeImportWizard()">Cancel</button>`;
+                right = `<button class="btn-primary" onclick="wzConnectGitHub()">🔌 Connect to GitHub</button>`;
+                break;
+            case 2:
+                left = `<button onclick="wzGoStep(1)">← Back</button>`;
+                right = `<button class="btn-primary" onclick="wzStartFetch()">Fetch Selected →</button>`;
+                break;
+            case 3:
+                if (WZ.fetchFailed) {
+                    left = `<button onclick="wzGoStep(2)">← Back</button>`;
+                    right = `<button class="btn-primary" onclick="wzStartFetch()">🔄 Retry</button>`;
+                }
+                break;
+            case 4:
+                left = `<button onclick="wzGoStep(2)">← Back</button>`;
+                right = `<button class="btn-primary" onclick="wzApplyImport()">✅ Apply Import</button>`;
+                break;
+            case 5:
+                left = '';
+                right = `<button onclick="closeImportWizard()">Close</button>
+                    <button class="btn-primary" onclick="closeImportWizard(); document.querySelector('#mainNav button[data-panel=\\'enterprise\\']').click()">🏢 Go to Enterprise →</button>`;
+                break;
+        }
+        el.innerHTML = `<div>${left}</div><div style="display:flex;gap:8px">${right}</div>`;
+    }
+
+    // ── Step 1: Authenticate ──
+
+    function wzStep1Html() {
+        return `
+            <h3 style="margin-bottom:12px">Connect with GitHub</h3>
+            <p class="help-text" style="margin-bottom:14px">Enter a GitHub Personal Access Token (classic) with
+            <strong>read:org</strong> scope to import your organization structure.
+            Your token is used only during this wizard session and is never saved.</p>
+            <div class="wiz-info">
+                <strong>Required scope:</strong> <code>read:org</code> — grants read-only access to orgs, teams, and members.<br>
+                Generate one at <a href="https://github.com/settings/tokens/new?scopes=read:org&description=Copilot+Budget+Import" target="_blank" rel="noopener" style="color:var(--color-accent)">GitHub → Settings → Developer settings → Personal access tokens</a>.
+            </div>
+            ${WZ.wizardErrors.length ? `<div class="wiz-error">${WZ.wizardErrors.map(e => escapeHtml(e)).join('<br>')}</div>` : ''}
+            <div class="form-group">
+                <label>Personal Access Token</label>
+                <input type="password" id="wzTokenInput" placeholder="ghp_…"
+                    style="font-family:monospace" autocomplete="off"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();wzConnectGitHub()}">
+            </div>
+            ${WZ.authUser ? `<div class="wiz-success">✓ Authenticated as <strong>${escapeHtml(WZ.authUser.login)}</strong>${WZ.authUser.name ? ` (${escapeHtml(WZ.authUser.name)})` : ''}</div>` : ''}
+        `;
+    }
+
+    async function wzConnectGitHub() {
+        const input = document.getElementById('wzTokenInput');
+        const token = input ? input.value.trim() : '';
+        if (!token) {
+            WZ.wizardErrors = ['Please enter a Personal Access Token.'];
+            renderWizardBody();
+            return;
+        }
+        WZ.token = token;
+        WZ.wizardErrors = [];
+        document.getElementById('wizardFooter').innerHTML =
+            '<div></div><div><span class="wiz-spinner" style="width:16px;height:16px;vertical-align:middle;margin-right:8px"></span>' +
+            '<span style="font-size:0.875rem;color:var(--color-text-muted)">Connecting…</span></div>';
+
+        try {
+            const user = await wzApiGet('https://api.github.com/user', token);
+            WZ.authUser = user;
+            const orgs = await wzApiFetchAll('https://api.github.com/user/orgs', token);
+            WZ.availableOrgs = orgs;
+            WZ.selectedOrgLogins = new Set(orgs.map(o => o.login));
+            WZ.step = 2;
+            renderWizard();
+        } catch (err) {
+            WZ.wizardErrors = [err.message];
+            WZ.authUser = null;
+            renderWizard();
+        }
+    }
+
+    // ── Step 2: Select Orgs ──
+
+    function wzStep2Html() {
+        if (!WZ.availableOrgs.length) {
+            return `<div class="empty-state">
+                <p>No organizations found for this token.</p>
+                <p style="margin-top:8px;font-size:0.875rem">Ensure your token has <code>read:org</code> scope and you belong to at least one organization.</p>
+            </div>`;
+        }
+        const orgsHtml = WZ.availableOrgs.map(org => {
+            const checked = WZ.selectedOrgLogins.has(org.login);
+            return `<label class="wiz-org-item">
+                <input type="checkbox" ${checked ? 'checked' : ''} onchange="wzToggleOrg('${escapeInlineArg(org.login)}', this.checked)">
+                <div style="min-width:0">
+                    <div style="font-weight:500;font-size:0.875rem">${escapeHtml(org.login)}</div>
+                    ${org.description ? `<div class="help-text" style="margin:0">${escapeHtml(org.description.slice(0, 100))}</div>` : ''}
+                </div>
+            </label>`;
+        }).join('');
+
+        return `
+            <h3 style="margin-bottom:12px">Select Organizations to Import</h3>
+            <p class="help-text" style="margin-bottom:14px">Select which GitHub organizations to import.
+            Teams and members from the selected organizations will be fetched.</p>
+            ${WZ.wizardErrors.length ? `<div class="wiz-error">${WZ.wizardErrors.map(e => escapeHtml(e)).join('<br>')}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <button class="btn-sm" onclick="wzSelectAll()">Select All</button>
+                <button class="btn-sm" onclick="wzSelectNone()">Select None</button>
+            </div>
+            ${orgsHtml}
+            <p class="help-text" style="margin-top:8px" id="wzOrgSelCount">${WZ.selectedOrgLogins.size} of ${WZ.availableOrgs.length} selected</p>
+        `;
+    }
+
+    function wzToggleOrg(login, checked) {
+        if (checked) WZ.selectedOrgLogins.add(login);
+        else WZ.selectedOrgLogins.delete(login);
+        const countEl = document.getElementById('wzOrgSelCount');
+        if (countEl) countEl.textContent = `${WZ.selectedOrgLogins.size} of ${WZ.availableOrgs.length} selected`;
+    }
+
+    function wzSelectAll() { WZ.selectedOrgLogins = new Set(WZ.availableOrgs.map(o => o.login)); renderWizardBody(); }
+    function wzSelectNone() { WZ.selectedOrgLogins = new Set(); renderWizardBody(); }
+
+    // ── Step 3: Fetch Data ──
+
+    function wzStep3Html() {
+        const { done, total, message } = WZ.fetchProgress;
+        const pct = total > 0 ? Math.min(100, Math.round(done / total * 100)) : 0;
+        if (WZ.fetchFailed) {
+            return `
+                <h3 style="margin-bottom:12px">Fetch Failed</h3>
+                <div class="wiz-error">${WZ.wizardErrors.map(e => escapeHtml(e)).join('<br>')}</div>
+                <p class="help-text">Use ← Back to adjust your selection, or Retry to attempt the fetch again.</p>
+            `;
+        }
+        return `
+            <h3 style="margin-bottom:12px">Fetching Data from GitHub</h3>
+            <div style="text-align:center;padding:32px 0">
+                <div class="wiz-spinner" style="width:32px;height:32px;margin:0 auto 16px"></div>
+                <p class="help-text">${escapeHtml(message || 'Initializing…')}</p>
+                ${total > 0 ? `<div class="progress-bar" style="margin:12px auto;max-width:320px">
+                    <div class="progress-fill" style="width:${pct}%;background:var(--color-accent)"></div>
+                </div>
+                <p class="help-text">${done} / ${total} tasks complete</p>` : ''}
+            </div>
+            ${WZ.wizardErrors.length ? `<div class="wiz-error" style="margin-top:8px"><strong>Non-fatal warnings (import will continue):</strong><br>${WZ.wizardErrors.map(e => escapeHtml(e)).join('<br>')}</div>` : ''}
+        `;
+    }
+
+    function wzGoStep(n) {
+        WZ.wizardErrors = [];
+        if (n === 2) {
+            WZ.fetchedOrgs = [];
+            WZ.fetchedTeams = [];
+            WZ.fetchedUsers = [];
+            WZ.fetchFailed = false;
+        }
+        WZ.step = n;
+        renderWizard();
+    }
+
+    async function wzStartFetch() {
+        if (WZ.selectedOrgLogins.size === 0) {
+            WZ.wizardErrors = ['Please select at least one organization.'];
+            renderWizardBody();
+            return;
+        }
+        WZ.wizardErrors = [];
+        WZ.fetchFailed = false;
+        WZ.fetchedOrgs = [];
+        WZ.fetchedTeams = [];
+        WZ.fetchedUsers = [];
+        WZ.step = 3;
+        renderWizard();
+
+        const userMap = new Map();
+        const selectedOrgs = WZ.availableOrgs.filter(o => WZ.selectedOrgLogins.has(o.login));
+        WZ.fetchProgress = { done: 0, total: selectedOrgs.length, message: 'Starting…' };
+
+        try {
+            for (const org of selectedOrgs) {
+                WZ.fetchProgress.message = `Fetching teams for ${org.login}…`;
+                renderWizardBody();
+
+                let teams = [];
+                try {
+                    teams = await wzApiFetchAll(
+                        `https://api.github.com/orgs/${encodeURIComponent(org.login)}/teams`, WZ.token);
+                } catch (err) {
+                    WZ.wizardErrors.push(`⚠ ${org.login} — teams: ${err.message}`);
+                    renderWizardBody();
+                }
+
+                // Expand total now that we know how many teams + 1 org-members call this org needs
+                WZ.fetchProgress.total += teams.length + 1;
+                WZ.fetchedOrgs.push({ login: org.login });
+
+                for (const team of teams) {
+                    WZ.fetchProgress.message = `Fetching members: ${org.login} / ${team.slug}…`;
+                    renderWizardBody();
+                    try {
+                        const members = await wzApiFetchAll(
+                            `https://api.github.com/orgs/${encodeURIComponent(org.login)}/teams/${encodeURIComponent(team.slug)}/members`,
+                            WZ.token);
+                        const memberLogins = members.map(m => m.login);
+                        members.forEach(m => {
+                            if (!userMap.has(m.login)) userMap.set(m.login, { login: m.login, orgs: [], teams: [] });
+                            const u = userMap.get(m.login);
+                            if (!u.orgs.includes(org.login)) u.orgs.push(org.login);
+                            if (!u.teams.includes(team.name)) u.teams.push(team.name);
+                        });
+                        WZ.fetchedTeams.push({ orgLogin: org.login, slug: team.slug, name: team.name, memberLogins });
+                    } catch (err) {
+                        WZ.wizardErrors.push(`⚠ ${team.name} members: ${err.message}`);
+                        WZ.fetchedTeams.push({ orgLogin: org.login, slug: team.slug, name: team.name, memberLogins: [] });
+                    }
+                    WZ.fetchProgress.done++;
+                    renderWizardBody();
+                }
+
+                // Fetch org-level members (captures members not on any team)
+                WZ.fetchProgress.message = `Fetching org members: ${org.login}…`;
+                renderWizardBody();
+                try {
+                    const members = await wzApiFetchAll(
+                        `https://api.github.com/orgs/${encodeURIComponent(org.login)}/members`, WZ.token);
+                    members.forEach(m => {
+                        if (!userMap.has(m.login)) userMap.set(m.login, { login: m.login, orgs: [], teams: [] });
+                        const u = userMap.get(m.login);
+                        if (!u.orgs.includes(org.login)) u.orgs.push(org.login);
+                    });
+                } catch (err) {
+                    WZ.wizardErrors.push(`⚠ ${org.login} org members: ${err.message}`);
+                }
+                WZ.fetchProgress.done += 2; // teams-list fetch + org-members fetch
+                renderWizardBody();
+            }
+        } catch (err) {
+            WZ.wizardErrors.push(`Fatal error: ${err.message}`);
+            WZ.fetchFailed = true;
+            renderWizard();
+            return;
+        }
+
+        WZ.fetchedUsers = Array.from(userMap.values());
+        WZ.fetchProgress.message = 'Done!';
+        renderWizardBody();
+
+        await new Promise(r => setTimeout(r, 600));
+        WZ.step = 4;
+        renderWizard();
+    }
+
+    // ── Step 4: Review ──
+
+    function wzStep4Html() {
+        const existOrgNames  = new Set(state.orgs.map(o => o.name));
+        const existTeamNames = new Set(state.teams.map(t => t.name));
+        const existUserNames = new Set(state.users.map(u => u.name));
+
+        const newOrgs   = WZ.fetchedOrgs.filter(o => !existOrgNames.has(o.login));
+        const existOrgs = WZ.fetchedOrgs.filter(o =>  existOrgNames.has(o.login));
+        const newTeams   = WZ.fetchedTeams.filter(t => !existTeamNames.has(t.name));
+        const existTeams = WZ.fetchedTeams.filter(t =>  existTeamNames.has(t.name));
+        const newUsers   = WZ.fetchedUsers.filter(u => !existUserNames.has(u.login));
+        const existUsers = WZ.fetchedUsers.filter(u =>  existUserNames.has(u.login));
+        const conflicts  = existOrgs.length + existTeams.length + existUsers.length;
+
+        const displayUsers = WZ.fetchedUsers.slice(0, 30);
+        const moreUsers = WZ.fetchedUsers.length - displayUsers.length;
+
+        return `
+            <h3 style="margin-bottom:12px">Review &amp; Edit Import Data</h3>
+            <div class="wiz-info">
+                <strong>Ready to import:</strong>
+                ${WZ.fetchedOrgs.length} organization(s) · ${WZ.fetchedTeams.length} team(s) · ${WZ.fetchedUsers.length} user(s)
+                ${conflicts > 0 ? `<br><strong>Conflicts:</strong> ${conflicts} item(s) already exist in the simulator — configure handling below.` : ''}
+            </div>
+            ${WZ.wizardErrors.length ? `<div class="wiz-error"><strong>Warnings from fetch:</strong><br>${WZ.wizardErrors.map(e => escapeHtml(e)).join('<br>')}</div>` : ''}
+
+            <div class="form-row" style="margin-bottom:16px">
+                <div class="form-group">
+                    <label>Default License for Imported Users</label>
+                    <select id="wzLicenseSel" onchange="WZ.defaultLicense=this.value">
+                        <option value="business" ${WZ.defaultLicense === 'business' ? 'selected' : ''}>Business (3,000 credits/seat/mo)</option>
+                        <option value="enterprise" ${WZ.defaultLicense === 'enterprise' ? 'selected' : ''}>Enterprise (7,000 credits/seat/mo)</option>
+                    </select>
+                </div>
+                ${conflicts > 0 ? `<div class="form-group">
+                    <label>Conflict Handling</label>
+                    <select id="wzConflictSel" onchange="WZ.conflictMode=this.value">
+                        <option value="skip"   ${WZ.conflictMode !== 'update' ? 'selected' : ''}>Skip existing (keep current data)</option>
+                        <option value="update" ${WZ.conflictMode === 'update' ? 'selected' : ''}>Update existing (overwrite org &amp; team assignments)</option>
+                    </select>
+                    <p class="help-text">Applies to orgs, teams, and users that already exist.</p>
+                </div>` : ''}
+            </div>
+
+            <div class="wiz-review-section">
+                <h3>🏛️ Organizations
+                    <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.8125rem">
+                        <span style="color:var(--color-success)">${newOrgs.length} new</span>
+                        ${existOrgs.length ? ` &bull; <span style="color:var(--color-warning)">${existOrgs.length} existing</span>` : ''}
+                    </span>
+                </h3>
+                ${WZ.fetchedOrgs.length ? `<table><thead><tr><th>Organization</th><th>Status</th></tr></thead><tbody>
+                    ${WZ.fetchedOrgs.map(o => `<tr>
+                        <td>${escapeHtml(o.login)}</td>
+                        <td>${existOrgNames.has(o.login) ? '<span class="badge badge-warning">Exists</span>' : '<span class="badge badge-success">New</span>'}</td>
+                    </tr>`).join('')}
+                </tbody></table>` : '<p class="help-text">No organizations to import.</p>'}
+            </div>
+
+            <div class="wiz-review-section">
+                <h3>👥 Teams
+                    <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.8125rem">
+                        <span style="color:var(--color-success)">${newTeams.length} new</span>
+                        ${existTeams.length ? ` &bull; <span style="color:var(--color-warning)">${existTeams.length} existing</span>` : ''}
+                    </span>
+                </h3>
+                ${WZ.fetchedTeams.length ? `<table><thead><tr><th>Team</th><th>Org</th><th>Members</th><th>Status</th></tr></thead><tbody>
+                    ${WZ.fetchedTeams.map(t => `<tr>
+                        <td>${escapeHtml(t.name)}</td>
+                        <td>${escapeHtml(t.orgLogin)}</td>
+                        <td>${t.memberLogins.length}</td>
+                        <td>${existTeamNames.has(t.name) ? '<span class="badge badge-warning">Exists</span>' : '<span class="badge badge-success">New</span>'}</td>
+                    </tr>`).join('')}
+                </tbody></table>` : '<p class="help-text">No teams to import.</p>'}
+            </div>
+
+            <div class="wiz-review-section">
+                <h3>🧑‍💻 Users
+                    <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.8125rem">
+                        <span style="color:var(--color-success)">${newUsers.length} new</span>
+                        ${existUsers.length ? ` &bull; <span style="color:var(--color-warning)">${existUsers.length} existing</span>` : ''}
+                    </span>
+                </h3>
+                ${WZ.fetchedUsers.length ? `${moreUsers > 0 ? `<p class="help-text" style="margin-bottom:6px">Showing first ${displayUsers.length} of ${WZ.fetchedUsers.length} users.</p>` : ''}
+                <table><thead><tr><th>Username</th><th>Orgs</th><th>Teams</th><th>Status</th></tr></thead><tbody>
+                    ${displayUsers.map(u => `<tr>
+                        <td>${escapeHtml(u.login)}</td>
+                        <td style="font-size:0.75rem">${u.orgs.map(o => escapeHtml(o)).join(', ') || '—'}</td>
+                        <td style="font-size:0.75rem">${(u.teams.slice(0, 3).map(t => escapeHtml(t)).join(', ') + (u.teams.length > 3 ? ` +${u.teams.length - 3}` : ''))}</td>
+                        <td>${existUserNames.has(u.login) ? '<span class="badge badge-warning">Exists</span>' : '<span class="badge badge-success">New</span>'}</td>
+                    </tr>`).join('')}
+                    ${moreUsers > 0 ? `<tr><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:12px">… and ${moreUsers} more user(s)</td></tr>` : ''}
+                </tbody></table>` : '<p class="help-text">No users to import.</p>'}
+            </div>
+        `;
+    }
+
+    // ── Step 5: Apply Import & Results ──
+
+    function wzApplyImport() {
+        WZ.wizardErrors = [];
+        let created = 0, updated = 0, skipped = 0, failed = 0;
+        const errors = [];
+        const details = { orgsCreated: 0, teamsCreated: 0, usersCreated: 0 };
+
+        try {
+            // Capture selector values before we leave the DOM
+            const licSel = document.getElementById('wzLicenseSel');
+            if (licSel) WZ.defaultLicense = licSel.value;
+            const conflictSel = document.getElementById('wzConflictSel');
+            if (conflictSel) WZ.conflictMode = conflictSel.value;
+
+            const orgIdMap = {};
+            for (const fo of WZ.fetchedOrgs) {
+                const ex = state.orgs.find(o => o.name === fo.login);
+                if (ex) {
+                    orgIdMap[fo.login] = ex.id;
+                    if (WZ.conflictMode === 'update') updated++; else skipped++;
+                } else {
+                    const id = 'org_imp_' + (++_wzIdSeq);
+                    state.orgs.push({ id, name: fo.login, budget: null, budgetHardStop: true });
+                    orgIdMap[fo.login] = id;
+                    created++; details.orgsCreated++;
+                }
+            }
+
+            const teamIdMap = {};
+            for (const ft of WZ.fetchedTeams) {
+                const ex = state.teams.find(t => t.name === ft.name);
+                if (ex) {
+                    teamIdMap[ft.name] = ex.id;
+                    if (WZ.conflictMode === 'update') updated++; else skipped++;
+                } else {
+                    const id = 'team_imp_' + (++_wzIdSeq);
+                    state.teams.push({ id, name: ft.name });
+                    teamIdMap[ft.name] = id;
+                    created++; details.teamsCreated++;
+                }
+            }
+
+            for (const fu of WZ.fetchedUsers) {
+                // Assign the first org and first team the user belongs to.
+                // A user's additional memberships are visible in the review step
+                // but the simulator's user model supports a single org/team assignment.
+                const orgId  = fu.orgs.length  > 0 ? (orgIdMap[fu.orgs[0]]   || null) : null;
+                const teamId = fu.teams.length > 0 ? (teamIdMap[fu.teams[0]] || null) : null;
+                const ex = state.users.find(u => u.name === fu.login);
+                if (ex) {
+                    if (WZ.conflictMode === 'update') {
+                        if (orgId)  ex.orgId  = orgId;
+                        if (teamId) ex.teamId = teamId;
+                        updated++;
+                    } else { skipped++; }
+                } else {
+                    state.users.push({
+                        id: 'user_imp_' + (++_wzIdSeq),
+                        name: fu.login,
+                        costCenterId: null,
+                        orgId,
+                        teamId,
+                        license: WZ.defaultLicense,
+                        individualULB: null
+                    });
+                    created++; details.usersCreated++;
+                }
+            }
+
+            saveState();
+            renderAll();
+        } catch (err) {
+            failed++;
+            errors.push(err.message);
+        }
+
+        WZ.importResult = { created, updated, skipped, failed, errors, details };
+        WZ.step = 5;
+        renderWizard();
+    }
+
+    function wzStep5Html() {
+        const r = WZ.importResult;
+        if (!r) return '';
+        const hasErrors = r.failed > 0 || r.errors.length > 0;
+        return `
+            <div style="text-align:center;margin-bottom:20px">
+                <div style="font-size:2.5rem;margin-bottom:8px">${hasErrors ? '⚠️' : '✅'}</div>
+                <h3 style="font-size:1.0625rem;margin-bottom:4px">${hasErrors ? 'Import Completed with Warnings' : 'Import Completed Successfully'}</h3>
+                <p class="help-text">GitHub organization data has been imported into the simulator.</p>
+            </div>
+            <div class="wiz-result-grid">
+                <div class="wiz-result-card">
+                    <div class="wiz-result-value" style="color:var(--color-success)">${r.created}</div>
+                    <div class="wiz-result-label">Created</div>
+                </div>
+                <div class="wiz-result-card">
+                    <div class="wiz-result-value" style="color:var(--color-accent)">${r.updated}</div>
+                    <div class="wiz-result-label">Updated</div>
+                </div>
+                <div class="wiz-result-card">
+                    <div class="wiz-result-value" style="color:var(--color-text-muted)">${r.skipped}</div>
+                    <div class="wiz-result-label">Skipped</div>
+                </div>
+                <div class="wiz-result-card">
+                    <div class="wiz-result-value" style="color:var(--color-danger)">${r.failed}</div>
+                    <div class="wiz-result-label">Failed</div>
+                </div>
+            </div>
+            <p class="help-text" style="margin-bottom:14px">
+                ${r.details.orgsCreated} org(s) &bull; ${r.details.teamsCreated} team(s) &bull; ${r.details.usersCreated} user(s) created
+            </p>
+            ${r.errors.length ? `<div class="wiz-error" style="max-height:100px;overflow-y:auto">
+                <strong>Errors:</strong><br>${r.errors.map(e => escapeHtml(e)).join('<br>')}
+            </div>` : ''}
+            <div class="wiz-success">
+                <strong>✨ Next Steps</strong>
+                <ul style="margin-top:8px;padding-left:20px;font-size:0.875rem;line-height:1.8">
+                    <li>Create <strong>Cost Centers</strong> on the Cost Centers tab and assign the imported orgs / teams</li>
+                    <li>Enable AI credit pool reservations per cost center on the <strong>Enterprise</strong> tab</li>
+                    <li>Configure user-level and overage <strong>Budgets</strong> on the Budgets tab</li>
+                    <li>Run a usage <strong>Simulation</strong> to validate the configuration</li>
+                </ul>
+            </div>
+        `;
+    }
+
+    // ── GitHub API helpers ──
+
+    async function wzApiGet(url, token) {
+        const resp = await fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
+        if (resp.status === 401) throw new Error('Authentication failed — check your Personal Access Token.');
+        if (resp.status === 403) {
+            if (resp.headers.get('X-RateLimit-Remaining') === '0') {
+                const reset = resp.headers.get('X-RateLimit-Reset');
+                const t = reset ? new Date(parseInt(reset) * 1000).toLocaleTimeString() : 'soon';
+                throw new Error(`GitHub API rate limit reached. Limit resets at ${t}. Please wait and retry.`);
+            }
+            throw new Error('Access forbidden (403). Ensure your token has the read:org scope.');
+        }
+        if (resp.status === 429) {
+            const reset = resp.headers.get('X-RateLimit-Reset') || resp.headers.get('Retry-After');
+            const t = reset ? new Date(parseInt(reset) * 1000).toLocaleTimeString() : 'soon';
+            throw new Error(`GitHub API rate limit reached. Limit resets at ${t}. Please wait and retry.`);
+        }
+        if (!resp.ok) throw new Error(`GitHub API error ${resp.status}: ${resp.statusText}`);
+        return resp.json();
+    }
+
+    async function wzApiFetchAll(url, token) {
+        const results = [];
+        const sep = url.includes('?') ? '&' : '?';
+        let next = url + sep + 'per_page=100';
+        while (next) {
+            const resp = await fetch(next, {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            });
+            if (resp.status === 401) throw new Error('Authentication failed — check your Personal Access Token.');
+            if (resp.status === 403) {
+                if (resp.headers.get('X-RateLimit-Remaining') === '0') {
+                    const reset = resp.headers.get('X-RateLimit-Reset');
+                    const t = reset ? new Date(parseInt(reset) * 1000).toLocaleTimeString() : 'soon';
+                    throw new Error(`GitHub API rate limit reached. Limit resets at ${t}. Please wait and retry.`);
+                }
+                // Resource inaccessible (private or insufficient scope) — surface as warning and return empty
+                WZ.wizardErrors.push(`⚠ Access denied (403) for ${next} — resource may be private or token scope is insufficient.`);
+                return [];
+            }
+            if (resp.status === 429) {
+                const reset = resp.headers.get('X-RateLimit-Reset') || resp.headers.get('Retry-After');
+                const t = reset ? new Date(parseInt(reset) * 1000).toLocaleTimeString() : 'soon';
+                throw new Error(`GitHub API rate limit reached. Limit resets at ${t}. Please wait and retry.`);
+            }
+            if (resp.status === 404) return []; // Not found — return empty gracefully
+            if (!resp.ok) throw new Error(`GitHub API error ${resp.status}`);
+            const data = await resp.json();
+            if (Array.isArray(data)) results.push(...data);
+            const link = resp.headers.get('Link');
+            next = null;
+            if (link) {
+                const m = link.match(/<([^>]+)>;\s*rel="next"/);
+                if (m) next = m[1];
+            }
+        }
+        return results;
     }
 
     renderAll();
