@@ -237,7 +237,7 @@
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
-            <button onclick="openImportWizard()">🔗 Import from GitHub</button>
+            <button onclick="openImportWizard()" aria-label="Open GitHub Enterprise Import Wizard">🔗 Import from GitHub</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -2371,7 +2371,7 @@
                 <div class="form-group">
                     <label>Default License for Imported Users</label>
                     <select id="wzLicenseSel" onchange="WZ.defaultLicense=this.value">
-                        <option value="business" ${WZ.defaultLicense !== 'enterprise' ? 'selected' : ''}>Business (3,000 credits/seat/mo)</option>
+                        <option value="business" ${WZ.defaultLicense === 'business' ? 'selected' : ''}>Business (3,000 credits/seat/mo)</option>
                         <option value="enterprise" ${WZ.defaultLicense === 'enterprise' ? 'selected' : ''}>Enterprise (7,000 credits/seat/mo)</option>
                     </select>
                 </div>
@@ -2460,7 +2460,7 @@
                     orgIdMap[fo.login] = ex.id;
                     if (WZ.conflictMode === 'update') updated++; else skipped++;
                 } else {
-                    const id = `org_imp_${Date.now()}_${++_wzIdSeq}`;
+                    const id = 'org_imp_' + (++_wzIdSeq);
                     state.orgs.push({ id, name: fo.login, budget: null, budgetHardStop: true });
                     orgIdMap[fo.login] = id;
                     created++; details.orgsCreated++;
@@ -2474,7 +2474,7 @@
                     teamIdMap[ft.name] = ex.id;
                     if (WZ.conflictMode === 'update') updated++; else skipped++;
                 } else {
-                    const id = `team_imp_${Date.now()}_${++_wzIdSeq}`;
+                    const id = 'team_imp_' + (++_wzIdSeq);
                     state.teams.push({ id, name: ft.name });
                     teamIdMap[ft.name] = id;
                     created++; details.teamsCreated++;
@@ -2482,6 +2482,9 @@
             }
 
             for (const fu of WZ.fetchedUsers) {
+                // Assign the first org and first team the user belongs to.
+                // A user's additional memberships are visible in the review step
+                // but the simulator's user model supports a single org/team assignment.
                 const orgId  = fu.orgs.length  > 0 ? (orgIdMap[fu.orgs[0]]   || null) : null;
                 const teamId = fu.teams.length > 0 ? (teamIdMap[fu.teams[0]] || null) : null;
                 const ex = state.users.find(u => u.name === fu.login);
@@ -2493,7 +2496,7 @@
                     } else { skipped++; }
                 } else {
                     state.users.push({
-                        id: `user_imp_${Date.now()}_${++_wzIdSeq}`,
+                        id: 'user_imp_' + (++_wzIdSeq),
                         name: fu.login,
                         costCenterId: null,
                         orgId,
@@ -2610,7 +2613,9 @@
                     const t = reset ? new Date(parseInt(reset) * 1000).toLocaleTimeString() : 'soon';
                     throw new Error(`GitHub API rate limit reached. Limit resets at ${t}. Please wait and retry.`);
                 }
-                return []; // Private resource the token cannot access — return empty gracefully
+                // Resource inaccessible (private or insufficient scope) — surface as warning and return empty
+                WZ.wizardErrors.push(`⚠ Access denied (403) for ${next} — resource may be private or token scope is insufficient.`);
+                return [];
             }
             if (resp.status === 429) {
                 const reset = resp.headers.get('X-RateLimit-Reset') || resp.headers.get('Retry-After');
