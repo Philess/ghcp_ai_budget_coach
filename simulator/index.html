@@ -2170,6 +2170,12 @@
         { label: 'Review' }
     ];
 
+    const MAX_BULK_USER_COUNT = 500;
+
+    function escapeRegexPattern(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     let wizardStep = 0;
     let wizardDone = false;
     let wizardData = null;
@@ -2491,10 +2497,10 @@
         if (mode === 'bulk') {
             const count = parseInt(document.getElementById('wizardBulkCount').value) || 0;
             const prefix = document.getElementById('wizardBulkPrefix').value.trim() || 'user';
-            if (count <= 0 || count > 500) { errEl.textContent = 'Enter a number between 1 and 500.'; return; }
-            const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (count <= 0 || count > MAX_BULK_USER_COUNT) { errEl.textContent = `Enter a number between 1 and ${MAX_BULK_USER_COUNT}.`; return; }
+            const prefixPattern = new RegExp(`^${escapeRegexPattern(prefix)}-(\\d+)$`);
             const existingNums = [...state.users, ...wizardData.users]
-                .map(u => { const m = u.name.match(new RegExp(`^${escapedPrefix}-(\\d+)$`)); return m ? parseInt(m[1]) : 0; })
+                .map(u => { const m = u.name.match(prefixPattern); return m ? parseInt(m[1]) : 0; })
                 .filter(n => n > 0);
             let nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
             for (let i = 0; i < count; i++) {
@@ -2874,7 +2880,7 @@
 
         const skipped = [];
         let idSeq = 0;
-        const uid = () => `_w${Date.now()}${idSeq++}`;
+        const uid = () => `_w${Date.now()}${idSeq++}_${Math.random().toString(36).slice(2, 7)}`;
 
         // 1. Organizations
         wizardData.orgs.forEach(o => {
