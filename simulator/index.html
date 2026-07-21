@@ -164,6 +164,7 @@
 
         .simulation-usage-input { display: flex; align-items: center; gap: 8px; }
         .simulation-usage-input input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
+        .simulation-usage-input input[type="number"] { width: 120px; }
         .simulation-global-controls { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
         .simulation-global-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .simulation-global-metrics { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--color-text-muted); }
@@ -495,6 +496,7 @@
                     <div style="margin-top: 16px; display: flex; gap: 8px;">
                         <button type="button" onclick="resetUsage()">Reset Usage</button>
                     </div>
+                    <p class="help-text">Simulation results update automatically when values change.</p>
                 </form>
             </div>
 
@@ -1774,7 +1776,7 @@
     function formatSimulationPercent(value) {
         const parsed = parseFloat(value);
         if (!Number.isFinite(parsed)) return '0.0';
-        return parsed.toFixed(1);
+        return Math.max(0, parsed).toFixed(1);
     }
 
     function getGlobalUsagePercent() {
@@ -1945,7 +1947,7 @@
                 <div class="simulation-global-slider">
                     <input type="range" id="globalUsageRange" min="0" max="${getGlobalUsageSliderMax(globalPercent)}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
                     <div class="simulation-global-slider-controls">
-                        <input type="number" id="globalUsageValue" min="0" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
+                        <input type="number" id="globalUsageValue" min="0" max="10000" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
                         <span>%</span>
                     </div>
                 </div>
@@ -1963,7 +1965,7 @@
                         <input type="range" min="0" max="${max}" value="${usage}"
                             data-role="range"
                             oninput="handleUserUsageSliderChange('${escapeInlineArg(user.id)}', this.value)">
-                        <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}" style="width:120px"
+                        <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}"
                             data-role="number"
                             oninput="handleUserUsageNumberInputChange('${escapeInlineArg(user.id)}', this.value)">
                     </div>
