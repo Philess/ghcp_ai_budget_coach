@@ -164,13 +164,16 @@
 
         .simulation-usage-input { display: flex; align-items: center; gap: 8px; }
         .simulation-usage-input input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
-        .simulation-usage-input .usage-value { min-width: 70px; text-align: right; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
         .simulation-global-controls { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
         .simulation-global-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .simulation-global-metrics { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--color-text-muted); }
         .simulation-global-slider { display: flex; align-items: center; gap: 12px; }
         .simulation-global-slider input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
-        .simulation-global-value { min-width: 72px; text-align: right; font-size: 0.9375rem; font-weight: 600; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+        .simulation-global-slider-controls { display: flex; align-items: center; gap: 8px; min-width: 132px; }
+        .simulation-global-slider-controls input[type="number"] { width: 92px; text-align: right; }
+        .simulation-unit-switch { display: flex; align-items: center; gap: 8px; }
+        .simulation-unit-switch label { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
+        .simulation-unit-switch select { min-width: 120px; }
 
         .user-panel-list { display: flex; flex-direction: column; gap: 12px; }
         .user-panel { border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-bg); overflow: hidden; }
@@ -200,7 +203,7 @@
             main { padding: 16px; }
             .form-row { grid-template-columns: 1fr; }
             .simulation-global-slider { flex-direction: column; align-items: stretch; }
-            .simulation-global-value { text-align: left; min-width: 0; }
+            .simulation-global-slider-controls { min-width: 0; }
             .user-panel-summary { flex-direction: column; }
             .user-panel-summary-meta { justify-content: flex-start; }
         }
@@ -490,7 +493,6 @@
                     <div id="simulationGlobalControls"></div>
                     <div id="simulationInputs"></div>
                     <div style="margin-top: 16px; display: flex; gap: 8px;">
-                        <button type="submit" class="btn-primary">▶️ Run Simulation</button>
                         <button type="button" onclick="resetUsage()">Reset Usage</button>
                     </div>
                 </form>
@@ -507,7 +509,7 @@
                 <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Total Credits Consumed (all users combined)</label>
+                        <label id="aggregateUsageLabel">Total AI Credits Consumed (all users combined)</label>
                         <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
                     </div>
                 </div>
@@ -534,7 +536,8 @@
             orgs: [],
             costCenters: [],
             users: [],
-            usage: {}
+            usage: {},
+            simulationUnit: 'credits'
         };
     }
 
@@ -1569,7 +1572,7 @@
         const ulb = getEffectiveULB(user);
         if (ulb.value !== null && userUsage > ulb.value) {
             result.status = 'blocked';
-            result.reason = `ULB exceeded (${fmt(ulb.value)} limit via ${ulb.source})`;
+            result.reason = `ULB exceeded (${formatSimulationCredits(ulb.value)} limit via ${ulb.source})`;
             result.ulbRemaining = 0;
             return result;
         }
@@ -1616,7 +1619,7 @@
                 const affordable = meteredCreditsFromBudget(ccRemaining);
                 if (affordable <= 0 && cc.budgetHardStop) {
                     result.status = 'blocked';
-                    result.reason = `CC budget exhausted ($${cc.budget}, ${cc.name})`;
+                    result.reason = `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`;
                     return result;
                 }
                 if (remaining > affordable && cc.budgetHardStop) remaining = Math.max(0, affordable);
@@ -1630,7 +1633,7 @@
                 const affordable = meteredCreditsFromBudget(orgRemaining);
                 if (affordable <= 0 && org.budgetHardStop) {
                     result.status = 'blocked';
-                    result.reason = `Org budget exhausted ($${org.budget}, ${org.name})`;
+                    result.reason = `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`;
                     return result;
                 }
                 if (remaining > affordable && org.budgetHardStop) remaining = Math.max(0, affordable);
@@ -1641,7 +1644,7 @@
             const entAffordable = meteredCreditsFromBudget(entRemaining);
             if (entAffordable <= 0 && state.enterprise.enterpriseHardStop) {
                 result.status = 'blocked';
-                result.reason = `Enterprise budget exhausted ($${state.enterprise.enterpriseBudget})`;
+                result.reason = `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`;
                 return result;
             }
             if (remaining > entAffordable && state.enterprise.enterpriseHardStop) remaining = Math.max(0, entAffordable);
@@ -1659,13 +1662,13 @@
             poolState.enterpriseMetered += result.meteredCost;
 
             result.status = 'metered';
-            result.source = `${fmt(result.creditsFromCC)} CC pool + ${fmt(result.creditsFromEntPool)} ent. pool + ${fmt(remaining)} metered ($${result.meteredCost.toFixed(2)})`;
+            result.source = `${formatSimulationCredits(result.creditsFromCC)} CC pool + ${formatSimulationCredits(result.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(remaining)} metered`;
             return result;
         }
 
         result.status = 'served';
         if (result.creditsFromCC > 0 && result.creditsFromEntPool > 0) {
-            result.source = `CC pool (${fmt(result.creditsFromCC)}) + Ent. pool (${fmt(result.creditsFromEntPool)})`;
+            result.source = `CC pool (${formatSimulationCredits(result.creditsFromCC)}) + Ent. pool (${formatSimulationCredits(result.creditsFromEntPool)})`;
         } else if (result.creditsFromCC > 0) {
             result.source = 'CC pool';
         } else {
@@ -1691,8 +1694,8 @@
             <div class="stat-card"><div class="stat-value" style="color:var(--color-success)">${served}</div><div class="stat-label">Served (Pool)</div></div>
             <div class="stat-card"><div class="stat-value" style="color:var(--color-warning)">${metered}</div><div class="stat-label">Metered</div></div>
             <div class="stat-card"><div class="stat-value" style="color:var(--color-danger)">${blocked}</div><div class="stat-label">Blocked</div></div>
-            <div class="stat-card"><div class="stat-value">$${totalMeteredCost.toFixed(2)}</div><div class="stat-label">Total Metered Cost</div></div>
-            <div class="stat-card"><div class="stat-value">${fmt(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
+            <div class="stat-card"><div class="stat-value">${formatSimulationBudget(totalMeteredCost)}</div><div class="stat-label">${isSimulationDollarMode() ? 'Total Metered Cost' : 'Total Metered Usage'}</div></div>
+            <div class="stat-card"><div class="stat-value">${formatSimulationCredits(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
         `;
 
         let html = '<table><thead><tr><th>User</th><th>Usage</th><th>Status</th><th>ULB Remaining</th><th>Details</th></tr></thead><tbody>';
@@ -1703,9 +1706,9 @@
                           '<span class="badge badge-success">Served</span>';
             html += `<tr class="${rowClass}">
                 <td><strong>${escapeHtml(r.user)}</strong></td>
-                <td>${fmt(r.usage)}</td>
+                <td>${formatSimulationCredits(r.usage)}</td>
                 <td>${badge}</td>
-                <td>${r.ulbRemaining !== null ? fmt(r.ulbRemaining) : '∞'}</td>
+                <td>${r.ulbRemaining !== null ? formatSimulationCredits(r.ulbRemaining) : '∞'}</td>
                 <td>${escapeHtml(r.status === 'blocked' ? r.reason : r.source)}</td>
             </tr>`;
         });
@@ -1727,8 +1730,51 @@
         return state.users.reduce((sum, user) => sum + (state.usage[user.id] || 0), 0);
     }
 
-    function normalizeUsageValue(value) {
-        return Math.max(0, parseInt(value, 10) || 0);
+    function getSimulationUnit() {
+        return state.simulationUnit === 'dollars' ? 'dollars' : 'credits';
+    }
+
+    function isSimulationDollarMode() {
+        return getSimulationUnit() === 'dollars';
+    }
+
+    function getSimulationUnitLabel() {
+        return isSimulationDollarMode() ? '$' : 'AI credits';
+    }
+
+    function simulationUsageStep() {
+        return isSimulationDollarMode() ? 0.01 : 1;
+    }
+
+    function creditsToSimulationValue(credits) {
+        return isSimulationDollarMode() ? (credits / 100) : credits;
+    }
+
+    function simulationValueToCredits(value) {
+        const parsed = parseFloat(value);
+        if (!Number.isFinite(parsed)) return 0;
+        const sanitized = Math.max(0, parsed);
+        return isSimulationDollarMode() ? Math.round((sanitized * 100) + Number.EPSILON) : Math.round(sanitized);
+    }
+
+    function formatSimulationCredits(credits) {
+        if (credits === null || credits === undefined) return '—';
+        return isSimulationDollarMode()
+            ? `$${(creditsToSimulationValue(credits)).toFixed(2)}`
+            : `${fmt(Math.round(credits))} AI credits`;
+    }
+
+    function formatSimulationBudget(amount) {
+        if (amount === null || amount === undefined) return '—';
+        return isSimulationDollarMode()
+            ? `$${amount.toFixed(2)}`
+            : `${fmt(meteredCreditsFromBudget(amount))} AI credits`;
+    }
+
+    function formatSimulationPercent(value) {
+        const parsed = parseFloat(value);
+        if (!Number.isFinite(parsed)) return '0.0';
+        return parsed.toFixed(1);
     }
 
     function getGlobalUsagePercent() {
@@ -1746,16 +1792,15 @@
         const max = Math.max(getUserSimulationCapacity(user), usage);
         const range = wrapper.querySelector('[data-role="range"]');
         const number = wrapper.querySelector('[data-role="number"]');
-        const display = wrapper.querySelector('[data-role="display"]');
         range.max = max;
         range.value = usage;
-        number.max = max;
-        number.value = usage;
-        display.textContent = fmt(usage);
+        number.max = creditsToSimulationValue(max);
+        number.step = simulationUsageStep();
+        number.value = creditsToSimulationValue(usage);
     }
 
     function setUserUsageValue(userId, value) {
-        const usage = normalizeUsageValue(value);
+        const usage = Math.max(0, parseInt(value, 10) || 0);
         state.usage[userId] = usage;
         const user = state.users.find(entry => entry.id === userId);
         if (user) updateUserUsageControls(user, usage);
@@ -1763,29 +1808,34 @@
 
     function updateSimulationSummaryControls() {
         const slider = document.getElementById('globalUsageRange');
-        const valueLabel = document.getElementById('globalUsageValue');
+        const valueInput = document.getElementById('globalUsageValue');
         const totalsLabel = document.getElementById('globalUsageTotals');
+        const aggregateLabel = document.getElementById('aggregateUsageLabel');
         const totalUsage = getTotalSimulationUsage();
         const totalCapacity = getTotalSimulationCapacity();
         const percent = getGlobalUsagePercent();
 
         if (slider) {
             slider.max = getGlobalUsageSliderMax(percent);
-            slider.value = percent.toFixed(1);
+            slider.value = formatSimulationPercent(percent);
         }
-        if (valueLabel) valueLabel.textContent = `${percent.toFixed(1)}%`;
-        if (totalsLabel) totalsLabel.textContent = `${fmt(totalUsage)} used of ${fmt(totalCapacity)} available credits`;
+        if (valueInput) valueInput.value = formatSimulationPercent(percent);
+        if (totalsLabel) totalsLabel.textContent = `${formatSimulationCredits(totalUsage)} used of ${formatSimulationCredits(totalCapacity)} available`;
+        if (aggregateLabel) aggregateLabel.textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
 
         const aggregateInput = document.getElementById('aggregateUsage');
-        if (aggregateInput) aggregateInput.value = totalUsage;
+        if (aggregateInput) {
+            aggregateInput.step = simulationUsageStep();
+            aggregateInput.value = creditsToSimulationValue(totalUsage);
+        }
         runAggregateSimulation();
     }
 
-    function handleUserUsageChange(userId, value) {
-        setUserUsageValue(userId, value);
+    function handleUserUsageChange(userId, value, isCreditsValue = false) {
+        setUserUsageValue(userId, isCreditsValue ? value : simulationValueToCredits(value));
         saveState();
         updateSimulationSummaryControls();
-        document.getElementById('simulationResultsCard').style.display = 'none';
+        runSimulation();
     }
 
     function distributeGlobalUsage(percent) {
@@ -1812,12 +1862,12 @@
         distributeGlobalUsage(value).forEach(entry => setUserUsageValue(entry.user.id, entry.usage));
         saveState();
         updateSimulationSummaryControls();
-        document.getElementById('simulationResultsCard').style.display = 'none';
+        runSimulation();
     }
 
     // ─── Aggregate Simulation ────────────────────────────────────────────────────
     function runAggregateSimulation() {
-        const totalUsage = parseInt(document.getElementById('aggregateUsage').value) || 0;
+        const totalUsage = simulationValueToCredits(document.getElementById('aggregateUsage').value);
         const pool = totalPool();
         const container = document.getElementById('aggregateResults');
 
@@ -1833,10 +1883,10 @@
 
         container.innerHTML = `
             <div class="stat-grid" style="margin-top: 12px">
-                <div class="stat-card"><div class="stat-value">${fmt(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${fmt(overage)}</div><div class="stat-label">Overage Credits</div></div>
-                <div class="stat-card"><div class="stat-value">$${meteredCost.toFixed(2)}</div><div class="stat-label">Metered Cost</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">$${budgetRemaining.toFixed(2)}</div><div class="stat-label">Budget Remaining</div></div>
+                <div class="stat-card"><div class="stat-value">${formatSimulationCredits(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${formatSimulationCredits(overage)}</div><div class="stat-label">Overage ${getSimulationUnitLabel()}</div></div>
+                <div class="stat-card"><div class="stat-value">${formatSimulationBudget(meteredCost)}</div><div class="stat-label">${isSimulationDollarMode() ? 'Metered Cost' : 'Metered Usage'}</div></div>
+                <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">${formatSimulationBudget(budgetRemaining)}</div><div class="stat-label">Budget Remaining</div></div>
             </div>
             <div style="margin-top: 12px">
                 <label style="font-size: 0.75rem; color: var(--color-text-muted)">Pool consumption: ${poolPct.toFixed(1)}%</label>
@@ -1846,7 +1896,7 @@
             </div>
             ${budgetExhausted ? `<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Enterprise budget exhausted! ${state.enterprise.enterpriseHardStop ? 'Users will be BLOCKED.' : 'Metered charges continue uncapped.'}</p>` : ''}
             ${!state.enterprise.meteredEnabled && overage > 0 ? '<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Pool exhausted & metered usage disabled — users BLOCKED.</p>' : ''}
-            <p class="help-text" style="margin-top: 8px">Max credits before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : fmt(maxBeforeBlock)}</p>
+            <p class="help-text" style="margin-top: 8px">Max ${getSimulationUnitLabel()} before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : formatSimulationCredits(maxBeforeBlock)}</p>
         `;
     }
 
@@ -1858,7 +1908,9 @@
             container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
             globalControls.innerHTML = '';
             document.getElementById('aggregateUsage').value = 0;
+            document.getElementById('aggregateUsageLabel').textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
             runAggregateSimulation();
+            document.getElementById('simulationResultsCard').style.display = 'none';
             return;
         }
         const globalPercent = getGlobalUsagePercent();
@@ -1869,18 +1921,28 @@
                 <div class="simulation-global-header">
                     <div>
                         <h3 style="margin-bottom: 4px">Global Usage Distribution</h3>
-                        <p class="help-text">Apply one percentage across all users' available credits, then fine-tune individual values as needed.</p>
+                        <p class="help-text">Apply one percentage across all users' available capacity, then fine-tune individual values as needed.</p>
                     </div>
-                    <div class="simulation-global-metrics">
-                        <span id="globalUsageTotals">${fmt(totalUsage)} used of ${fmt(totalCapacity)} available credits</span>
+                    <div class="simulation-global-metrics" style="align-items:center">
+                        <div class="simulation-unit-switch">
+                            <label for="simulationUnitMode">Display unit</label>
+                            <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
+                                <option value="credits"${getSimulationUnit() === 'credits' ? ' selected' : ''}>AI credits</option>
+                                <option value="dollars"${getSimulationUnit() === 'dollars' ? ' selected' : ''}>$</option>
+                            </select>
+                        </div>
+                        <span id="globalUsageTotals">${formatSimulationCredits(totalUsage)} used of ${formatSimulationCredits(totalCapacity)} available</span>
                     </div>
                 </div>
                 <div class="simulation-global-slider">
                     <input type="range" id="globalUsageRange" min="0" max="${getGlobalUsageSliderMax(globalPercent)}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
-                    <span class="simulation-global-value" id="globalUsageValue">${globalPercent.toFixed(1)}%</span>
+                    <div class="simulation-global-slider-controls">
+                        <input type="number" id="globalUsageValue" min="0" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
+                        <span>%</span>
+                    </div>
                 </div>
             </div>`;
-        let html = '<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (credits)</th></tr></thead><tbody>';
+        let html = `<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (${escapeHtml(getSimulationUnitLabel())})</th></tr></thead><tbody>`;
         state.users.forEach(user => {
             const cc = getUserCC(user);
             const max = Math.max(getUserSimulationCapacity(user), state.usage[user.id] || 0);
@@ -1892,9 +1954,8 @@
                     <div class="simulation-usage-input" id="usage-${escapeHtml(user.id)}">
                         <input type="range" min="0" max="${max}" value="${usage}"
                             data-role="range"
-                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
-                        <span class="usage-value" data-role="display">${fmt(usage)}</span>
-                        <input type="number" min="0" max="${max}" value="${usage}" style="width:80px"
+                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value, true)">
+                        <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}" style="width:120px"
                             data-role="number"
                             oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
                     </div>
@@ -1904,6 +1965,13 @@
         html += '</tbody></table>';
         container.innerHTML = html;
         updateSimulationSummaryControls();
+        runSimulation();
+    }
+
+    function setSimulationUnit(unit) {
+        state.simulationUnit = unit === 'dollars' ? 'dollars' : 'credits';
+        saveState();
+        renderSimulationInputs();
     }
 
     function updateUsage(userId, value) {
@@ -1914,7 +1982,6 @@
         state.usage = {};
         saveState();
         renderSimulationInputs();
-        document.getElementById('simulationResultsCard').style.display = 'none';
     }
 
     // ─── Navigation ──────────────────────────────────────────────────────────────
