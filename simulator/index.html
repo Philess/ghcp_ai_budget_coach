@@ -1831,11 +1831,19 @@
         runAggregateSimulation();
     }
 
-    function handleUserUsageChange(userId, value, isCreditsValue = false) {
-        setUserUsageValue(userId, isCreditsValue ? value : simulationValueToCredits(value));
+    function applyUserUsageChange(userId, creditsValue) {
+        setUserUsageValue(userId, creditsValue);
         saveState();
         updateSimulationSummaryControls();
         runSimulation();
+    }
+
+    function handleUserUsageSliderChange(userId, value) {
+        applyUserUsageChange(userId, value);
+    }
+
+    function handleUserUsageInputChange(userId, value) {
+        applyUserUsageChange(userId, simulationValueToCredits(value));
     }
 
     function distributeGlobalUsage(percent) {
@@ -1954,10 +1962,10 @@
                     <div class="simulation-usage-input" id="usage-${escapeHtml(user.id)}">
                         <input type="range" min="0" max="${max}" value="${usage}"
                             data-role="range"
-                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value, true)">
+                            oninput="handleUserUsageSliderChange('${escapeInlineArg(user.id)}', this.value)">
                         <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}" style="width:120px"
                             data-role="number"
-                            oninput="handleUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
+                            oninput="handleUserUsageInputChange('${escapeInlineArg(user.id)}', this.value)">
                     </div>
                 </td>
             </tr>`;
@@ -1975,7 +1983,7 @@
     }
 
     function updateUsage(userId, value) {
-        handleUserUsageChange(userId, value);
+        handleUserUsageInputChange(userId, value);
     }
 
     function resetUsage() {
