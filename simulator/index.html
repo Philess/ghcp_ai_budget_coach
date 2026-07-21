@@ -1754,7 +1754,7 @@
         const parsed = parseFloat(value);
         if (!Number.isFinite(parsed)) return 0;
         const sanitized = Math.max(0, parsed);
-        return isSimulationDollarMode() ? Math.round((sanitized * 100) + Number.EPSILON) : Math.round(sanitized);
+        return isSimulationDollarMode() ? Math.round(sanitized * 100) : Math.round(sanitized);
     }
 
     function formatSimulationCredits(credits) {
@@ -1842,7 +1842,7 @@
         applyUserUsageChange(userId, value);
     }
 
-    function handleUserUsageInputChange(userId, value) {
+    function handleUserUsageNumberInputChange(userId, value) {
         applyUserUsageChange(userId, simulationValueToCredits(value));
     }
 
@@ -1965,7 +1965,7 @@
                             oninput="handleUserUsageSliderChange('${escapeInlineArg(user.id)}', this.value)">
                         <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}" style="width:120px"
                             data-role="number"
-                            oninput="handleUserUsageInputChange('${escapeInlineArg(user.id)}', this.value)">
+                            oninput="handleUserUsageNumberInputChange('${escapeInlineArg(user.id)}', this.value)">
                     </div>
                 </td>
             </tr>`;
@@ -1980,10 +1980,6 @@
         state.simulationUnit = unit === 'dollars' ? 'dollars' : 'credits';
         saveState();
         renderSimulationInputs();
-    }
-
-    function updateUsage(userId, value) {
-        handleUserUsageInputChange(userId, value);
     }
 
     function resetUsage() {
