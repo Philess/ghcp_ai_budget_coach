@@ -591,6 +591,7 @@
     }
 
     const CREDITS_PER_DOLLAR = 100;
+    // Allow large what-if spikes while keeping accidental extreme input bounded.
     const MAX_GLOBAL_USAGE_PERCENT = 10000;
 
     function meteredCreditsFromBudget(amount) {
@@ -1683,6 +1684,10 @@
     }
 
     function runSimulation() {
+        if (state.users.length === 0) {
+            document.getElementById('simulationResultsCard').style.display = 'none';
+            return;
+        }
         const poolState = initPoolState();
         const results = state.users.map(user => evaluateUser(user, state.usage[user.id] || 0, poolState));
         renderSimulationResults(results, poolState);
@@ -1778,7 +1783,8 @@
 
     function formatSimulationPercent(value) {
         const parsed = parseFloat(value);
-        return Math.max(0, parsed || 0).toFixed(1);
+        const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        return sanitized.toFixed(1);
     }
 
     function getGlobalUsagePercent() {
@@ -1922,7 +1928,7 @@
             document.getElementById('aggregateUsage').value = 0;
             document.getElementById('aggregateUsageLabel').textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
             runAggregateSimulation();
-            document.getElementById('simulationResultsCard').style.display = 'none';
+            runSimulation();
             return;
         }
         const globalPercent = getGlobalUsagePercent();
