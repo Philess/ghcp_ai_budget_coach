@@ -402,37 +402,13 @@
             border-style: dashed;
         }
 
-        /* ── Wizard-steps nav section ── */
-        .nav-setup-label {
-            color: var(--color-text-muted);
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 0 8px 0 4px;
-            white-space: nowrap;
-            align-self: center;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        @keyframes wizard-btn-blink {
+            0%, 100% { background: var(--color-accent); }
+            25%, 75% { background: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.35); }
         }
-        .nav-sep {
-            width: 1px;
-            background: var(--color-border);
-            margin: 8px 6px;
-            align-self: stretch;
-            flex-shrink: 0;
+        .wizard-btn-blink {
+            animation: wizard-btn-blink 0.8s ease-in-out 2;
         }
-        nav .nav-setup-btn {
-            background: none;
-            border: none;
-            color: var(--color-text-muted);
-            padding: 12px 14px;
-            cursor: pointer;
-            font-size: 0.8125rem;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-            white-space: nowrap;
-            transition: color 0.15s, background 0.15s;
-        }
-        nav .nav-setup-btn:hover { color: var(--color-accent); background: rgba(88,166,255,0.05); }
 
         /* ── Dashboard empty state ── */
         .empty-state-dashboard {
@@ -466,6 +442,7 @@
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
+            <button id="wizardOpenBtn" onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -474,14 +451,6 @@
     </header>
 
     <nav id="mainNav">
-        <span class="nav-setup-label">Setup:</span>
-        <button class="nav-setup-btn" id="nav-step-0" onclick="openWizardAtStep(0)">🏛️ Organizations</button>
-        <button class="nav-setup-btn" id="nav-step-1" onclick="openWizardAtStep(1)">👥 Teams</button>
-        <button class="nav-setup-btn" id="nav-step-2" onclick="openWizardAtStep(2)">📂 Cost Centers</button>
-        <button class="nav-setup-btn" id="nav-step-3" onclick="openWizardAtStep(3)">👤 Users</button>
-        <button class="nav-setup-btn" id="nav-step-4" onclick="openWizardAtStep(4)">🎯 User Budgets</button>
-        <button class="nav-setup-btn" id="nav-step-5" onclick="openWizardAtStep(5)">💳 Overage Budgets</button>
-        <div class="nav-sep"></div>
         <button class="active" data-panel="simulate">📊 Dashboard</button>
         <button data-panel="pool">🏊 Pool View</button>
         <button data-panel="enterprise">⚙️ Settings</button>
@@ -2206,8 +2175,8 @@
 
     // ─── Navigation ──────────────────────────────────────────────────────────────
     document.getElementById('mainNav').addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON' || !e.target.dataset.panel) return;
-        document.querySelectorAll('#mainNav button[data-panel]').forEach(b => b.classList.remove('active'));
+        if (e.target.tagName !== 'BUTTON') return;
+        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
@@ -2219,16 +2188,7 @@
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
     function renderTabCounts() {
-        const steps = [
-            { id: 'nav-step-0', icon: '🏛️', label: 'Organizations', count: state.orgs.length },
-            { id: 'nav-step-1', icon: '👥', label: 'Teams', count: state.teams.length },
-            { id: 'nav-step-2', icon: '📂', label: 'Cost Centers', count: state.costCenters.length },
-            { id: 'nav-step-3', icon: '👤', label: 'Users', count: state.users.length },
-        ];
-        steps.forEach(s => {
-            const el = document.getElementById(s.id);
-            if (el) el.textContent = `${s.icon} ${s.label}${s.count ? ' (' + s.count + ')' : ''}`;
-        });
+        // no-op: tab labels are static; counts are visible in the wizard per-step
     }
 
     // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -3147,6 +3107,17 @@
     }
 
     renderAll();
+
+    // Blink the wizard button twice in orange on page load to make it visible
+    (function () {
+        const btn = document.getElementById('wizardOpenBtn');
+        if (!btn) return;
+        btn.classList.add('wizard-btn-blink');
+        btn.addEventListener('animationend', function onEnd() {
+            btn.classList.remove('wizard-btn-blink');
+            btn.removeEventListener('animationend', onEnd);
+        });
+    })();
     </script>
 </body>
 </html>
