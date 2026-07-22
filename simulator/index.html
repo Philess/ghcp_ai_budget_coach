@@ -1944,29 +1944,9 @@
     function renderSimulationInputs() {
         const container = document.getElementById('simulationInputs');
         const globalControls = document.getElementById('simulationGlobalControls');
-        const emptyState = document.getElementById('simulationEmptyState');
-        const form = document.getElementById('simulationForm');
-        const resultsCard = document.getElementById('simulationResultsCard');
-        renderSimulationWizardBanner();
-
-        if (!hasSimulationSetupData()) {
-            emptyState.style.display = '';
-            form.style.display = 'none';
-            globalControls.innerHTML = '';
-            container.innerHTML = '';
-            resultsCard.style.display = 'none';
-            document.getElementById('aggregateUsage').value = 0;
-            document.getElementById('aggregateUsageLabel').textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
-            runAggregateSimulation();
-            return;
-        }
-
-        emptyState.style.display = 'none';
-        form.style.display = '';
         if (state.users.length === 0) {
             container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
             globalControls.innerHTML = '';
-            resultsCard.style.display = 'none';
             document.getElementById('aggregateUsage').value = 0;
             document.getElementById('aggregateUsageLabel').textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
             runAggregateSimulation();
@@ -2055,7 +2035,6 @@
         if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
         if (panel === 'budgets') renderBudgets();
         if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
-        renderSimulationWizardBanner();
     }
 
     function startSimulationWizard() {
