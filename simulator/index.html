@@ -198,6 +198,30 @@
         .tag .remove { cursor: pointer; margin-left: 4px; color: var(--color-text-muted); }
         .tag .remove:hover { color: var(--color-danger); }
 
+        .sim-controls-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+        .budget-control-row { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+        .budget-control-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .budget-control-label { font-size: 0.875rem; font-weight: 600; }
+        .budget-control-pct { font-size: 0.875rem; font-weight: 700; min-width: 52px; text-align: right; }
+        .budget-control-slider { display: flex; align-items: center; gap: 10px; }
+        .budget-control-slider input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
+        .budget-control-input-wrap { display: flex; align-items: center; gap: 6px; min-width: 110px; }
+        .budget-control-input-wrap input[type="number"] { width: 80px; text-align: right; }
+
+        .budget-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .budget-gauge-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px; }
+        .budget-gauge-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .budget-gauge-label { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+        .budget-gauge-amounts { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; }
+
+        .sim-user-usage { display: flex; align-items: center; gap: 8px; }
+        .sim-user-usage input[type="range"] { flex: 1; border: none; background: none; padding: 0; min-width: 60px; }
+        .sim-user-usage input[type="number"] { width: 110px; }
+
+        .sim-search-bar { margin-bottom: 12px; }
+        .sim-search-bar input { max-width: 320px; }
+
         @media (max-width: 768px) {
             header { padding: 12px 16px; }
             nav { padding: 0 16px; }
@@ -207,6 +231,8 @@
             .simulation-global-slider-controls { min-width: 0; }
             .user-panel-summary { flex-direction: column; }
             .user-panel-summary-meta { justify-content: flex-start; }
+            .budget-control-slider { flex-direction: column; align-items: stretch; }
+            .budget-control-input-wrap { min-width: 0; }
         }
     </style>
 </head>
@@ -488,34 +514,29 @@
         <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
         <div id="panel-simulate" class="panel">
             <div class="card">
-                <h2>⚡ Usage Simulation</h2>
-                <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
-                <form onsubmit="handleFormSubmit(event, runSimulation)">
-                    <div id="simulationGlobalControls"></div>
-                    <div id="simulationInputs"></div>
-                    <div style="margin-top: 16px; display: flex; gap: 8px;">
-                        <button type="button" onclick="resetUsage()">Reset Usage</button>
+                <h2>🎛️ Global Budget Usage Simulation</h2>
+                <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
+                <div class="sim-controls-header" style="margin-bottom:16px">
+                    <div class="simulation-unit-switch">
+                        <label for="simulationUnitMode">Display unit</label>
+                        <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
+                            <option value="credits">AI credits</option>
+                            <option value="dollars">$</option>
+                        </select>
                     </div>
-                    <p class="help-text">Simulation results update automatically when values change.</p>
-                </form>
+                    <button type="button" onclick="resetUsage()">Reset Usage</button>
+                </div>
+                <div id="globalBudgetControls"></div>
             </div>
 
             <div class="card" id="simulationResultsCard" style="display:none">
                 <h2>📋 Simulation Results</h2>
+                <div id="simBudgetStatus" style="margin-bottom:4px"></div>
                 <div class="stat-grid" id="simSummaryStats"></div>
-                <div id="simulationResults"></div>
-            </div>
-
-            <div class="card">
-                <h2>🏊 Pool & Overage Simulation</h2>
-                <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label id="aggregateUsageLabel">Total AI Credits Consumed (all users combined)</label>
-                        <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
-                    </div>
+                <div class="sim-search-bar">
+                    <input type="text" id="simUserFilter" placeholder="🔍 Filter users by name…" oninput="filterSimUsers(this.value)">
                 </div>
-                <div id="aggregateResults"></div>
+                <div id="simulationResults"></div>
             </div>
         </div>
     </main>
@@ -539,7 +560,8 @@
             costCenters: [],
             users: [],
             usage: {},
-            simulationUnit: 'credits'
+            simulationUnit: 'credits',
+            globalBudgetPercents: {}
         };
     }
 
@@ -586,7 +608,8 @@
             orgs: Array.isArray(parsed.orgs) ? parsed.orgs : [],
             costCenters: Array.isArray(parsed.costCenters) ? parsed.costCenters : [],
             users: Array.isArray(parsed.users) ? parsed.users : [],
-            usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {}
+            usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
+            globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
         };
     }
 
@@ -1107,8 +1130,7 @@
         renderCCUserDropdown();
         renderTabCounts();
         recalcAutoSeats();
-        renderSimulationInputs();
-        runAggregateSimulation();
+        renderGlobalBudgetSimulation();
         document.getElementById('simulationResultsCard').style.display = 'none';
     }
 
@@ -1572,6 +1594,7 @@
     function evaluateUser(user, userUsage, poolState) {
         const result = {
             user: user.name,
+            userId: user.id,
             usage: userUsage,
             status: 'served',
             source: '',
@@ -1711,6 +1734,10 @@
 
     function renderSimulationResults(results, poolState) {
         document.getElementById('simulationResultsCard').style.display = 'block';
+
+        // Budget status gauges
+        document.getElementById('simBudgetStatus').innerHTML = renderBudgetStatusGauges(poolState);
+
         const served = results.filter(r => r.status === 'served').length;
         const metered = results.filter(r => r.status === 'metered').length;
         const blocked = results.filter(r => r.status === 'blocked').length;
@@ -1724,15 +1751,37 @@
             <div class="stat-card"><div class="stat-value">${formatSimulationCredits(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
         `;
 
-        let html = '<table><thead><tr><th>User</th><th>Usage</th><th>Status</th><th>ULB Remaining</th><th>Details</th></tr></thead><tbody>';
+        let html = `<table><thead><tr>
+            <th>User</th>
+            <th>Cost Center</th>
+            <th>Consumption (${escapeHtml(getSimulationUnitLabel())})</th>
+            <th>Status</th>
+            <th>ULB Remaining</th>
+            <th>Details</th>
+        </tr></thead><tbody>`;
         results.forEach(r => {
+            const user = state.users.find(u => u.id === r.userId);
+            const cc = user ? getUserCC(user) : null;
+            const capacity = user ? getUserSimulationCapacity(user) : 0;
+            const maxCredits = Math.max(capacity, r.usage);
             const rowClass = r.status === 'blocked' ? 'result-blocked' : r.status === 'metered' ? 'result-metered' : '';
             const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
                           r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
                           '<span class="badge badge-success">Served</span>';
-            html += `<tr class="${rowClass}">
+            html += `<tr class="${rowClass}" data-user-name="${escapeHtml(r.user.toLowerCase())}">
                 <td><strong>${escapeHtml(r.user)}</strong></td>
-                <td>${formatSimulationCredits(r.usage)}</td>
+                <td>${cc ? escapeHtml(cc.name) : '—'}</td>
+                <td>
+                    <div class="sim-user-usage">
+                        <input type="range" min="0" max="${maxCredits}" step="1" value="${r.usage}"
+                            data-role="range"
+                            oninput="this.nextElementSibling.value = creditsToSimulationValue(parseInt(this.value,10))"
+                            onchange="applyUserUsageChange('${escapeInlineArg(r.userId)}', this.value)">
+                        <input type="number" min="0" max="${creditsToSimulationValue(maxCredits)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(r.usage)}"
+                            data-role="number"
+                            onchange="applyUserUsageChange('${escapeInlineArg(r.userId)}', simulationValueToCredits(this.value))">
+                    </div>
+                </td>
                 <td>${badge}</td>
                 <td>${r.ulbRemaining !== null ? formatSimulationCredits(r.ulbRemaining) : '∞'}</td>
                 <td>${escapeHtml(r.status === 'blocked' ? r.reason : r.source)}</td>
@@ -1740,6 +1789,76 @@
         });
         html += '</tbody></table>';
         document.getElementById('simulationResults').innerHTML = html;
+
+        // Re-apply name filter if active
+        const filterInput = document.getElementById('simUserFilter');
+        if (filterInput && filterInput.value) filterSimUsers(filterInput.value);
+    }
+
+    function renderBudgetStatusGauges(poolState) {
+        const reserved = state.costCenters.filter(cc => cc.poolEnabled).reduce((s, cc) => s + getCCPoolSize(cc), 0);
+        const initialEntPool = totalPool() - reserved;
+        const gauges = [];
+
+        if (initialEntPool > 0) {
+            const used = initialEntPool - Math.max(0, poolState.enterprisePool);
+            const pct = used / initialEntPool * 100;
+            gauges.push({ label: 'Enterprise Pool', used: formatSimulationCredits(used), total: formatSimulationCredits(initialEntPool), pct });
+        }
+
+        state.costCenters.filter(cc => cc.poolEnabled).forEach(cc => {
+            const initial = getCCPoolSize(cc);
+            const remaining = poolState.ccPools[cc.id] !== undefined ? poolState.ccPools[cc.id] : initial;
+            const used = initial - Math.max(0, remaining);
+            const pct = initial > 0 ? used / initial * 100 : 0;
+            gauges.push({ label: escapeHtml(cc.name) + ' Pool', used: formatSimulationCredits(used), total: formatSimulationCredits(initial), pct });
+        });
+
+        if (state.enterprise.enterpriseBudget > 0) {
+            const used = poolState.enterpriseMetered;
+            const total = state.enterprise.enterpriseBudget;
+            const pct = total > 0 ? used / total * 100 : 0;
+            gauges.push({ label: 'Enterprise Budget', used: formatSimulationBudget(used), total: formatSimulationBudget(total), pct });
+        }
+
+        state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
+            const used = poolState.ccMetered[cc.id] || 0;
+            const pct = cc.budget > 0 ? used / cc.budget * 100 : 0;
+            gauges.push({ label: escapeHtml(cc.name) + ' Budget', used: formatSimulationBudget(used), total: formatSimulationBudget(cc.budget), pct });
+        });
+
+        state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
+            const used = poolState.orgMetered[org.id] || 0;
+            const pct = org.budget > 0 ? used / org.budget * 100 : 0;
+            gauges.push({ label: escapeHtml(org.name) + ' Budget', used: formatSimulationBudget(used), total: formatSimulationBudget(org.budget), pct });
+        });
+
+        if (gauges.length === 0) return '';
+
+        let html = '<div class="budget-status-grid">';
+        gauges.forEach(g => {
+            const color = g.pct >= 100 ? 'var(--color-danger)' : g.pct >= 75 ? 'var(--color-warning)' : 'var(--color-success)';
+            html += `<div class="budget-gauge-card">
+                <div class="budget-gauge-header">
+                    <span class="budget-gauge-label">${g.label}</span>
+                    <span style="color:${color};font-weight:700;font-size:0.8125rem">${g.pct.toFixed(1)}%</span>
+                </div>
+                <div class="progress-bar" style="margin:4px 0">
+                    <div class="progress-fill" style="width:${Math.min(100, g.pct)}%;background:${color}"></div>
+                </div>
+                <div class="budget-gauge-amounts">${escapeHtml(g.used)} / ${escapeHtml(g.total)}</div>
+            </div>`;
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function filterSimUsers(query) {
+        const q = (query || '').toLowerCase().trim();
+        document.querySelectorAll('#simulationResults tbody tr').forEach(tr => {
+            const name = tr.dataset.userName || '';
+            tr.style.display = (!q || name.includes(q)) ? '' : 'none';
+        });
     }
 
     function getUserSimulationCapacity(user) {
@@ -1797,213 +1916,224 @@
             : `${fmt(meteredCreditsFromBudget(amount))} AI credits`;
     }
 
-    function normalizePercentValue(value) {
-        const parsed = parseFloat(value);
-        const sanitized = Number.isFinite(parsed) ? Math.max(0, Math.min(parsed, MAX_GLOBAL_USAGE_PERCENT)) : 0;
-        return sanitized.toFixed(1);
-    }
-
-    function getGlobalUsagePercent() {
-        const totalCapacity = getTotalSimulationCapacity();
-        return totalCapacity > 0 ? (getTotalSimulationUsage() / totalCapacity) * 100 : 0;
-    }
-
-    function getGlobalUsageSliderMax(percent = getGlobalUsagePercent()) {
-        return Math.max(100, Math.ceil(Math.max(percent, 100) / 25) * 25);
-    }
-
-    function updateUserUsageControls(user, usage) {
-        const wrapper = document.getElementById(`usage-${user.id}`);
-        if (!wrapper) return;
-        const max = Math.max(getUserSimulationCapacity(user), usage);
-        const range = wrapper.querySelector('[data-role="range"]');
-        const number = wrapper.querySelector('[data-role="number"]');
-        range.max = max;
-        range.value = usage;
-        number.max = creditsToSimulationValue(max);
-        number.step = simulationUsageStep();
-        number.value = creditsToSimulationValue(usage);
-    }
-
     function setUserUsageValue(userId, value) {
-        const usage = Math.max(0, parseInt(value, 10) || 0);
-        state.usage[userId] = usage;
-        const user = state.users.find(entry => entry.id === userId);
-        if (user) updateUserUsageControls(user, usage);
-    }
-
-    function updateSimulationSummaryControls() {
-        const slider = document.getElementById('globalUsageRange');
-        const valueInput = document.getElementById('globalUsageValue');
-        const totalsLabel = document.getElementById('globalUsageTotals');
-        const aggregateLabel = document.getElementById('aggregateUsageLabel');
-        const totalUsage = getTotalSimulationUsage();
-        const totalCapacity = getTotalSimulationCapacity();
-        const percent = getGlobalUsagePercent();
-
-        if (slider) {
-            slider.max = getGlobalUsageSliderMax(percent);
-            slider.value = normalizePercentValue(percent);
-        }
-        if (valueInput) valueInput.value = normalizePercentValue(percent);
-        if (totalsLabel) totalsLabel.textContent = `${formatSimulationCredits(totalUsage)} used of ${formatSimulationCredits(totalCapacity)} available`;
-        if (aggregateLabel) aggregateLabel.textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
-
-        const aggregateInput = document.getElementById('aggregateUsage');
-        if (aggregateInput) {
-            aggregateInput.step = simulationUsageStep();
-            aggregateInput.value = creditsToSimulationValue(totalUsage);
-        }
-        runAggregateSimulation();
+        state.usage[userId] = Math.max(0, parseInt(value, 10) || 0);
     }
 
     function applyUserUsageChange(userId, creditsValue) {
         setUserUsageValue(userId, creditsValue);
         saveState();
-        updateSimulationSummaryControls();
         runSimulation();
     }
 
-    function distributeGlobalUsage(percent) {
-        const sanitizedPercent = Math.min(Math.max(0, parseFloat(percent) || 0), MAX_GLOBAL_USAGE_PERCENT);
-        const users = state.users.map(user => {
-            const capacity = getUserSimulationCapacity(user);
-            const raw = (capacity * sanitizedPercent) / 100;
-            const floorUsage = Math.floor(raw);
-            return { user, capacity, raw, usage: floorUsage, fraction: raw - floorUsage };
+    // ─── Global Budget Simulation ─────────────────────────────────────────────────
+    function setGlobalBudgetPercent(key, value) {
+        if (!state.globalBudgetPercents) state.globalBudgetPercents = {};
+        const pct = Math.max(0, Math.min(200, parseFloat(value) || 0));
+        state.globalBudgetPercents[key] = pct;
+
+        // Sync all inputs for this key without re-rendering the whole card
+        document.querySelectorAll('[data-budget-key]').forEach(el => {
+            if (el.dataset.budgetKey === key) el.value = pct.toFixed(1);
+        });
+        // Update progress bar and % label in the control row
+        document.querySelectorAll('[data-budget-row]').forEach(row => {
+            if (row.dataset.budgetRow !== key) return;
+            const color = pct >= 100 ? 'var(--color-danger)' : pct >= 75 ? 'var(--color-warning)' : 'var(--color-accent)';
+            const pctLabel = row.querySelector('.budget-control-pct');
+            if (pctLabel) { pctLabel.textContent = pct.toFixed(1) + '%'; pctLabel.style.color = color; }
+            const fill = row.querySelector('.progress-fill');
+            if (fill) { fill.style.width = Math.min(100, pct) + '%'; fill.style.background = color; }
         });
 
-        const targetTotal = Math.round(users.reduce((sum, entry) => sum + entry.capacity, 0) * sanitizedPercent / 100);
-        let assigned = users.reduce((sum, entry) => sum + entry.usage, 0);
-        users.sort((a, b) => b.fraction - a.fraction);
-
-        for (let i = 0; assigned < targetTotal && i < users.length; i++, assigned++) {
-            users[i].usage += 1;
-        }
-
-        return users;
+        applyAllGlobalBudgetPercents();
     }
 
-    function applyGlobalUsagePercent(value) {
-        distributeGlobalUsage(value).forEach(entry => setUserUsageValue(entry.user.id, entry.usage));
+    function applyAllGlobalBudgetPercents() {
+        const newUsage = {};
+        state.users.forEach(u => { newUsage[u.id] = 0; });
+
+        const percents = state.globalBudgetPercents || {};
+
+        // Enterprise unreserved pool → users not in a CC with a pool
+        const entPoolPct = percents['enterprisePool'] || 0;
+        if (entPoolPct > 0) {
+            const reserved = state.costCenters.filter(cc => cc.poolEnabled)
+                .reduce((s, cc) => s + getCCPoolSize(cc), 0);
+            const entPool = totalPool() - reserved;
+            const eligible = state.users.filter(u => { const cc = getUserCC(u); return !cc || !cc.poolEnabled; });
+            if (eligible.length > 0 && entPool > 0) {
+                const perUser = Math.round(entPool * entPoolPct / 100 / eligible.length);
+                eligible.forEach(u => { newUsage[u.id] += perUser; });
+            }
+        }
+
+        // CC pools → CC members equally
+        state.costCenters.filter(cc => cc.poolEnabled).forEach(cc => {
+            const pct = percents['ccPool_' + cc.id] || 0;
+            if (pct > 0) {
+                const ccPool = getCCPoolSize(cc);
+                const ccUsers = getAssignedCCMembers(cc);
+                if (ccUsers.length > 0 && ccPool > 0) {
+                    const perUser = Math.round(ccPool * pct / 100 / ccUsers.length);
+                    ccUsers.forEach(u => { newUsage[u.id] += perUser; });
+                }
+            }
+        });
+
+        // Enterprise overage budget → all users equally
+        const entOverPct = percents['enterpriseOverage'] || 0;
+        if (entOverPct > 0 && state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
+            const totalCredits = meteredCreditsFromBudget(state.enterprise.enterpriseBudget * entOverPct / 100);
+            if (state.users.length > 0) {
+                const perUser = Math.round(totalCredits / state.users.length);
+                state.users.forEach(u => { newUsage[u.id] += perUser; });
+            }
+        }
+
+        // CC overage budgets → CC members equally
+        state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
+            const pct = percents['ccOverage_' + cc.id] || 0;
+            if (pct > 0) {
+                const ccUsers = getAssignedCCMembers(cc);
+                if (ccUsers.length > 0) {
+                    const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
+                    const perUser = Math.round(totalCredits / ccUsers.length);
+                    ccUsers.forEach(u => { newUsage[u.id] += perUser; });
+                }
+            }
+        });
+
+        // Org overage budgets → org members equally
+        state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
+            const pct = percents['orgOverage_' + org.id] || 0;
+            if (pct > 0) {
+                const orgUsers = state.users.filter(u => u.orgId === org.id);
+                if (orgUsers.length > 0) {
+                    const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
+                    const perUser = Math.round(totalCredits / orgUsers.length);
+                    orgUsers.forEach(u => { newUsage[u.id] += perUser; });
+                }
+            }
+        });
+
+        state.users.forEach(u => { state.usage[u.id] = newUsage[u.id] || 0; });
         saveState();
-        updateSimulationSummaryControls();
         runSimulation();
     }
 
-    // ─── Aggregate Simulation ────────────────────────────────────────────────────
-    function runAggregateSimulation() {
-        const totalUsage = simulationValueToCredits(document.getElementById('aggregateUsage').value);
-        const pool = totalPool();
-        const container = document.getElementById('aggregateResults');
-
-        const poolConsumed = Math.min(totalUsage, pool);
-        const poolRemaining = pool - poolConsumed;
-        const overage = Math.max(0, totalUsage - pool);
-        const meteredCost = overage * 0.01;
-        const budgetRemaining = Math.max(0, state.enterprise.enterpriseBudget - meteredCost);
-        const budgetExhausted = meteredCost >= state.enterprise.enterpriseBudget;
-        const maxBeforeBlock = pool + (state.enterprise.meteredEnabled ?
-            (state.enterprise.enterpriseHardStop ? state.enterprise.enterpriseBudget / 0.01 : Infinity) : 0);
-        const poolPct = pool > 0 ? Math.min(100, poolConsumed / pool * 100) : 0;
-
-        container.innerHTML = `
-            <div class="stat-grid" style="margin-top: 12px">
-                <div class="stat-card"><div class="stat-value">${formatSimulationCredits(poolRemaining)}</div><div class="stat-label">Pool Remaining</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:${overage > 0 ? 'var(--color-warning)' : 'var(--color-success)'}">${formatSimulationCredits(overage)}</div><div class="stat-label">Overage ${getSimulationUnitLabel()}</div></div>
-                <div class="stat-card"><div class="stat-value">${formatSimulationBudget(meteredCost)}</div><div class="stat-label">${isSimulationDollarMode() ? 'Metered Cost' : 'Metered Usage'}</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:${budgetExhausted ? 'var(--color-danger)' : 'var(--color-text)'}">${formatSimulationBudget(budgetRemaining)}</div><div class="stat-label">Budget Remaining</div></div>
+    function renderBudgetControl(key, label, capacityStr, userCount, currentPct) {
+        const color = currentPct >= 100 ? 'var(--color-danger)' : currentPct >= 75 ? 'var(--color-warning)' : 'var(--color-accent)';
+        const safeKey = escapeInlineArg(key);
+        return `<div class="budget-control-row" data-budget-row="${escapeHtml(key)}">
+            <div class="budget-control-header">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span class="budget-control-label">${escapeHtml(label)}</span>
+                    <span class="help-text">${escapeHtml(capacityStr)}</span>
+                    <span class="badge ${userCount > 0 ? 'badge-info' : 'badge-warning'}">${userCount} user${userCount !== 1 ? 's' : ''}</span>
+                </div>
+                <span class="budget-control-pct" style="color:${color}">${currentPct.toFixed(1)}%</span>
             </div>
-            <div style="margin-top: 12px">
-                <label style="font-size: 0.75rem; color: var(--color-text-muted)">Pool consumption: ${poolPct.toFixed(1)}%</label>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width:${poolPct}%; background: ${poolPct >= 100 ? 'var(--color-danger)' : poolPct >= 75 ? 'var(--color-warning)' : 'var(--color-success)'}"></div>
+            <div class="budget-control-slider">
+                <input type="range" min="0" max="200" step="0.5" value="${currentPct.toFixed(1)}"
+                    data-budget-key="${escapeHtml(key)}"
+                    oninput="setGlobalBudgetPercent('${safeKey}', this.value)">
+                <div class="budget-control-input-wrap">
+                    <input type="number" min="0" max="200" step="0.5" value="${currentPct.toFixed(1)}"
+                        data-budget-key="${escapeHtml(key)}"
+                        onchange="setGlobalBudgetPercent('${safeKey}', this.value)">
+                    <span>%</span>
                 </div>
             </div>
-            ${budgetExhausted ? `<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Enterprise budget exhausted! ${state.enterprise.enterpriseHardStop ? 'Users will be BLOCKED.' : 'Metered charges continue uncapped.'}</p>` : ''}
-            ${!state.enterprise.meteredEnabled && overage > 0 ? '<p style="margin-top: 12px; color: var(--color-danger); font-weight: 600">⚠️ Pool exhausted & metered usage disabled — users BLOCKED.</p>' : ''}
-            <p class="help-text" style="margin-top: 8px">Max ${getSimulationUnitLabel()} before blocking: ${maxBeforeBlock === Infinity ? '∞ (no hard stop)' : formatSimulationCredits(maxBeforeBlock)}</p>
-        `;
+            <div class="progress-bar" style="margin-top:6px">
+                <div class="progress-fill" style="width:${Math.min(100, currentPct)}%;background:${color}"></div>
+            </div>
+        </div>`;
     }
 
-    // ─── Simulation Inputs ───────────────────────────────────────────────────────
-    function renderSimulationInputs() {
-        const container = document.getElementById('simulationInputs');
-        const globalControls = document.getElementById('simulationGlobalControls');
+    // ─── Global Budget Simulation Render ─────────────────────────────────────────
+    function renderGlobalBudgetSimulation() {
+        const globalControls = document.getElementById('globalBudgetControls');
+        const unitMode = document.getElementById('simulationUnitMode');
+        if (unitMode) unitMode.value = getSimulationUnit();
+
         if (state.users.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
-            globalControls.innerHTML = '';
-            document.getElementById('aggregateUsage').value = 0;
-            document.getElementById('aggregateUsageLabel').textContent = `Total ${getSimulationUnitLabel()} Consumed (all users combined)`;
-            runAggregateSimulation();
-            runSimulation();
+            globalControls.innerHTML = '<div class="empty-state"><p>Add users first to simulate usage.</p></div>';
+            document.getElementById('simulationResultsCard').style.display = 'none';
             return;
         }
-        const globalPercent = getGlobalUsagePercent();
-        const totalUsage = getTotalSimulationUsage();
-        const totalCapacity = getTotalSimulationCapacity();
-        globalControls.innerHTML = `
-            <div class="simulation-global-controls">
-                <div class="simulation-global-header">
-                    <div>
-                        <h3 style="margin-bottom: 4px">Global Usage Distribution</h3>
-                        <p class="help-text">Apply one percentage across all users' available capacity, then fine-tune individual values as needed.</p>
-                    </div>
-                    <div class="simulation-global-metrics" style="align-items:center">
-                        <div class="simulation-unit-switch">
-                            <label for="simulationUnitMode">Display unit</label>
-                            <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
-                                <option value="credits"${getSimulationUnit() === 'credits' ? ' selected' : ''}>AI credits</option>
-                                <option value="dollars"${getSimulationUnit() === 'dollars' ? ' selected' : ''}>$</option>
-                            </select>
-                        </div>
-                        <span id="globalUsageTotals">${formatSimulationCredits(totalUsage)} used of ${formatSimulationCredits(totalCapacity)} available</span>
-                    </div>
-                </div>
-                <div class="simulation-global-slider">
-                    <input type="range" id="globalUsageRange" min="0" max="${getGlobalUsageSliderMax(globalPercent)}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
-                    <div class="simulation-global-slider-controls">
-                        <input type="number" id="globalUsageValue" min="0" max="${MAX_GLOBAL_USAGE_PERCENT}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)" aria-label="Global usage percentage">
-                        <span>%</span>
-                    </div>
-                </div>
-            </div>`;
-        let html = `<table><thead><tr><th>User</th><th>Cost Center</th><th style="width:50%">Usage (${escapeHtml(getSimulationUnitLabel())})</th></tr></thead><tbody>`;
-        state.users.forEach(user => {
-            const cc = getUserCC(user);
-            const max = Math.max(getUserSimulationCapacity(user), state.usage[user.id] || 0);
-            const usage = state.usage[user.id] || 0;
-            html += `<tr>
-                <td><strong>${escapeHtml(user.name)}</strong></td>
-                <td>${cc ? escapeHtml(cc.name) : '—'}</td>
-                <td>
-                    <div class="simulation-usage-input" id="usage-${escapeHtml(user.id)}">
-                        <input type="range" min="0" max="${max}" value="${usage}"
-                            data-role="range"
-                            oninput="applyUserUsageChange('${escapeInlineArg(user.id)}', this.value)">
-                        <input type="number" min="0" max="${creditsToSimulationValue(max)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(usage)}"
-                            data-role="number"
-                            oninput="applyUserUsageChange('${escapeInlineArg(user.id)}', simulationValueToCredits(this.value))">
-                    </div>
-                </td>
-            </tr>`;
+
+        const percents = state.globalBudgetPercents || {};
+        let html = '';
+
+        // Enterprise unreserved pool
+        const reserved = state.costCenters.filter(cc => cc.poolEnabled).reduce((s, cc) => s + getCCPoolSize(cc), 0);
+        const entPool = totalPool() - reserved;
+        const eligibleForEntPool = state.users.filter(u => { const cc = getUserCC(u); return !cc || !cc.poolEnabled; });
+        if (entPool > 0) {
+            const pct = percents['enterprisePool'] || 0;
+            html += renderBudgetControl('enterprisePool', 'Enterprise Shared Pool',
+                `${fmt(entPool)} ${getSimulationUnitLabel()} total`,
+                eligibleForEntPool.length, pct);
+        }
+
+        // CC pools
+        state.costCenters.filter(cc => cc.poolEnabled).forEach(cc => {
+            const ccPool = getCCPoolSize(cc);
+            const ccUsers = getAssignedCCMembers(cc);
+            if (ccPool > 0) {
+                const pct = percents['ccPool_' + cc.id] || 0;
+                html += renderBudgetControl('ccPool_' + cc.id, cc.name + ' Pool',
+                    `${fmt(ccPool)} ${getSimulationUnitLabel()} total`,
+                    ccUsers.length, pct);
+            }
         });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-        updateSimulationSummaryControls();
+
+        // Enterprise overage budget
+        if (state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
+            const pct = percents['enterpriseOverage'] || 0;
+            html += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
+                `$${state.enterprise.enterpriseBudget.toFixed(2)} total`,
+                state.users.length, pct);
+        }
+
+        // CC overage budgets
+        state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
+            const ccUsers = getAssignedCCMembers(cc);
+            const pct = percents['ccOverage_' + cc.id] || 0;
+            html += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
+                `$${cc.budget.toFixed(2)} total`,
+                ccUsers.length, pct);
+        });
+
+        // Org overage budgets
+        state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
+            const orgUsers = state.users.filter(u => u.orgId === org.id);
+            const pct = percents['orgOverage_' + org.id] || 0;
+            html += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
+                `$${org.budget.toFixed(2)} total`,
+                orgUsers.length, pct);
+        });
+
+        if (!html) {
+            html = '<p class="help-text">No budgets configured yet. Set up seat licenses and/or overage budgets first.</p>';
+        }
+
+        globalControls.innerHTML = html;
         runSimulation();
     }
 
     function setSimulationUnit(unit) {
         state.simulationUnit = unit === 'dollars' ? 'dollars' : 'credits';
         saveState();
-        renderSimulationInputs();
+        renderGlobalBudgetSimulation();
     }
 
     function resetUsage() {
         state.usage = {};
+        state.globalBudgetPercents = {};
         saveState();
-        renderSimulationInputs();
+        renderGlobalBudgetSimulation();
     }
 
     // ─── Navigation ──────────────────────────────────────────────────────────────
@@ -2015,7 +2145,7 @@
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
-        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
+        if (panel === 'simulate') renderGlobalBudgetSimulation();
         if (panel === 'budgets') renderBudgets();
         if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
     });
@@ -2045,8 +2175,7 @@
         renderUsers();
         renderBudgets();
         renderPoolView();
-        renderSimulationInputs();
-        runAggregateSimulation();
+        renderGlobalBudgetSimulation();
         renderTabCounts();
         updateUserCreateMode();
     }
