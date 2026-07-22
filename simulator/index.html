@@ -397,8 +397,8 @@
                 <h3>Universal ULB</h3>
                 <div class="form-row" style="margin-bottom: 16px">
                     <div class="form-group">
-                        <label>Default per-user budget (credits)</label>
-                        <input type="number" id="universalULB" placeholder="No limit" min="0" onchange="updateBudgets()">
+                        <label>Default per-user budget ($)</label>
+                        <input type="number" id="universalULB" placeholder="No limit" min="0" step="0.01" onchange="updateBudgets()">
                         <p class="help-text">Applies to all licensed users unless overridden</p>
                     </div>
                 </div>
@@ -418,8 +418,8 @@
                         <select id="ulbTarget"></select>
                     </div>
                     <div class="form-group">
-                        <label>Budget (credits)</label>
-                        <input type="number" id="ulbValue" min="0" placeholder="e.g., 5000">
+                        <label>Budget ($)</label>
+                        <input type="number" id="ulbValue" min="0" step="0.01" placeholder="e.g., 50">
                     </div>
                     <button type="submit" class="btn-primary">+ Add</button>
                 </form>
@@ -593,6 +593,18 @@
     const CREDITS_PER_DOLLAR = 100;
     // 10000% allows 100x capacity stress scenarios while still preventing accidental massive inputs.
     const MAX_GLOBAL_USAGE_PERCENT = 10000;
+
+    function dollarsToCredits(amount) {
+        return Math.round((Math.max(0, amount) * CREDITS_PER_DOLLAR) + Number.EPSILON);
+    }
+
+    function creditsToDollars(credits) {
+        return Math.max(0, credits) / CREDITS_PER_DOLLAR;
+    }
+
+    function formatBudgetDollarsFromCredits(credits) {
+        return `$${creditsToDollars(credits).toFixed(2)}`;
+    }
 
     function meteredCreditsFromBudget(amount) {
         return Math.floor((Math.max(0, amount) * CREDITS_PER_DOLLAR) + Number.EPSILON);
@@ -1205,7 +1217,7 @@
                         <div class="user-panel-grid" style="margin-top: 12px">
                             <div class="user-panel-field">
                                 <div class="user-panel-field-label">Effective ULB</div>
-                                <div class="user-panel-field-value">${ulb.value !== null ? fmt(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
+                                <div class="user-panel-field-value">${ulb.value !== null ? formatBudgetDollarsFromCredits(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
                             </div>
                         </div>
                         <div class="user-panel-actions">
@@ -1219,7 +1231,7 @@
                     <summary class="user-panel-summary">
                         <div class="user-panel-summary-main">
                             <strong>${escapeHtml(u.name)}</strong>
-                            <div class="help-text">${ulb.value !== null ? `ULB: ${fmt(ulb.value)} via ${escapeHtml(ulb.source)}` : 'No user-level budget configured.'}</div>
+                            <div class="help-text">${ulb.value !== null ? `ULB: ${formatBudgetDollarsFromCredits(ulb.value)} via ${escapeHtml(ulb.source)}` : 'No user-level budget configured.'}</div>
                         </div>
                         <div class="user-panel-summary-meta">${summaryMeta}</div>
                     </summary>
@@ -1243,7 +1255,7 @@
                             </div>
                             <div class="user-panel-field">
                                 <div class="user-panel-field-label">Effective ULB</div>
-                                <div class="user-panel-field-value">${ulb.value !== null ? fmt(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
+                                <div class="user-panel-field-value">${ulb.value !== null ? formatBudgetDollarsFromCredits(ulb.value) + ` <small>(${escapeHtml(ulb.source)})</small>` : '∞'}</div>
                             </div>
                         </div>
                         <div class="user-panel-actions">
@@ -1260,8 +1272,8 @@
 
     // ─── Budgets Tab ─────────────────────────────────────────────────────────────
     function updateBudgets() {
-        const ulbVal = document.getElementById('universalULB').value;
-        state.enterprise.universalULB = ulbVal ? parseInt(ulbVal) : null;
+        const ulbVal = parseFloat(document.getElementById('universalULB').value);
+        state.enterprise.universalULB = Number.isFinite(ulbVal) ? dollarsToCredits(ulbVal) : null;
         state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
         state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
         saveState();
@@ -1282,7 +1294,8 @@
     function addULB() {
         const type = document.getElementById('ulbType').value;
         const target = document.getElementById('ulbTarget').value;
-        const value = parseInt(document.getElementById('ulbValue').value);
+        const valueDollars = parseFloat(document.getElementById('ulbValue').value);
+        const value = Number.isFinite(valueDollars) ? dollarsToCredits(valueDollars) : NaN;
         if (!target) return alert('Select a target');
         if (isNaN(value) || value < 0) return alert('Enter a valid budget value');
 
@@ -1357,12 +1370,15 @@
     }
 
     function updateConfiguredULB(type, id, value) {
+        const parsed = parseFloat(value);
+        if (value !== '' && !Number.isFinite(parsed)) return;
+        const nextValue = value === '' ? null : dollarsToCredits(parsed);
         if (type === 'individual') {
             const user = state.users.find(u => u.id === id);
-            if (user) user.individualULB = value === '' ? null : parseInt(value);
+            if (user) user.individualULB = nextValue;
         } else {
             const cc = state.costCenters.find(c => c.id === id);
-            if (cc) cc.ulb = value === '' ? null : parseInt(value);
+            if (cc) cc.ulb = nextValue;
         }
         saveState();
         renderUsers();
@@ -1385,7 +1401,7 @@
 
     function renderBudgets() {
         // Universal ULB
-        document.getElementById('universalULB').value = state.enterprise.universalULB ?? '';
+        document.getElementById('universalULB').value = state.enterprise.universalULB !== null ? creditsToDollars(state.enterprise.universalULB).toFixed(2) : '';
         document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
         document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
 
@@ -1401,12 +1417,12 @@
         if (configuredIndividualULBs.length === 0 && configuredCCULBs.length === 0) {
             ulbEl.innerHTML = '<p class="help-text">No user-level budgets configured yet. Use the form above to add one.</p>';
         } else {
-            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget (credits)</th><th></th></tr></thead><tbody>';
+            let html = '<table><thead><tr><th>Type</th><th>Target</th><th>Budget ($)</th><th></th></tr></thead><tbody>';
             configuredCCULBs.forEach(cc => {
                 html += `<tr>
                     <td><span class="badge badge-info">Cost Center</span></td>
                     <td>${escapeHtml(cc.name)}</td>
-                    <td><input type="number" value="${cc.ulb}" min="0" style="width:120px" onchange="updateConfiguredULB('costcenter','${escapeInlineArg(cc.id)}',this.value)"></td>
+                    <td><input type="number" value="${creditsToDollars(cc.ulb).toFixed(2)}" min="0" step="0.01" style="width:120px" onchange="updateConfiguredULB('costcenter','${escapeInlineArg(cc.id)}',this.value)"></td>
                     <td><button class="btn-danger btn-sm" onclick="removeULB('costcenter','${escapeInlineArg(cc.id)}')">✕</button></td>
                 </tr>`;
             });
@@ -1414,7 +1430,7 @@
                 html += `<tr>
                     <td><span class="badge badge-warning">Individual</span></td>
                     <td>${escapeHtml(u.name)}</td>
-                    <td><input type="number" value="${u.individualULB}" min="0" style="width:120px" onchange="updateConfiguredULB('individual','${escapeInlineArg(u.id)}',this.value)"></td>
+                    <td><input type="number" value="${creditsToDollars(u.individualULB).toFixed(2)}" min="0" step="0.01" style="width:120px" onchange="updateConfiguredULB('individual','${escapeInlineArg(u.id)}',this.value)"></td>
                     <td><button class="btn-danger btn-sm" onclick="removeULB('individual','${escapeInlineArg(u.id)}')">✕</button></td>
                 </tr>`;
             });
