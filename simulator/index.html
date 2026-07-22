@@ -175,6 +175,11 @@
         .simulation-unit-switch { display: flex; align-items: center; gap: 8px; }
         .simulation-unit-switch label { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
         .simulation-unit-switch select { min-width: 120px; }
+        .simulation-setup-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; padding: 12px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); }
+        .simulation-setup-banner-label { font-size: 0.75rem; color: var(--color-text-muted); margin-right: 4px; }
+        .simulation-setup-step { padding: 6px 10px; font-size: 0.75rem; }
+        .simulation-setup-step.active { border-color: var(--color-accent); color: var(--color-accent); }
+        .simulation-empty-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 
         .user-panel-list { display: flex; flex-direction: column; gap: 12px; }
         .user-panel { border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-bg); overflow: hidden; }
@@ -222,17 +227,17 @@
     </header>
 
     <nav id="mainNav">
-        <button class="active" data-panel="enterprise">🏢 Enterprise</button>
+        <button data-panel="enterprise">🏢 Enterprise</button>
         <button data-panel="costcenters" id="tab-costcenters">📂 Cost Centers</button>
         <button data-panel="users" id="tab-users">👥 Users</button>
         <button data-panel="budgets">💰 Budgets</button>
         <button data-panel="pool">📊 Pool View</button>
-        <button data-panel="simulate">⚡ Simulate</button>
+        <button class="active" data-panel="simulate">⚡ Simulate</button>
     </nav>
 
     <main>
         <!-- ═══════════════ ENTERPRISE TAB ═══════════════ -->
-        <div id="panel-enterprise" class="panel active">
+        <div id="panel-enterprise" class="panel">
             <div class="card">
                 <h2>🏢 License Seats</h2>
                 <p class="help-text" style="margin-bottom: 12px">Configure how many Copilot Business and Enterprise seats your enterprise has. The AI credit pool is calculated from these.</p>
@@ -486,11 +491,20 @@
         </div>
 
         <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
-        <div id="panel-simulate" class="panel">
+        <div id="panel-simulate" class="panel active">
             <div class="card">
                 <h2>⚡ Usage Simulation</h2>
                 <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
-                <form onsubmit="handleFormSubmit(event, runSimulation)">
+                <div id="simulationWizardBanner" class="simulation-setup-banner"></div>
+                <div id="simulationEmptyState" class="empty-state" style="display:none">
+                    <h3 style="margin-bottom: 8px">No simulation data yet</h3>
+                    <p>Start a new simulation from the setup wizard or import an existing configuration file.</p>
+                    <div class="simulation-empty-actions">
+                        <button type="button" class="btn-primary" onclick="startSimulationWizard()">Start a New Simulation</button>
+                        <button type="button" onclick="document.getElementById('importFile').click()">Import Data from File</button>
+                    </div>
+                </div>
+                <form id="simulationForm" onsubmit="handleFormSubmit(event, runSimulation)">
                     <div id="simulationGlobalControls"></div>
                     <div id="simulationInputs"></div>
                     <div style="margin-top: 16px; display: flex; gap: 8px;">
@@ -2006,18 +2020,46 @@
         renderSimulationInputs();
     }
 
-    // ─── Navigation ──────────────────────────────────────────────────────────────
-    document.getElementById('mainNav').addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON') return;
+    function hasSimulationSetupData() {
+        return totalSeats() > 0 || state.teams.length > 0 || state.orgs.length > 0 || state.costCenters.length > 0 || state.users.length > 0;
+    }
+
+    function setActivePanel(panel) {
         document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
+        const activeButton = document.querySelector(`#mainNav button[data-panel="${panel}"]`);
+        if (activeButton) activeButton.classList.add('active');
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-        document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
-        const panel = e.target.dataset.panel;
+        const activePanel = document.getElementById('panel-' + panel);
+        if (activePanel) activePanel.classList.add('active');
         if (panel === 'pool') renderPoolView();
         if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
         if (panel === 'budgets') renderBudgets();
         if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
+    }
+
+    function startSimulationWizard() {
+        setActivePanel('enterprise');
+    }
+
+    function renderSimulationWizardBanner() {
+        const banner = document.getElementById('simulationWizardBanner');
+        if (!banner) return;
+        const steps = [
+            { panel: 'enterprise', label: '1. Enterprise' },
+            { panel: 'costcenters', label: `2. Cost Centers${state.costCenters.length ? ` (${state.costCenters.length})` : ''}` },
+            { panel: 'users', label: `3. Users${state.users.length ? ` (${state.users.length})` : ''}` },
+            { panel: 'budgets', label: '4. Budgets' },
+            { panel: 'pool', label: '5. Pool View' }
+        ];
+        banner.innerHTML = `<span class="simulation-setup-banner-label">Setup Wizard:</span>` + steps.map(step => `
+            <button type="button" class="simulation-setup-step${document.getElementById('panel-' + step.panel).classList.contains('active') ? ' active' : ''}" onclick="setActivePanel('${step.panel}')">${step.label}</button>
+        `).join('');
+    }
+
+    // ─── Navigation ──────────────────────────────────────────────────────────────
+    document.getElementById('mainNav').addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+        setActivePanel(e.target.dataset.panel);
     });
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
