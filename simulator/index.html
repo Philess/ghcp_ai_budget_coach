@@ -402,20 +402,70 @@
             border-style: dashed;
         }
 
-        @keyframes wizard-btn-blink {
-            0%, 100% { background: var(--color-accent); }
-            25%, 75% { background: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.35); }
+        /* ── Wizard-steps nav section ── */
+        .nav-setup-label {
+            color: var(--color-text-muted);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0 8px 0 4px;
+            white-space: nowrap;
+            align-self: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .wizard-btn-blink {
-            animation: wizard-btn-blink 0.8s ease-in-out 2;
+        .nav-sep {
+            width: 1px;
+            background: var(--color-border);
+            margin: 8px 6px;
+            align-self: stretch;
+            flex-shrink: 0;
         }
+        nav .nav-setup-btn {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            padding: 12px 14px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            transition: color 0.15s, background 0.15s;
+        }
+        nav .nav-setup-btn:hover { color: var(--color-accent); background: rgba(88,166,255,0.05); }
+
+        /* ── Dashboard empty state ── */
+        .empty-state-dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 55vh;
+            padding: 60px 24px;
+            text-align: center;
+        }
+        .empty-state-dashboard .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state-dashboard h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; }
+        .empty-state-dashboard p { color: var(--color-text-muted); margin-bottom: 32px; max-width: 460px; line-height: 1.6; }
+        .cta-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .btn-cta {
+            padding: 14px 28px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            border-radius: var(--radius);
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-cta-primary { background: var(--color-accent-emphasis); color: #fff; }
+        .btn-cta-secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
     </style>
 </head>
 <body>
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
-            <button id="wizardOpenBtn" onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -424,17 +474,22 @@
     </header>
 
     <nav id="mainNav">
-        <button class="active" data-panel="enterprise">🏢 Enterprise</button>
-        <button data-panel="costcenters" id="tab-costcenters">📂 Cost Centers</button>
-        <button data-panel="users" id="tab-users">👥 Users</button>
-        <button data-panel="budgets">💰 Budgets</button>
-        <button data-panel="pool">📊 Pool View</button>
-        <button data-panel="simulate">⚡ Simulate</button>
+        <span class="nav-setup-label">Setup:</span>
+        <button class="nav-setup-btn" id="nav-step-0" onclick="openWizardAtStep(0)">🏛️ Organizations</button>
+        <button class="nav-setup-btn" id="nav-step-1" onclick="openWizardAtStep(1)">👥 Teams</button>
+        <button class="nav-setup-btn" id="nav-step-2" onclick="openWizardAtStep(2)">📂 Cost Centers</button>
+        <button class="nav-setup-btn" id="nav-step-3" onclick="openWizardAtStep(3)">👤 Users</button>
+        <button class="nav-setup-btn" id="nav-step-4" onclick="openWizardAtStep(4)">🎯 User Budgets</button>
+        <button class="nav-setup-btn" id="nav-step-5" onclick="openWizardAtStep(5)">💳 Overage Budgets</button>
+        <div class="nav-sep"></div>
+        <button class="active" data-panel="simulate">📊 Dashboard</button>
+        <button data-panel="pool">🏊 Pool View</button>
+        <button data-panel="enterprise">⚙️ Settings</button>
     </nav>
 
     <main>
         <!-- ═══════════════ ENTERPRISE TAB ═══════════════ -->
-        <div id="panel-enterprise" class="panel active">
+        <div id="panel-enterprise" class="panel">
             <div class="card">
                 <h2>🏢 License Seats</h2>
                 <p class="help-text" style="margin-bottom: 12px">Configure how many Copilot Business and Enterprise seats your enterprise has. The AI credit pool is calculated from these.</p>
@@ -687,37 +742,50 @@
             </div>
         </div>
 
-        <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
-        <div id="panel-simulate" class="panel">
-            <div class="card">
-                <h2>⚡ Usage Simulation</h2>
-                <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
-                <form onsubmit="handleFormSubmit(event, runSimulation)">
-                    <div id="simulationGlobalControls"></div>
-                    <div id="simulationInputs"></div>
-                    <div style="margin-top: 16px; display: flex; gap: 8px;">
-                        <button type="submit" class="btn-primary">▶️ Run Simulation</button>
-                        <button type="button" onclick="resetUsage()">Reset Usage</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card" id="simulationResultsCard" style="display:none">
-                <h2>📋 Simulation Results</h2>
-                <div class="stat-grid" id="simSummaryStats"></div>
-                <div id="simulationResults"></div>
-            </div>
-
-            <div class="card">
-                <h2>🏊 Pool & Overage Simulation</h2>
-                <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Total Credits Consumed (all users combined)</label>
-                        <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
-                    </div>
+        <!-- ═══════════════ SIMULATION DASHBOARD ═══════════════ -->
+        <div id="panel-simulate" class="panel active">
+            <!-- Empty state: shown when no data is configured -->
+            <div id="dashboardEmpty" class="empty-state-dashboard" style="display:none">
+                <div class="empty-icon">🤖</div>
+                <h2>No simulation data yet</h2>
+                <p>Create your first simulation by following the guided setup wizard, or load an existing configuration from a file.</p>
+                <div class="cta-buttons">
+                    <button class="btn-cta btn-cta-primary" onclick="openWizardAtStep(0)">🧙 Start a new simulation</button>
+                    <button class="btn-cta btn-cta-secondary" onclick="document.getElementById('importFile').click()">📤 Import data from file</button>
                 </div>
-                <div id="aggregateResults"></div>
+            </div>
+            <!-- Dashboard content: shown when data exists -->
+            <div id="dashboardContent">
+                <div class="card">
+                    <h2>⚡ Usage Simulation</h2>
+                    <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
+                    <form onsubmit="handleFormSubmit(event, runSimulation)">
+                        <div id="simulationGlobalControls"></div>
+                        <div id="simulationInputs"></div>
+                        <div style="margin-top: 16px; display: flex; gap: 8px;">
+                            <button type="submit" class="btn-primary">▶️ Run Simulation</button>
+                            <button type="button" onclick="resetUsage()">Reset Usage</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card" id="simulationResultsCard" style="display:none">
+                    <h2>📋 Simulation Results</h2>
+                    <div class="stat-grid" id="simSummaryStats"></div>
+                    <div id="simulationResults"></div>
+                </div>
+
+                <div class="card">
+                    <h2>🏊 Pool & Overage Simulation</h2>
+                    <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Total Credits Consumed (all users combined)</label>
+                            <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
+                        </div>
+                    </div>
+                    <div id="aggregateResults"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -2138,22 +2206,29 @@
 
     // ─── Navigation ──────────────────────────────────────────────────────────────
     document.getElementById('mainNav').addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON') return;
-        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
+        if (e.target.tagName !== 'BUTTON' || !e.target.dataset.panel) return;
+        document.querySelectorAll('#mainNav button[data-panel]').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
-        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); }
-        if (panel === 'budgets') renderBudgets();
+        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); renderDashboardState(); }
         if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
     });
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
     function renderTabCounts() {
-        document.getElementById('tab-users').textContent = `👥 Users${state.users.length ? ' (' + state.users.length + ')' : ''}`;
-        document.getElementById('tab-costcenters').textContent = `📂 Cost Centers${state.costCenters.length ? ' (' + state.costCenters.length + ')' : ''}`;
+        const steps = [
+            { id: 'nav-step-0', icon: '🏛️', label: 'Organizations', count: state.orgs.length },
+            { id: 'nav-step-1', icon: '👥', label: 'Teams', count: state.teams.length },
+            { id: 'nav-step-2', icon: '📂', label: 'Cost Centers', count: state.costCenters.length },
+            { id: 'nav-step-3', icon: '👤', label: 'Users', count: state.users.length },
+        ];
+        steps.forEach(s => {
+            const el = document.getElementById(s.id);
+            if (el) el.textContent = `${s.icon} ${s.label}${s.count ? ' (' + s.count + ')' : ''}`;
+        });
     }
 
     // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -2179,6 +2254,22 @@
         runAggregateSimulation();
         renderTabCounts();
         updateUserCreateMode();
+        renderDashboardState();
+    }
+
+    // ─── Dashboard empty / content state ────────────────────────────────────────
+    function hasAnyData() {
+        return state.users.length > 0 || state.costCenters.length > 0 ||
+               state.orgs.length > 0 || state.teams.length > 0;
+    }
+
+    function renderDashboardState() {
+        const empty = document.getElementById('dashboardEmpty');
+        const content = document.getElementById('dashboardContent');
+        if (!empty || !content) return;
+        const showEmpty = !hasAnyData();
+        empty.style.display = showEmpty ? 'flex' : 'none';
+        content.style.display = showEmpty ? 'none' : 'block';
     }
 
     // ─── Setup Wizard ─────────────────────────────────────────────────────────────
@@ -2224,6 +2315,14 @@
 
     function openWizard() {
         wizardStep = 0;
+        wizardDone = false;
+        wizardData = defaultWizardData();
+        document.getElementById('wizardOverlay').style.display = 'flex';
+        renderWizard();
+    }
+
+    function openWizardAtStep(step) {
+        wizardStep = step;
         wizardDone = false;
         wizardData = defaultWizardData();
         document.getElementById('wizardOverlay').style.display = 'flex';
@@ -3038,8 +3137,8 @@
                 <p style="color:var(--color-text-muted);margin-bottom:16px">Your configuration has been created and saved.</p>
                 ${createdParts.length > 0 ? `<p style="font-size:0.875rem;margin-bottom:12px">Created: ${createdParts.join(', ')}.</p>` : ''}
                 <p class="help-text" style="max-width:440px;margin:0 auto">
-                    💡 <strong>Next steps:</strong> Use the <strong>Enterprise</strong> tab to enable AI credit pool reservations for your cost centers,
-                    then head to <strong>Simulate</strong> to model usage patterns and verify your budget setup.
+                   💡 <strong>Next steps:</strong> Use <strong>⚙️ Settings</strong> to enable AI credit pool reservations for your cost centers,
+                   then head to <strong>📊 Dashboard</strong> to model usage patterns and verify your budget setup.
                 </p>
                 ${skippedHtml}
             </div>`;
@@ -3048,17 +3147,6 @@
     }
 
     renderAll();
-
-    // Blink the wizard button twice in orange on page load to make it visible
-    (function () {
-        const btn = document.getElementById('wizardOpenBtn');
-        if (!btn) return;
-        btn.classList.add('wizard-btn-blink');
-        btn.addEventListener('animationend', function onEnd() {
-            btn.classList.remove('wizard-btn-blink');
-            btn.removeEventListener('animationend', onEnd);
-        });
-    })();
     </script>
 </body>
 </html>
