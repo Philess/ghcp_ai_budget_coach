@@ -387,13 +387,35 @@
             .wizard-step-item span:last-child { display: none; }
             .wizard-step-sep { width: 10px; }
         }
+
+        .wizard-existing-section { margin-top: 18px; }
+        .wizard-existing-section h4 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .wizard-entry-item.existing {
+            opacity: 0.7;
+            border-style: dashed;
+        }
+
+        @keyframes wizard-btn-blink {
+            0%, 100% { background: var(--color-accent); }
+            25%, 75% { background: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.35); }
+        }
+        .wizard-btn-blink {
+            animation: wizard-btn-blink 0.8s ease-in-out 2;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
-            <button onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
+            <button id="wizardOpenBtn" onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -2336,6 +2358,15 @@
     }
 
     function renderWizardStepOrgs() {
+        const existingOrgs = state.orgs;
+        const existingHtml = existingOrgs.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingOrgs.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingOrgs.map(o =>
+                    `<div class="wizard-entry-item existing"><div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+                    <span class="badge badge-info">existing</span></div>`
+                ).join('') + `</div></div>` : '';
         const listHtml = wizardData.orgs.length === 0
             ? '<p class="help-text">No organizations added yet.</p>'
             : '<div class="wizard-entry-list">' + wizardData.orgs.map(o =>
@@ -2352,7 +2383,8 @@
                 </div>
                 <div class="wizard-error" id="wizardOrgError"></div>
             </form>
-            <div id="wizardOrgList">${listHtml}</div>`;
+            <div id="wizardOrgList">${listHtml}</div>
+            ${existingHtml}`;
     }
 
     // ─── Wizard Step 2: Enterprise Teams ──────────────────────────────────────────
@@ -2387,6 +2419,15 @@
     }
 
     function renderWizardStepTeams() {
+        const existingTeams = state.teams;
+        const existingHtml = existingTeams.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingTeams.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingTeams.map(t =>
+                    `<div class="wizard-entry-item existing"><div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+                    <span class="badge badge-info">existing</span></div>`
+                ).join('') + `</div></div>` : '';
         const listHtml = wizardData.teams.length === 0
             ? '<p class="help-text">No teams added yet.</p>'
             : '<div class="wizard-entry-list">' + wizardData.teams.map(t =>
@@ -2403,7 +2444,8 @@
                 </div>
                 <div class="wizard-error" id="wizardTeamError"></div>
             </form>
-            <div id="wizardTeamList">${listHtml}</div>`;
+            <div id="wizardTeamList">${listHtml}</div>
+            ${existingHtml}`;
     }
 
     // ─── Wizard Step 3: Cost Centers ──────────────────────────────────────────────
@@ -2567,6 +2609,21 @@
                         <div class="help-text">${escapeHtml(meta)}</div></div>
                     <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUser('${escapeInlineArg(u.name)}')">✕</button></div>`;
               }).join('') + '</div>';
+        const existingUsers = state.users;
+        const existingHtml = existingUsers.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingUsers.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingUsers.map(u => {
+                    const cc = state.costCenters.find(c => c.id === u.costCenterId);
+                    const org = state.orgs.find(o => o.id === u.orgId);
+                    const team = state.teams.find(t => t.id === u.teamId);
+                    const meta = [u.license, cc && `CC: ${cc.name}`, org && `Org: ${org.name}`, team && `Team: ${team.name}`].filter(Boolean).join(' · ');
+                    return `<div class="wizard-entry-item existing">
+                        <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                            <div class="help-text">${escapeHtml(meta)}</div></div>
+                        <span class="badge badge-info">existing</span></div>`;
+                }).join('') + `</div></div>` : '';
         return `<h3>Step 4: Users</h3>
             <p class="help-text" style="margin-bottom:16px">Add individual users or generate multiple in bulk. Assign each user a license, cost center, organization, and team.</p>
             <form onsubmit="event.preventDefault(); wizardAddUser()">
@@ -2595,7 +2652,8 @@
                     <button type="submit" id="wizardUserAddBtn" class="btn-primary">+ Add User</button></div>
                 <div class="wizard-error" id="wizardUserError"></div>
             </form>
-            <div id="wizardUserList">${listHtml}</div>`;
+            <div id="wizardUserList">${listHtml}</div>
+            ${existingHtml}`;
     }
 
     // ─── Wizard Step 5: User-Level Budgets ────────────────────────────────────────
@@ -2990,6 +3048,17 @@
     }
 
     renderAll();
+
+    // Blink the wizard button twice in orange on page load to make it visible
+    (function () {
+        const btn = document.getElementById('wizardOpenBtn');
+        if (!btn) return;
+        btn.classList.add('wizard-btn-blink');
+        btn.addEventListener('animationend', function onEnd() {
+            btn.classList.remove('wizard-btn-blink');
+            btn.removeEventListener('animationend', onEnd);
+        });
+    })();
     </script>
 </body>
 </html>
