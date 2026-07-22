@@ -1799,7 +1799,7 @@
 
     function normalizePercentValue(value) {
         const parsed = parseFloat(value);
-        const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        const sanitized = Number.isFinite(parsed) ? Math.max(0, Math.min(parsed, MAX_GLOBAL_USAGE_PERCENT)) : 0;
         return sanitized.toFixed(1);
     }
 
@@ -1865,7 +1865,7 @@
     }
 
     function distributeGlobalUsage(percent) {
-        const sanitizedPercent = Math.max(0, parseFloat(percent) || 0);
+        const sanitizedPercent = Math.min(Math.max(0, parseFloat(percent) || 0), MAX_GLOBAL_USAGE_PERCENT);
         const users = state.users.map(user => {
             const capacity = getUserSimulationCapacity(user);
             const raw = (capacity * sanitizedPercent) / 100;
@@ -1963,7 +1963,7 @@
                 <div class="simulation-global-slider">
                     <input type="range" id="globalUsageRange" min="0" max="${getGlobalUsageSliderMax(globalPercent)}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
                     <div class="simulation-global-slider-controls">
-                        <input type="number" id="globalUsageValue" min="0" max="${MAX_GLOBAL_USAGE_PERCENT}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)">
+                        <input type="number" id="globalUsageValue" min="0" max="${MAX_GLOBAL_USAGE_PERCENT}" step="0.1" value="${globalPercent.toFixed(1)}" oninput="applyGlobalUsagePercent(this.value)" aria-label="Global usage percentage">
                         <span>%</span>
                     </div>
                 </div>
