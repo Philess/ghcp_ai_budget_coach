@@ -199,7 +199,14 @@
         .tag .remove:hover { color: var(--color-danger); }
 
         .sim-controls-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .sim-controls-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .sim-pool-reservations { margin-bottom: 20px; }
+
+        .sim-workflow-note { background: var(--color-bg); border: 1px solid var(--color-border); border-left: 4px solid var(--color-accent); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; }
+        .sim-workflow-note strong { display: block; font-size: 0.9375rem; margin-bottom: 4px; }
+        .sim-workflow-note p { margin: 0 0 6px; color: var(--color-text-muted); font-size: 0.8125rem; }
+        .sim-workflow-note ol { margin: 0; padding-left: 20px; color: var(--color-text-muted); font-size: 0.8125rem; }
+        .sim-workflow-note li { margin-bottom: 4px; }
 
         .budget-group-title { font-size: 0.9375rem; font-weight: 700; margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
         .budget-group-title .help-text { font-weight: 400; }
@@ -522,6 +529,14 @@
 
         <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
         <div id="panel-simulate" class="panel">
+            <div class="sim-workflow-note">
+                <strong>💡 How this simulation works</strong>
+                <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
+                <ol>
+                    <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
+                    <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline to reveal the real moment a user gets blocked.</li>
+                </ol>
+            </div>
             <div class="card">
                 <h2>🎛️ Global Budget Usage Simulation</h2>
                 <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
@@ -533,7 +548,11 @@
                             <option value="dollars">$</option>
                         </select>
                     </div>
-                    <button type="button" onclick="resetUsage()">Reset Usage</button>
+                    <div class="sim-controls-actions">
+                        <span id="startingPointStatus" class="help-text"></span>
+                        <button type="button" class="btn-primary" onclick="setStartingPoint()">📌 Set as Starting Point</button>
+                        <button type="button" onclick="resetUsage()">Reset Usage</button>
+                    </div>
                 </div>
                 <div class="sim-pool-reservations">
                     <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
@@ -573,6 +592,7 @@
             costCenters: [],
             users: [],
             usage: {},
+            usageBaseline: {},
             simulationUnit: 'credits',
             globalBudgetPercents: {}
         };
@@ -622,6 +642,7 @@
             costCenters: Array.isArray(parsed.costCenters) ? parsed.costCenters : [],
             users: Array.isArray(parsed.users) ? parsed.users : [],
             usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
+            usageBaseline: parsed.usageBaseline && typeof parsed.usageBaseline === 'object' && !Array.isArray(parsed.usageBaseline) ? parsed.usageBaseline : {},
             globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
         };
     }
@@ -1606,7 +1627,13 @@
         return null;
     }
 
-    function evaluateUser(user, userUsage, poolState) {
+    function evaluateUser(user, userUsage, poolState, baselineResult = null) {
+        const baseCC = baselineResult ? baselineResult.creditsFromCC : 0;
+        const baseEnt = baselineResult ? baselineResult.creditsFromEntPool : 0;
+        const baseMetered = baselineResult ? baselineResult.creditsMetered : 0;
+        const baseCost = baselineResult ? baselineResult.meteredCost : 0;
+        const baselineDrawn = baseCC + baseEnt + baseMetered;
+
         const result = {
             user: user.name,
             userId: user.id,
@@ -1614,11 +1641,11 @@
             status: 'served',
             source: '',
             reason: '',
-            meteredCost: 0,
+            meteredCost: baseCost,
             ulbRemaining: null,
-            creditsFromCC: 0,
-            creditsFromEntPool: 0,
-            creditsMetered: 0
+            creditsFromCC: baseCC,
+            creditsFromEntPool: baseEnt,
+            creditsMetered: baseMetered
         };
 
         if (userUsage === 0) {
@@ -1638,7 +1665,8 @@
         }
         result.ulbRemaining = ulb.value !== null ? ulb.value - userUsage : null;
 
-        let remaining = userUsage;
+        // Only the usage beyond the already-consumed baseline is drawn in this phase.
+        let remaining = Math.max(0, userUsage - baselineDrawn);
         const cc = getUserCC(user);
 
         // Step 2: CC pool
@@ -1646,7 +1674,7 @@
             const available = poolState.ccPools[cc.id] || 0;
             const drawn = Math.min(remaining, available);
             poolState.ccPools[cc.id] -= drawn;
-            result.creditsFromCC = drawn;
+            result.creditsFromCC += drawn;
             remaining -= drawn;
 
             if (remaining > 0 && !cc.overagesAllowed) {
@@ -1660,7 +1688,7 @@
         if (remaining > 0) {
             const drawn = Math.min(remaining, poolState.enterprisePool);
             poolState.enterprisePool -= drawn;
-            result.creditsFromEntPool = drawn;
+            result.creditsFromEntPool += drawn;
             remaining -= drawn;
         }
 
@@ -1715,14 +1743,15 @@
                 return result;
             }
 
-            result.creditsMetered = remaining;
-            result.meteredCost = remaining * 0.01;
-            if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + result.meteredCost;
-            if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + result.meteredCost;
-            poolState.enterpriseMetered += result.meteredCost;
+            const deltaCost = remaining * 0.01;
+            result.creditsMetered += remaining;
+            result.meteredCost += deltaCost;
+            if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + deltaCost;
+            if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + deltaCost;
+            poolState.enterpriseMetered += deltaCost;
 
             result.status = 'metered';
-            result.source = `${formatSimulationCredits(result.creditsFromCC)} CC pool + ${formatSimulationCredits(result.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(remaining)} metered`;
+            result.source = `${formatSimulationCredits(result.creditsFromCC)} CC pool + ${formatSimulationCredits(result.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(result.creditsMetered)} metered`;
             return result;
         }
 
@@ -1743,7 +1772,22 @@
             return;
         }
         const poolState = initPoolState();
-        const results = state.users.map(user => evaluateUser(user, state.usage[user.id] || 0, poolState));
+        const baseline = state.usageBaseline || {};
+
+        // Phase 1 — Starting point: every user consumes their saved baseline together,
+        // depleting the shared pools/budgets concurrently so no user is starved by list
+        // order. Only the pool state mutation is kept; the breakdown feeds phase 2.
+        const baselineResults = {};
+        state.users.forEach(user => {
+            const total = state.usage[user.id] || 0;
+            const base = Math.min(baseline[user.id] || 0, total);
+            baselineResults[user.id] = base > 0 ? evaluateUser(user, base, poolState) : null;
+        });
+
+        // Phase 2 — Applied changes: each user's usage above the baseline is drawn from
+        // what remains, in sequence, revealing the real point where a user gets blocked.
+        const results = state.users.map(user =>
+            evaluateUser(user, state.usage[user.id] || 0, poolState, baselineResults[user.id]));
         renderSimulationResults(results, poolState);
     }
 
@@ -2174,6 +2218,7 @@
         }
 
         globalControls.innerHTML = html;
+        updateStartingPointStatus();
         runSimulation();
     }
 
@@ -2183,8 +2228,34 @@
         renderGlobalBudgetSimulation();
     }
 
+    function setStartingPoint() {
+        state.usageBaseline = { ...state.usage };
+        saveState();
+        updateStartingPointStatus();
+        runSimulation();
+    }
+
+    function hasStartingPoint() {
+        const baseline = state.usageBaseline || {};
+        return Object.values(baseline).some(v => (v || 0) > 0);
+    }
+
+    function updateStartingPointStatus() {
+        const el = document.getElementById('startingPointStatus');
+        if (!el) return;
+        if (hasStartingPoint()) {
+            const total = Object.values(state.usageBaseline || {}).reduce((s, v) => s + (v || 0), 0);
+            el.textContent = `📌 Starting point set (${formatSimulationCredits(total)})`;
+            el.style.color = 'var(--color-success)';
+        } else {
+            el.textContent = 'No starting point set yet';
+            el.style.color = 'var(--color-text-muted)';
+        }
+    }
+
     function resetUsage() {
         state.usage = {};
+        state.usageBaseline = {};
         state.globalBudgetPercents = {};
         saveState();
         renderGlobalBudgetSimulation();
