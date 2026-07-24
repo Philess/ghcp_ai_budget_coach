@@ -802,7 +802,6 @@
             </div>
         </div>
 
-<<<<<<< HEAD
         <!-- ═══════════════ SIMULATION DASHBOARD ═══════════════ -->
         <div id="panel-simulate" class="panel active">
             <!-- Empty state: shown when no data is configured -->
@@ -817,80 +816,47 @@
             </div>
             <!-- Dashboard content: shown when data exists -->
             <div id="dashboardContent">
+                <div class="sim-workflow-note">
+                    <strong>💡 How this simulation works</strong>
+                    <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
+                    <ol>
+                        <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
+                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline to reveal the real moment a user gets blocked.</li>
+                    </ol>
+                </div>
                 <div class="card">
-                    <h2>⚡ Usage Simulation</h2>
-                    <p class="help-text" style="margin-bottom: 16px">Set each user's credit consumption to see the budget evaluation results.</p>
-                    <form onsubmit="handleFormSubmit(event, runSimulation)">
-                        <div id="simulationGlobalControls"></div>
-                        <div id="simulationInputs"></div>
-                        <div style="margin-top: 16px; display: flex; gap: 8px;">
-                            <button type="submit" class="btn-primary">▶️ Run Simulation</button>
+                    <h2>🎛️ Global Budget Usage Simulation</h2>
+                    <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
+                    <div class="sim-controls-header" style="margin-bottom:16px">
+                        <div class="simulation-unit-switch">
+                            <label for="simulationUnitMode">Display unit</label>
+                            <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
+                                <option value="credits">AI credits</option>
+                                <option value="dollars">$</option>
+                            </select>
+                        </div>
+                        <div class="sim-controls-actions">
+                            <span id="startingPointStatus" class="help-text"></span>
+                            <button type="button" class="btn-primary" onclick="setStartingPoint()">📌 Set as Starting Point</button>
                             <button type="button" onclick="resetUsage()">Reset Usage</button>
                         </div>
-                    </form>
+                    </div>
+                    <div class="sim-pool-reservations">
+                        <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
+                        <div id="ccPoolToggles"></div>
+                    </div>
+                    <div id="globalBudgetControls"></div>
                 </div>
 
                 <div class="card" id="simulationResultsCard" style="display:none">
                     <h2>📋 Simulation Results</h2>
+                    <div id="simBudgetStatus" style="margin-bottom:4px"></div>
                     <div class="stat-grid" id="simSummaryStats"></div>
+                    <div class="sim-search-bar">
+                        <input type="text" id="simUserFilter" placeholder="🔍 Filter users by name…" oninput="filterSimUsers(this.value)">
+                    </div>
                     <div id="simulationResults"></div>
                 </div>
-
-                <div class="card">
-                    <h2>🏊 Pool & Overage Simulation</h2>
-                    <p class="help-text" style="margin-bottom: 12px">Simulate aggregate consumption at the pool level to see when the metered phase activates.</p>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Total Credits Consumed (all users combined)</label>
-                            <input type="number" id="aggregateUsage" value="0" min="0" onchange="runAggregateSimulation()">
-                        </div>
-                    </div>
-                    <div id="aggregateResults"></div>
-                </div>
-=======
-        <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
-        <div id="panel-simulate" class="panel">
-            <div class="sim-workflow-note">
-                <strong>💡 How this simulation works</strong>
-                <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
-                <ol>
-                    <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
-                    <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline to reveal the real moment a user gets blocked.</li>
-                </ol>
-            </div>
-            <div class="card">
-                <h2>🎛️ Global Budget Usage Simulation</h2>
-                <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
-                <div class="sim-controls-header" style="margin-bottom:16px">
-                    <div class="simulation-unit-switch">
-                        <label for="simulationUnitMode">Display unit</label>
-                        <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
-                            <option value="credits">AI credits</option>
-                            <option value="dollars">$</option>
-                        </select>
-                    </div>
-                    <div class="sim-controls-actions">
-                        <span id="startingPointStatus" class="help-text"></span>
-                        <button type="button" class="btn-primary" onclick="setStartingPoint()">📌 Set as Starting Point</button>
-                        <button type="button" onclick="resetUsage()">Reset Usage</button>
-                    </div>
-                </div>
-                <div class="sim-pool-reservations">
-                    <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
-                    <div id="ccPoolToggles"></div>
-                </div>
-                <div id="globalBudgetControls"></div>
-            </div>
-
-            <div class="card" id="simulationResultsCard" style="display:none">
-                <h2>📋 Simulation Results</h2>
-                <div id="simBudgetStatus" style="margin-bottom:4px"></div>
-                <div class="stat-grid" id="simSummaryStats"></div>
-                <div class="sim-search-bar">
-                    <input type="text" id="simUserFilter" placeholder="🔍 Filter users by name…" oninput="filterSimUsers(this.value)">
-                </div>
-                <div id="simulationResults"></div>
->>>>>>> origin/main
             </div>
         </div>
     </main>
@@ -2605,14 +2571,9 @@
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
-<<<<<<< HEAD
-        if (panel === 'simulate') { renderSimulationInputs(); runAggregateSimulation(); renderDashboardState(); }
-        if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
-=======
-        if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); }
+        if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); renderDashboardState(); }
         if (panel === 'budgets') renderBudgets();
         if (panel === 'enterprise') { renderEnterpriseStats(); }
->>>>>>> origin/main
     });
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
