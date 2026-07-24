@@ -400,7 +400,6 @@
         .wizard-entry-item.existing {
             opacity: 0.7;
             border-style: dashed;
-            cursor: pointer;
             transition: background 0.12s, border-color 0.12s, opacity 0.12s;
         }
         .wizard-entry-item.existing:hover, .wizard-entry-item.existing.editing {
@@ -417,6 +416,36 @@
             padding: 12px;
             margin-bottom: 4px;
         }
+
+
+        .wizard-checkbox-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 6px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .wizard-checkbox-list .checkbox-label {
+            background: var(--color-surface-raised);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 3px 8px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .wizard-checkbox-list .checkbox-label:has(input:checked) {
+            background: var(--color-accent-emphasis);
+            border-color: var(--color-accent-emphasis);
+            color: #fff;
+        }
+        .wizard-checkbox-list .checkbox-label input { display: none; }
 
         @keyframes wizard-btn-blink {
             0%, 100% { background: var(--color-accent); }
@@ -2464,8 +2493,8 @@
         const teamSel = document.getElementById('wzeCCTeams_' + id);
         const orgSel = document.getElementById('wzeCCOrgs_' + id);
         cc.name = newName;
-        if (teamSel) { cc.teamIds = Array.from(teamSel.selectedOptions).map(o => o.value); cc.teamId = cc.teamIds[0] || null; }
-        if (orgSel) cc.orgIds = Array.from(orgSel.selectedOptions).map(o => o.value);
+        if (teamSel) { cc.teamIds = Array.from(teamSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value); cc.teamId = cc.teamIds[0] || null; }
+        if (orgSel) cc.orgIds = Array.from(orgSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
         saveState(); wizardEditingExistingKey = null; renderWizardBody();
     }
 
@@ -2568,24 +2597,24 @@
         const existingOrgs = state.orgs;
         const existingHtml = existingOrgs.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingOrgs.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingOrgs.length})</h4>
                 <div class="wizard-entry-list">` +
                 existingOrgs.map(o => {
                     const key = 'org:' + o.id;
                     const isEditing = wizardEditingExistingKey === key;
-                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                         <div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
-                        <span class="badge badge-info">existing</span></div>`;
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOrg('${escapeInlineArg(o.id)}')">🗑 Delete</button></div></div>`;
                     if (!isEditing) return row;
                     return row + `<div class="wizard-existing-edit-form">
                         <div class="form-row" style="margin-bottom:8px">
                             <div class="form-group" style="flex:1"><label>Organization Name</label>
-                                <input type="text" id="wzeOrgName_${escapeHtml(o.id)}" value="${escapeHtml(o.name)}" onclick="event.stopPropagation()"></div>
+                                <input type="text" id="wzeOrgName_${escapeHtml(o.id)}" value="${escapeHtml(o.name)}"></div>
                         </div>
                         <div id="wzeOrgErr_${escapeHtml(o.id)}" class="wizard-error"></div>
                         <div style="display:flex;gap:8px;justify-content:flex-end">
-                            <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingOrg('${escapeInlineArg(o.id)}')">🗑 Delete</button>
-                            <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingOrg('${escapeInlineArg(o.id)}')">✓ Save</button>
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOrg('${escapeInlineArg(o.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOrg('${escapeInlineArg(o.id)}')">✓ Save</button>
                         </div></div>`;
                 }).join('') + `</div></div>` : '';
         const listHtml = wizardData.orgs.length === 0
@@ -2643,24 +2672,24 @@
         const existingTeams = state.teams;
         const existingHtml = existingTeams.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingTeams.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingTeams.length})</h4>
                 <div class="wizard-entry-list">` +
                 existingTeams.map(t => {
                     const key = 'team:' + t.id;
                     const isEditing = wizardEditingExistingKey === key;
-                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                         <div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
-                        <span class="badge badge-info">existing</span></div>`;
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingTeam('${escapeInlineArg(t.id)}')">🗑 Delete</button></div></div>`;
                     if (!isEditing) return row;
                     return row + `<div class="wizard-existing-edit-form">
                         <div class="form-row" style="margin-bottom:8px">
                             <div class="form-group" style="flex:1"><label>Team Name</label>
-                                <input type="text" id="wzeTeamName_${escapeHtml(t.id)}" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()"></div>
+                                <input type="text" id="wzeTeamName_${escapeHtml(t.id)}" value="${escapeHtml(t.name)}"></div>
                         </div>
                         <div id="wzeTeamErr_${escapeHtml(t.id)}" class="wizard-error"></div>
                         <div style="display:flex;gap:8px;justify-content:flex-end">
-                            <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingTeam('${escapeInlineArg(t.id)}')">🗑 Delete</button>
-                            <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingTeam('${escapeInlineArg(t.id)}')">✓ Save</button>
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingTeam('${escapeInlineArg(t.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingTeam('${escapeInlineArg(t.id)}')">✓ Save</button>
                         </div></div>`;
                 }).join('') + `</div></div>` : '';
         const listHtml = wizardData.teams.length === 0
@@ -2693,12 +2722,12 @@
         if (state.costCenters.some(cc => cc.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
         const teamSel = document.getElementById('wizardCCTeams');
         const orgSel = document.getElementById('wizardCCOrgs');
-        const teamNames = teamSel ? Array.from(teamSel.selectedOptions).map(o => o.value) : [];
-        const orgNames = orgSel ? Array.from(orgSel.selectedOptions).map(o => o.value) : [];
+        const teamNames = teamSel ? Array.from(teamSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value) : [];
+        const orgNames = orgSel ? Array.from(orgSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value) : [];
         wizardData.costCenters.push({ name, teamNames, orgNames });
         nameInput.value = '';
-        if (teamSel) teamSel.selectedIndex = -1;
-        if (orgSel) orgSel.selectedIndex = -1;
+        if (teamSel) teamSel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        if (orgSel) orgSel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
         errEl.textContent = '';
         renderWizardCCList();
     }
@@ -2730,8 +2759,8 @@
     function renderWizardStepCostCenters() {
         const allTeams = [...state.teams.map(t => t.name), ...wizardData.teams.map(t => t.name)];
         const allOrgs = [...state.orgs.map(o => o.name), ...wizardData.orgs.map(o => o.name)];
-        const teamOpts = allTeams.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-        const orgOpts = allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const allTeamsForWizard = allTeams;
+        const allOrgsForWizard = allOrgs;
         const listHtml = wizardData.costCenters.length === 0
             ? '<p class="help-text">No cost centers added yet.</p>'
             : '<div class="wizard-entry-list">' + wizardData.costCenters.map(cc => {
@@ -2747,7 +2776,7 @@
         const existingCCs = state.costCenters;
         const existingHtml = existingCCs.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingCCs.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingCCs.length})</h4>
                 <div class="wizard-entry-list">` +
                 existingCCs.map(cc => {
                     const key = 'cc:' + cc.id;
@@ -2757,26 +2786,24 @@
                     const parts = [];
                     if (teams.length > 0) parts.push(`Teams: ${teams.map(t => t.name).join(', ')}`);
                     if (orgs.length > 0) parts.push(`Orgs: ${orgs.map(o => o.name).join(', ')}`);
-                    const teamEditOpts = state.teams.map(t => `<option value="${escapeHtml(t.id)}"${(cc.teamIds || []).includes(t.id) ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
-                    const orgEditOpts = state.orgs.map(o => `<option value="${escapeHtml(o.id)}"${(cc.orgIds || []).includes(o.id) ? ' selected' : ''}>${escapeHtml(o.name)}</option>`).join('');
-                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                         <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
                             ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}</div>
-                        <span class="badge badge-info">existing</span></div>`;
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingCC('${escapeInlineArg(cc.id)}')">🗑 Delete</button></div></div>`;
                     if (!isEditing) return row;
                     return row + `<div class="wizard-existing-edit-form">
                         <div class="form-row" style="margin-bottom:8px">
                             <div class="form-group" style="flex:1"><label>Cost Center Name</label>
-                                <input type="text" id="wzeCCName_${escapeHtml(cc.id)}" value="${escapeHtml(cc.name)}" onclick="event.stopPropagation()"></div>
+                                <input type="text" id="wzeCCName_${escapeHtml(cc.id)}" value="${escapeHtml(cc.name)}"></div>
                             ${state.teams.length > 0 ? `<div class="form-group"><label>Teams</label>
-                                <select id="wzeCCTeams_${escapeHtml(cc.id)}" multiple style="min-height:56px" onclick="event.stopPropagation()">${teamEditOpts}</select></div>` : ''}
+                                <div class="wizard-checkbox-list" id="wzeCCTeams_${escapeHtml(cc.id)}">${state.teams.map(t => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(t.id)}"${(cc.teamIds || []).includes(t.id) ? ' checked' : ''}> ${escapeHtml(t.name)}</label>`).join('')}</div></div>` : ''}
                             ${state.orgs.length > 0 ? `<div class="form-group"><label>Organizations</label>
-                                <select id="wzeCCOrgs_${escapeHtml(cc.id)}" multiple style="min-height:56px" onclick="event.stopPropagation()">${orgEditOpts}</select></div>` : ''}
+                                <div class="wizard-checkbox-list" id="wzeCCOrgs_${escapeHtml(cc.id)}">${state.orgs.map(o => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(o.id)}"${(cc.orgIds || []).includes(o.id) ? ' checked' : ''}> ${escapeHtml(o.name)}</label>`).join('')}</div></div>` : ''}
                         </div>
                         <div id="wzeCCErr_${escapeHtml(cc.id)}" class="wizard-error"></div>
                         <div style="display:flex;gap:8px;justify-content:flex-end">
-                            <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingCC('${escapeInlineArg(cc.id)}')">🗑 Delete</button>
-                            <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingCC('${escapeInlineArg(cc.id)}')">✓ Save</button>
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingCC('${escapeInlineArg(cc.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingCC('${escapeInlineArg(cc.id)}')">✓ Save</button>
                         </div></div>`;
                 }).join('') + `</div></div>` : '';
         return `<h3>Step 3: Cost Centers</h3>
@@ -2786,10 +2813,9 @@
                     <div class="form-group"><label>Cost Center Name</label>
                         <input type="text" id="wizardCCName" placeholder="e.g., Engineering"></div>
                     ${allTeams.length > 0 ? `<div class="form-group"><label>Teams</label>
-                        <select id="wizardCCTeams" multiple style="min-height:60px">${teamOpts}</select>
-                        <p class="help-text">Hold Ctrl/Cmd to select multiple</p></div>` : ''}
+                        <div class="wizard-checkbox-list" id="wizardCCTeams">${allTeamsForWizard.map(n => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}</div></div>` : ''}
                     ${allOrgs.length > 0 ? `<div class="form-group"><label>Organizations</label>
-                        <select id="wizardCCOrgs" multiple style="min-height:60px">${orgOpts}</select></div>` : ''}
+                        <div class="wizard-checkbox-list" id="wizardCCOrgs">${allOrgsForWizard.map(n => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}</div></div>` : ''}
                 </div>
                 <div style="margin-top:8px"><button type="submit" class="btn-primary">+ Add Cost Center</button></div>
                 <div class="wizard-error" id="wizardCCError"></div>
@@ -2883,7 +2909,7 @@
         const existingUsers = state.users;
         const existingHtml = existingUsers.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingUsers.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingUsers.length})</h4>
                 <div class="wizard-entry-list">` +
                 existingUsers.map(u => {
                     const cc = state.costCenters.find(c => c.id === u.costCenterId);
@@ -2895,28 +2921,28 @@
                     const ccEditOpts = '<option value="">(None)</option>' + state.costCenters.map(c => `<option value="${escapeHtml(c.id)}"${u.costCenterId === c.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
                     const orgEditOpts = '<option value="">(None)</option>' + state.orgs.map(o => `<option value="${escapeHtml(o.id)}"${u.orgId === o.id ? ' selected' : ''}>${escapeHtml(o.name)}</option>`).join('');
                     const teamEditOpts = '<option value="">(None)</option>' + state.teams.map(t => `<option value="${escapeHtml(t.id)}"${u.teamId === t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
-                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                         <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
                             <div class="help-text">${escapeHtml(meta)}</div></div>
-                        <span class="badge badge-info">existing</span></div>`;
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingUser('${escapeInlineArg(u.id)}')">🗑 Delete</button></div></div>`;
                     if (!isEditing) return row;
                     return row + `<div class="wizard-existing-edit-form">
                         <div class="form-row" style="margin-bottom:8px">
                             <div class="form-group"><label>License</label>
-                                <select id="wzeUserLic_${escapeHtml(u.id)}" onclick="event.stopPropagation()">
+                                <select id="wzeUserLic_${escapeHtml(u.id)}">
                                     <option value="business"${u.license !== 'enterprise' ? ' selected' : ''}>Business</option>
                                     <option value="enterprise"${u.license === 'enterprise' ? ' selected' : ''}>Enterprise</option>
                                 </select></div>
                             <div class="form-group"><label>Cost Center</label>
-                                <select id="wzeUserCC_${escapeHtml(u.id)}" onclick="event.stopPropagation()">${ccEditOpts}</select></div>
+                                <select id="wzeUserCC_${escapeHtml(u.id)}">${ccEditOpts}</select></div>
                             <div class="form-group"><label>Organization</label>
-                                <select id="wzeUserOrg_${escapeHtml(u.id)}" onclick="event.stopPropagation()">${orgEditOpts}</select></div>
+                                <select id="wzeUserOrg_${escapeHtml(u.id)}">${orgEditOpts}</select></div>
                             <div class="form-group"><label>Team</label>
-                                <select id="wzeUserTeam_${escapeHtml(u.id)}" onclick="event.stopPropagation()">${teamEditOpts}</select></div>
+                                <select id="wzeUserTeam_${escapeHtml(u.id)}">${teamEditOpts}</select></div>
                         </div>
                         <div style="display:flex;gap:8px;justify-content:flex-end">
-                            <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingUser('${escapeInlineArg(u.id)}')">🗑 Delete</button>
-                            <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingUser('${escapeInlineArg(u.id)}')">✓ Save</button>
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingUser('${escapeInlineArg(u.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingUser('${escapeInlineArg(u.id)}')">✓ Save</button>
                         </div></div>`;
                 }).join('') + `</div></div>` : '';
         return `<h3>Step 4: Users</h3>
@@ -3031,62 +3057,62 @@
         if (state.enterprise.universalULB !== null) {
             const key = 'ulb:universal:_';
             const isEditing = wizardEditingExistingKey === key;
-            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>Universal ULB</strong>
                     <span style="margin-left:6px;font-size:0.875rem">${fmt(state.enterprise.universalULB)} credits/user</span></div>
-                <span class="badge badge-info">existing</span></div>`;
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('universal','_')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
                     <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_universal__" min="0" value="${escapeHtml(String(state.enterprise.universalULB))}" onclick="event.stopPropagation()"></div>
+                        <input type="number" id="wzeULBVal_universal__" min="0" value="${escapeHtml(String(state.enterprise.universalULB))}"></div>
                 </div>
                 <div id="wzeULBErr_universal__" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingULB('universal','_')">🗑 Remove</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingULB('universal','_')">✓ Save</button>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('universal','_')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('universal','_')">✓ Save</button>
                 </div></div>` : row);
         }
         state.users.filter(u => u.individualULB !== null).forEach(u => {
             const key = 'ulb:user:' + u.id;
             const isEditing = wizardEditingExistingKey === key;
-            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
                     <span class="badge badge-warning" style="margin-left:6px">Individual</span>
                     <span style="margin-left:6px;font-size:0.875rem">${fmt(u.individualULB)} credits</span></div>
-                <span class="badge badge-info">existing</span></div>`;
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
                     <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_user_${escapeHtml(u.id)}" min="0" value="${escapeHtml(String(u.individualULB))}" onclick="event.stopPropagation()"></div>
+                        <input type="number" id="wzeULBVal_user_${escapeHtml(u.id)}" min="0" value="${escapeHtml(String(u.individualULB))}"></div>
                 </div>
                 <div id="wzeULBErr_user_${escapeHtml(u.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingULB('user','${escapeInlineArg(u.id)}')">✓ Save</button>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('user','${escapeInlineArg(u.id)}')">✓ Save</button>
                 </div></div>` : row);
         });
         state.costCenters.filter(c => c.ulb !== null).forEach(c => {
             const key = 'ulb:cc:' + c.id;
             const isEditing = wizardEditingExistingKey === key;
-            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
                     <span class="badge badge-info" style="margin-left:6px">Cost Center</span>
                     <span style="margin-left:6px;font-size:0.875rem">${fmt(c.ulb)} credits</span></div>
-                <span class="badge badge-info">existing</span></div>`;
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
                     <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_cc_${escapeHtml(c.id)}" min="0" value="${escapeHtml(String(c.ulb))}" onclick="event.stopPropagation()"></div>
+                        <input type="number" id="wzeULBVal_cc_${escapeHtml(c.id)}" min="0" value="${escapeHtml(String(c.ulb))}"></div>
                 </div>
                 <div id="wzeULBErr_cc_${escapeHtml(c.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingULB('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
                 </div></div>` : row);
         });
         const existingULBHtml = existingULBItems.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingULBItems.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingULBItems.length})</h4>
                 <div class="wizard-entry-list">${existingULBItems.join('')}</div></div>` : '';
 
         return `<h3>Step 5: User-Level Budgets</h3>
@@ -3195,70 +3221,70 @@
         // Enterprise budget is always shown (it has a current value)
         const entKey = 'overage:enterprise:_';
         const entEditing = wizardEditingExistingKey === entKey;
-        const entRow = `<div class="wizard-entry-item existing${entEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(entKey)}')">
+        const entRow = `<div class="wizard-entry-item existing${entEditing ? ' editing' : ''}">
             <div class="wizard-entry-item-info"><strong>Enterprise</strong>
                 <span style="margin-left:6px;font-size:0.875rem">$${state.enterprise.enterpriseBudget} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}</span></div>
-            <span class="badge badge-info">existing</span></div>`;
+            <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(entKey)}')">✏️ Edit</button></div></div>`;
         existingOverageItems.push(entEditing ? entRow + `<div class="wizard-existing-edit-form">
             <div class="form-row" style="margin-bottom:8px">
                 <div class="form-group"><label>Budget ($)</label>
-                    <input type="number" id="wzeOverageVal_enterprise__" min="0" step="50" value="${escapeHtml(String(state.enterprise.enterpriseBudget))}" onclick="event.stopPropagation()"></div>
+                    <input type="number" id="wzeOverageVal_enterprise__" min="0" step="50" value="${escapeHtml(String(state.enterprise.enterpriseBudget))}"></div>
                 <div class="form-group"><label>&nbsp;</label>
-                    <label class="checkbox-label" onclick="event.stopPropagation()">
+                    <label class="checkbox-label">
                         <input type="checkbox" id="wzeOverageHS_enterprise__" ${state.enterprise.enterpriseHardStop ? 'checked' : ''}> Hard stop</label></div>
             </div>
             <div id="wzeOverageErr_enterprise__" class="wizard-error"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end">
-                <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingOverage('enterprise','_')">✓ Save</button>
+                <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('enterprise','_')">✓ Save</button>
             </div></div>` : entRow);
 
         state.orgs.filter(o => o.budget !== null).forEach(o => {
             const key = 'overage:org:' + o.id;
             const isEditing = wizardEditingExistingKey === key;
-            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong>
                     <span class="badge badge-info" style="margin-left:6px">Organization</span>
                     <span style="margin-left:6px;font-size:0.875rem">$${o.budget} · ${o.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
-                <span class="badge badge-info">existing</span></div>`;
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button></div></div>`;
             existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
                     <div class="form-group"><label>Budget ($)</label>
-                        <input type="number" id="wzeOverageVal_org_${escapeHtml(o.id)}" min="0" step="50" value="${escapeHtml(String(o.budget))}" onclick="event.stopPropagation()"></div>
+                        <input type="number" id="wzeOverageVal_org_${escapeHtml(o.id)}" min="0" step="50" value="${escapeHtml(String(o.budget))}"></div>
                     <div class="form-group"><label>&nbsp;</label>
-                        <label class="checkbox-label" onclick="event.stopPropagation()">
+                        <label class="checkbox-label">
                             <input type="checkbox" id="wzeOverageHS_org_${escapeHtml(o.id)}" ${o.budgetHardStop ? 'checked' : ''}> Hard stop</label></div>
                 </div>
                 <div id="wzeOverageErr_org_${escapeHtml(o.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingOverage('org','${escapeInlineArg(o.id)}')">✓ Save</button>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('org','${escapeInlineArg(o.id)}')">✓ Save</button>
                 </div></div>` : row);
         });
         state.costCenters.filter(c => c.budget !== null).forEach(c => {
             const key = 'overage:cc:' + c.id;
             const isEditing = wizardEditingExistingKey === key;
-            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
                     <span class="badge badge-warning" style="margin-left:6px">Cost Center</span>
                     <span style="margin-left:6px;font-size:0.875rem">$${c.budget} · ${c.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
-                <span class="badge badge-info">existing</span></div>`;
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
             existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
                     <div class="form-group"><label>Budget ($)</label>
-                        <input type="number" id="wzeOverageVal_cc_${escapeHtml(c.id)}" min="0" step="50" value="${escapeHtml(String(c.budget))}" onclick="event.stopPropagation()"></div>
+                        <input type="number" id="wzeOverageVal_cc_${escapeHtml(c.id)}" min="0" step="50" value="${escapeHtml(String(c.budget))}"></div>
                     <div class="form-group"><label>&nbsp;</label>
-                        <label class="checkbox-label" onclick="event.stopPropagation()">
+                        <label class="checkbox-label">
                             <input type="checkbox" id="wzeOverageHS_cc_${escapeHtml(c.id)}" ${c.budgetHardStop ? 'checked' : ''}> Hard stop</label></div>
                 </div>
                 <div id="wzeOverageErr_cc_${escapeHtml(c.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button type="button" class="btn-danger btn-sm" onclick="event.stopPropagation(); wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
-                    <button type="button" class="btn-primary btn-sm" onclick="event.stopPropagation(); wizardSaveExistingOverage('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
                 </div></div>` : row);
         });
         const existingOverageHtml = existingOverageItems.length > 0
             ? `<div class="wizard-existing-section">
-                <h4>Already in Simulator (${existingOverageItems.length}) — click to edit</h4>
+                <h4>Already in Simulator (${existingOverageItems.length})</h4>
                 <div class="wizard-entry-list">${existingOverageItems.join('')}</div></div>` : '';
 
         return `<h3>Step 6: Overage Budgets</h3>
