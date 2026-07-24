@@ -2043,7 +2043,7 @@
             const entPool = totalPool() - reserved;
             const eligible = state.users.filter(u => { const cc = getUserCC(u); return !cc || !cc.poolEnabled; });
             if (eligible.length > 0 && entPool > 0) {
-                const perUser = Math.round(entPool * entPoolPct / 100 / eligible.length);
+                const perUser = Math.floor(entPool * entPoolPct / 100 / eligible.length);
                 eligible.forEach(u => { newUsage[u.id] += perUser; });
             }
         }
@@ -2055,7 +2055,7 @@
                 const ccPool = getCCPoolSize(cc);
                 const ccUsers = getAssignedCCMembers(cc);
                 if (ccUsers.length > 0 && ccPool > 0) {
-                    const perUser = Math.round(ccPool * pct / 100 / ccUsers.length);
+                    const perUser = Math.floor(ccPool * pct / 100 / ccUsers.length);
                     ccUsers.forEach(u => { newUsage[u.id] += perUser; });
                 }
             }
@@ -2066,7 +2066,7 @@
         if (entOverPct > 0 && state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
             const totalCredits = meteredCreditsFromBudget(state.enterprise.enterpriseBudget * entOverPct / 100);
             if (state.users.length > 0) {
-                const perUser = Math.round(totalCredits / state.users.length);
+                const perUser = Math.floor(totalCredits / state.users.length);
                 state.users.forEach(u => { newUsage[u.id] += perUser; });
             }
         }
@@ -2078,7 +2078,7 @@
                 const ccUsers = getAssignedCCMembers(cc);
                 if (ccUsers.length > 0) {
                     const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
-                    const perUser = Math.round(totalCredits / ccUsers.length);
+                    const perUser = Math.floor(totalCredits / ccUsers.length);
                     ccUsers.forEach(u => { newUsage[u.id] += perUser; });
                 }
             }
@@ -2091,7 +2091,7 @@
                 const orgUsers = state.users.filter(u => u.orgId === org.id);
                 if (orgUsers.length > 0) {
                     const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
-                    const perUser = Math.round(totalCredits / orgUsers.length);
+                    const perUser = Math.floor(totalCredits / orgUsers.length);
                     orgUsers.forEach(u => { newUsage[u.id] += perUser; });
                 }
             }
@@ -2162,7 +2162,7 @@
         if (entPool > 0) {
             const pct = percents['enterprisePool'] || 0;
             poolHtml += renderBudgetControl('enterprisePool', 'Enterprise Shared Pool',
-                `${fmt(entPool)} ${getSimulationUnitLabel()} total`,
+                `${formatSimulationCredits(entPool)} total`,
                 eligibleForEntPool.length, pct, { variant: 'pool', targetType: 'enterprise' });
         }
 
@@ -2173,7 +2173,7 @@
             if (ccPool > 0) {
                 const pct = percents['ccPool_' + cc.id] || 0;
                 poolHtml += renderBudgetControl('ccPool_' + cc.id, cc.name + ' Pool',
-                    `${fmt(ccPool)} ${getSimulationUnitLabel()} total`,
+                    `${formatSimulationCredits(ccPool)} total`,
                     ccUsers.length, pct, { variant: 'pool', targetType: 'cc' });
             }
         });
@@ -2182,7 +2182,7 @@
         if (state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
             const pct = percents['enterpriseOverage'] || 0;
             overageHtml += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
-                `$${state.enterprise.enterpriseBudget.toFixed(2)} total`,
+                `${formatSimulationBudget(state.enterprise.enterpriseBudget)} total`,
                 state.users.length, pct, { variant: 'overage', targetType: 'enterprise' });
         }
 
@@ -2191,7 +2191,7 @@
             const ccUsers = getAssignedCCMembers(cc);
             const pct = percents['ccOverage_' + cc.id] || 0;
             overageHtml += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
-                `$${cc.budget.toFixed(2)} total`,
+                `${formatSimulationBudget(cc.budget)} total`,
                 ccUsers.length, pct, { variant: 'overage', targetType: 'cc' });
         });
 
@@ -2200,7 +2200,7 @@
             const orgUsers = state.users.filter(u => u.orgId === org.id);
             const pct = percents['orgOverage_' + org.id] || 0;
             overageHtml += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
-                `$${org.budget.toFixed(2)} total`,
+                `${formatSimulationBudget(org.budget)} total`,
                 orgUsers.length, pct, { variant: 'overage', targetType: 'org' });
         });
 
