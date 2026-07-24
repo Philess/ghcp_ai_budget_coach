@@ -1762,8 +1762,8 @@
         results.forEach(r => {
             const user = state.users.find(u => u.id === r.userId);
             const cc = user ? getUserCC(user) : null;
-            const capacity = user ? getUserSimulationCapacity(user) : 0;
-            const maxCredits = Math.max(capacity, r.usage);
+            const userMax = user ? getUserSimulationMax(user) : 0;
+            const maxCredits = Math.max(userMax, r.usage);
             const rowClass = r.status === 'blocked' ? 'result-blocked' : r.status === 'metered' ? 'result-metered' : '';
             const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
                           r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
@@ -1865,6 +1865,27 @@
         const baseCredits = userCreditsPerSeat(user);
         const ulb = getEffectiveULB(user);
         return ulb.value !== null ? Math.min(baseCredits, ulb.value) : baseCredits;
+    }
+
+    // Real maximum credits a user could ever consume: their served seat pool plus
+    // every overage budget they can draw on (CC, org, enterprise), or their ULB cap.
+    function getUserSimulationMax(user) {
+        const ulb = getEffectiveULB(user);
+        if (ulb.value !== null) return ulb.value;
+
+        let maxCredits = userCreditsPerSeat(user);
+
+        if (state.enterprise.meteredEnabled) {
+            let overageBudget = 0;
+            const cc = getUserCC(user);
+            if (cc && cc.budget !== null && cc.budget !== undefined && cc.budget > 0) overageBudget += cc.budget;
+            const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+            if (org && org.budget !== null && org.budget !== undefined && org.budget > 0) overageBudget += org.budget;
+            if (state.enterprise.enterpriseBudget > 0) overageBudget += state.enterprise.enterpriseBudget;
+            maxCredits += meteredCreditsFromBudget(overageBudget);
+        }
+
+        return maxCredits;
     }
 
     function getTotalSimulationCapacity() {
