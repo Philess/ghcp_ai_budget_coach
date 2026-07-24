@@ -199,15 +199,24 @@
         .tag .remove:hover { color: var(--color-danger); }
 
         .sim-controls-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .sim-pool-reservations { margin-bottom: 20px; }
 
+        .budget-group-title { font-size: 0.9375rem; font-weight: 700; margin: 4px 0 10px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+        .budget-group-title .help-text { font-weight: 400; }
+        .budget-control-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
         .budget-control-row { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
-        .budget-control-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .budget-control-grid .budget-control-row { margin-bottom: 0; }
+        .budget-control-row--pool { border-left: 3px solid var(--color-accent); }
+        .budget-control-row--overage { border-left: 3px solid var(--color-warning); }
+        .budget-control-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .budget-control-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .budget-control-target { display: inline-flex; align-items: center; gap: 4px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--color-text-muted); }
         .budget-control-label { font-size: 0.875rem; font-weight: 600; }
-        .budget-control-pct { font-size: 0.875rem; font-weight: 700; min-width: 52px; text-align: right; }
+        .budget-control-pct { font-size: 0.875rem; font-weight: 700; min-width: 52px; text-align: right; white-space: nowrap; }
         .budget-control-slider { display: flex; align-items: center; gap: 10px; }
-        .budget-control-slider input[type="range"] { flex: 1; border: none; background: none; padding: 0; }
-        .budget-control-input-wrap { display: flex; align-items: center; gap: 6px; min-width: 110px; }
-        .budget-control-input-wrap input[type="number"] { width: 80px; text-align: right; }
+        .budget-control-slider input[type="range"] { flex: 1; border: none; background: none; padding: 0; min-width: 60px; }
+        .budget-control-input-wrap { display: flex; align-items: center; gap: 6px; }
+        .budget-control-input-wrap input[type="number"] { width: 72px; text-align: right; }
 
         .budget-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
         .budget-gauge-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px; }
@@ -233,6 +242,12 @@
             .user-panel-summary-meta { justify-content: flex-start; }
             .budget-control-slider { flex-direction: column; align-items: stretch; }
             .budget-control-input-wrap { min-width: 0; }
+        }
+        @media (max-width: 1024px) {
+            .budget-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 640px) {
+            .budget-control-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -316,12 +331,6 @@
                     <button type="submit" class="btn-primary">+ Add Organization</button>
                 </form>
                 <div id="orgsList"></div>
-            </div>
-
-            <div class="card">
-                <h2>🏊 AI Credit Pool Reservations per Cost Center</h2>
-                <p class="help-text" style="margin-bottom: 12px">Enable or disable the AI credit pool reservation for each cost center. When enabled, a cost center gets a reserved portion of the shared pool based on its member count × credits per seat.</p>
-                <div id="ccPoolToggles"></div>
             </div>
         </div>
 
@@ -525,6 +534,10 @@
                         </select>
                     </div>
                     <button type="button" onclick="resetUsage()">Reset Usage</button>
+                </div>
+                <div class="sim-pool-reservations">
+                    <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
+                    <div id="ccPoolToggles"></div>
                 </div>
                 <div id="globalBudgetControls"></div>
             </div>
@@ -862,17 +875,19 @@
             }).join('') + '</tbody></table>';
     }
 
-    // ─── CC Pool Toggles (on Enterprise tab) ─────────────────────────────────────
+    // ─── CC Pool Toggles (on Simulate tab) ───────────────────────────────────────
     function toggleCCPool(ccId, enabled) {
         const cc = state.costCenters.find(c => c.id === ccId);
         if (cc) cc.poolEnabled = enabled;
         saveState();
         renderCCPoolToggles();
         renderEnterpriseStats();
+        renderGlobalBudgetSimulation();
     }
 
     function renderCCPoolToggles() {
         const el = document.getElementById('ccPoolToggles');
+        if (!el) return;
         if (state.costCenters.length === 0) {
             el.innerHTML = '<p class="help-text">No cost centers yet. Create them in the Cost Centers tab.</p>';
             return;
@@ -1950,7 +1965,7 @@
     // ─── Global Budget Simulation ─────────────────────────────────────────────────
     function setGlobalBudgetPercent(key, value) {
         if (!state.globalBudgetPercents) state.globalBudgetPercents = {};
-        const pct = Math.max(0, Math.min(200, parseFloat(value) || 0));
+        const pct = Math.max(0, Math.min(100, parseFloat(value) || 0));
         state.globalBudgetPercents[key] = pct;
 
         // Sync all inputs for this key without re-rendering the whole card
@@ -2043,24 +2058,32 @@
         runSimulation();
     }
 
-    function renderBudgetControl(key, label, capacityStr, userCount, currentPct) {
+    const BUDGET_TARGET_META = {
+        enterprise: { icon: '🏢', label: 'Enterprise' },
+        cc: { icon: '📂', label: 'Cost Center' },
+        org: { icon: '🏛️', label: 'Organization' }
+    };
+
+    function renderBudgetControl(key, label, capacityStr, userCount, currentPct, opts = {}) {
+        const variant = opts.variant === 'pool' ? 'pool' : 'overage';
+        const targetMeta = BUDGET_TARGET_META[opts.targetType] || BUDGET_TARGET_META.enterprise;
         const color = currentPct >= 100 ? 'var(--color-danger)' : currentPct >= 75 ? 'var(--color-warning)' : 'var(--color-accent)';
         const safeKey = escapeInlineArg(key);
-        return `<div class="budget-control-row" data-budget-row="${escapeHtml(key)}">
+        return `<div class="budget-control-row budget-control-row--${variant}" data-budget-row="${escapeHtml(key)}">
             <div class="budget-control-header">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div class="budget-control-titles">
+                    <span class="budget-control-target"><span aria-hidden="true">${targetMeta.icon}</span>${targetMeta.label}</span>
                     <span class="budget-control-label">${escapeHtml(label)}</span>
-                    <span class="help-text">${escapeHtml(capacityStr)}</span>
-                    <span class="badge ${userCount > 0 ? 'badge-info' : 'badge-warning'}">${userCount} user${userCount !== 1 ? 's' : ''}</span>
+                    <span class="help-text">${escapeHtml(capacityStr)} · <span class="badge ${userCount > 0 ? 'badge-info' : 'badge-warning'}">${userCount} user${userCount !== 1 ? 's' : ''}</span></span>
                 </div>
                 <span class="budget-control-pct" style="color:${color}">${currentPct.toFixed(1)}%</span>
             </div>
             <div class="budget-control-slider">
-                <input type="range" min="0" max="200" step="0.5" value="${currentPct.toFixed(1)}"
+                <input type="range" min="0" max="100" step="0.5" value="${currentPct.toFixed(1)}"
                     data-budget-key="${escapeHtml(key)}"
                     oninput="setGlobalBudgetPercent('${safeKey}', this.value)">
                 <div class="budget-control-input-wrap">
-                    <input type="number" min="0" max="200" step="0.5" value="${currentPct.toFixed(1)}"
+                    <input type="number" min="0" max="100" step="0.5" value="${currentPct.toFixed(1)}"
                         data-budget-key="${escapeHtml(key)}"
                         onchange="setGlobalBudgetPercent('${safeKey}', this.value)">
                     <span>%</span>
@@ -2085,7 +2108,8 @@
         }
 
         const percents = state.globalBudgetPercents || {};
-        let html = '';
+        let poolHtml = '';
+        let overageHtml = '';
 
         // Enterprise unreserved pool
         const reserved = state.costCenters.filter(cc => cc.poolEnabled).reduce((s, cc) => s + getCCPoolSize(cc), 0);
@@ -2093,9 +2117,9 @@
         const eligibleForEntPool = state.users.filter(u => { const cc = getUserCC(u); return !cc || !cc.poolEnabled; });
         if (entPool > 0) {
             const pct = percents['enterprisePool'] || 0;
-            html += renderBudgetControl('enterprisePool', 'Enterprise Shared Pool',
+            poolHtml += renderBudgetControl('enterprisePool', 'Enterprise Shared Pool',
                 `${fmt(entPool)} ${getSimulationUnitLabel()} total`,
-                eligibleForEntPool.length, pct);
+                eligibleForEntPool.length, pct, { variant: 'pool', targetType: 'enterprise' });
         }
 
         // CC pools
@@ -2104,38 +2128,47 @@
             const ccUsers = getAssignedCCMembers(cc);
             if (ccPool > 0) {
                 const pct = percents['ccPool_' + cc.id] || 0;
-                html += renderBudgetControl('ccPool_' + cc.id, cc.name + ' Pool',
+                poolHtml += renderBudgetControl('ccPool_' + cc.id, cc.name + ' Pool',
                     `${fmt(ccPool)} ${getSimulationUnitLabel()} total`,
-                    ccUsers.length, pct);
+                    ccUsers.length, pct, { variant: 'pool', targetType: 'cc' });
             }
         });
 
         // Enterprise overage budget
         if (state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
             const pct = percents['enterpriseOverage'] || 0;
-            html += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
+            overageHtml += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
                 `$${state.enterprise.enterpriseBudget.toFixed(2)} total`,
-                state.users.length, pct);
+                state.users.length, pct, { variant: 'overage', targetType: 'enterprise' });
         }
 
         // CC overage budgets
         state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
             const ccUsers = getAssignedCCMembers(cc);
             const pct = percents['ccOverage_' + cc.id] || 0;
-            html += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
+            overageHtml += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
                 `$${cc.budget.toFixed(2)} total`,
-                ccUsers.length, pct);
+                ccUsers.length, pct, { variant: 'overage', targetType: 'cc' });
         });
 
         // Org overage budgets
         state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
             const orgUsers = state.users.filter(u => u.orgId === org.id);
             const pct = percents['orgOverage_' + org.id] || 0;
-            html += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
+            overageHtml += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
                 `$${org.budget.toFixed(2)} total`,
-                orgUsers.length, pct);
+                orgUsers.length, pct, { variant: 'overage', targetType: 'org' });
         });
 
+        let html = '';
+        if (poolHtml) {
+            html += `<h3 class="budget-group-title">🏊 Pool Usage <span class="help-text">Credits reserved from license seats</span></h3>
+                <div class="budget-control-grid">${poolHtml}</div>`;
+        }
+        if (overageHtml) {
+            html += `<h3 class="budget-group-title">💳 Overage Budgets <span class="help-text">Metered spend beyond the pool</span></h3>
+                <div class="budget-control-grid">${overageHtml}</div>`;
+        }
         if (!html) {
             html = '<p class="help-text">No budgets configured yet. Set up seat licenses and/or overage budgets first.</p>';
         }
@@ -2166,9 +2199,9 @@
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
-        if (panel === 'simulate') renderGlobalBudgetSimulation();
+        if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); }
         if (panel === 'budgets') renderBudgets();
-        if (panel === 'enterprise') { renderEnterpriseStats(); renderCCPoolToggles(); }
+        if (panel === 'enterprise') { renderEnterpriseStats(); }
     });
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
