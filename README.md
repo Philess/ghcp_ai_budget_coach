@@ -162,4 +162,13 @@ Features:
 - Visualize pool partitions across cost centers
 - Simulate per-user credit consumption and see who gets blocked and why
 - Simulate aggregate pool/overage consumption
+- Apply per-user consumption changes in the exact order they are made, on top of the saved starting point
 - Save/load configurations (localStorage + JSON export/import)
+
+### Running the tests
+
+The simulation engine is covered by unit tests that run on Node.js (no dependencies):
+
+```bash
+npm test
+```

@@ -534,7 +534,7 @@
                 <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
                 <ol>
                     <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
-                    <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline to reveal the real moment a user gets blocked.</li>
+                    <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline, in the exact order you make them, to reveal the real moment a user gets blocked.</li>
                 </ol>
             </div>
             <div class="card">
@@ -593,6 +593,7 @@
             users: [],
             usage: {},
             usageBaseline: {},
+            usageSequence: [],
             simulationUnit: 'credits',
             globalBudgetPercents: {}
         };
@@ -643,6 +644,7 @@
             users: Array.isArray(parsed.users) ? parsed.users : [],
             usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
             usageBaseline: parsed.usageBaseline && typeof parsed.usageBaseline === 'object' && !Array.isArray(parsed.usageBaseline) ? parsed.usageBaseline : {},
+            usageSequence: Array.isArray(parsed.usageSequence) ? parsed.usageSequence.filter(id => typeof id === 'string') : [],
             globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
         };
     }
@@ -1126,6 +1128,8 @@
     function deleteUser(id) {
         state.users = state.users.filter(u => u.id !== id);
         delete state.usage[id];
+        delete state.usageBaseline[id];
+        if (Array.isArray(state.usageSequence)) state.usageSequence = state.usageSequence.filter(uid => uid !== id);
         // Remove from CC userIds
         state.costCenters.forEach(cc => {
             if (cc.userIds) cc.userIds = cc.userIds.filter(uid => uid !== id);
@@ -1766,11 +1770,7 @@
         return result;
     }
 
-    function runSimulation() {
-        if (state.users.length === 0) {
-            document.getElementById('simulationResultsCard').style.display = 'none';
-            return;
-        }
+    function computeSimulationResults() {
         const poolState = initPoolState();
         const baseline = state.usageBaseline || {};
 
@@ -1785,9 +1785,24 @@
         });
 
         // Phase 2 — Applied changes: each user's usage above the baseline is drawn from
-        // what remains, in sequence, revealing the real point where a user gets blocked.
-        const results = state.users.map(user =>
-            evaluateUser(user, state.usage[user.id] || 0, poolState, baselineResults[user.id]));
+        // what remains, in the order the changes were made, revealing the real point
+        // where a user gets blocked.
+        const resultsByUser = {};
+        getUsageApplicationOrder().forEach(user => {
+            resultsByUser[user.id] = evaluateUser(user, state.usage[user.id] || 0, poolState, baselineResults[user.id]);
+        });
+
+        // Results are reported in list order, independent of the application order.
+        const results = state.users.map(user => resultsByUser[user.id]);
+        return { results, poolState };
+    }
+
+    function runSimulation() {
+        if (state.users.length === 0) {
+            document.getElementById('simulationResultsCard').style.display = 'none';
+            return;
+        }
+        const { results, poolState } = computeSimulationResults();
         renderSimulationResults(results, poolState);
     }
 
@@ -2000,8 +2015,42 @@
         state.usage[userId] = Math.max(0, parseInt(value, 10) || 0);
     }
 
+    // Applied changes are replayed in the exact order the user made them: the first
+    // user edited draws first from what remains after the starting point. Editing a
+    // user again only updates their usage value, it does not move them in the order.
+    function recordUsageChange(userId) {
+        if (!Array.isArray(state.usageSequence)) state.usageSequence = [];
+        if (!state.usageSequence.includes(userId)) state.usageSequence.push(userId);
+    }
+
+    function clearUsageSequence() {
+        state.usageSequence = [];
+    }
+
+    // Users in the order their consumption must be applied: the recorded change
+    // sequence first, then any user who has not been edited, in list order.
+    function getUsageApplicationOrder() {
+        const sequence = Array.isArray(state.usageSequence) ? state.usageSequence : [];
+        const seen = new Set();
+        const ordered = [];
+        sequence.forEach(id => {
+            if (seen.has(id)) return;
+            const user = state.users.find(u => u.id === id);
+            if (!user) return;
+            seen.add(id);
+            ordered.push(user);
+        });
+        state.users.forEach(user => {
+            if (seen.has(user.id)) return;
+            seen.add(user.id);
+            ordered.push(user);
+        });
+        return ordered;
+    }
+
     function applyUserUsageChange(userId, creditsValue) {
         setUserUsageValue(userId, creditsValue);
+        recordUsageChange(userId);
         saveState();
         runSimulation();
     }
@@ -2098,6 +2147,9 @@
         });
 
         state.users.forEach(u => { state.usage[u.id] = newUsage[u.id] || 0; });
+        // A global distribution replaces every user's consumption at once, so no
+        // per-user change order applies until the user edits users individually again.
+        clearUsageSequence();
         saveState();
         runSimulation();
     }
@@ -2230,6 +2282,7 @@
 
     function setStartingPoint() {
         state.usageBaseline = { ...state.usage };
+        clearUsageSequence();
         saveState();
         updateStartingPointStatus();
         runSimulation();
@@ -2257,6 +2310,7 @@
         state.usage = {};
         state.usageBaseline = {};
         state.globalBudgetPercents = {};
+        clearUsageSequence();
         saveState();
         renderGlobalBudgetSimulation();
     }
