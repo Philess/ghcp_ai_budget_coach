@@ -162,7 +162,7 @@ Features:
 - Visualize pool partitions across cost centers
 - Simulate per-user credit consumption and see who gets blocked and why
 - Simulate aggregate pool/overage consumption
-- Apply per-user consumption changes in the exact order they are made, on top of the saved starting point
+- Share the cost center / enterprise pools concurrently across users, while drawing the overage (metered) budgets in the exact order the changes are made — so an exhausted pool + overage budget blocks every member competing for them
 - Save/load configurations (localStorage + JSON export/import)
 
 ### Running the tests

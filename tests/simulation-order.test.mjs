@@ -104,19 +104,30 @@ test('the reverse change order blocks the user changed last', () => {
     assert.equal(byId[THIERRY].status, 'blocked');
 });
 
-test('re-editing a user updates the existing entry instead of appending a new one', () => {
+test('re-editing a user records a new step and moves them to the most recent position', () => {
     const sim = setupAtStartingPoint();
     sim.call('applyUserUsageChange', THIERRY, 3060);
-    sim.call('applyUserUsageChange', MATTHIEU, 3050);
-    sim.call('applyUserUsageChange', THIERRY, 3005);
+    sim.call('applyUserUsageChange', MATTHIEU, 3100);
+    sim.call('applyUserUsageChange', THIERRY, 3060); // re-edit: a brand new step
 
-    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU]);
+    // Every change is kept as a distinct step, in the order they were made.
+    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU, THIERRY]);
 
-    // Thierry still draws first (5 credits), leaving room for Matthieu's full 50.
+    // Thierry's re-edit makes him the most recent change, so he is now applied after
+    // Matthieu: Matthieu takes the whole $1 overage budget and Thierry is blocked.
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].creditsMetered, 5);
-    assert.equal(byId[MATTHIEU].creditsMetered, 50);
     assert.equal(byId[MATTHIEU].status, 'metered');
+    assert.equal(byId[MATTHIEU].creditsMetered, 100);
+    assert.equal(byId[THIERRY].status, 'blocked');
+    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
+});
+
+test('going 50 to 100 to 80 on one user records three distinct steps', () => {
+    const sim = setupAtStartingPoint();
+    sim.call('applyUserUsageChange', THIERRY, 3050);
+    sim.call('applyUserUsageChange', THIERRY, 3100);
+    sim.call('applyUserUsageChange', THIERRY, 3080);
+    assert.deepEqual(sequenceOf(sim), [THIERRY, THIERRY, THIERRY]);
 });
 
 test('results are reported in user list order whatever the change order', () => {
@@ -210,4 +221,52 @@ test('user-level budgets still block regardless of the change order', () => {
     const byId = resultsById(sim);
     assert.equal(byId[MATTHIEU].status, 'blocked');
     assert.match(byId[MATTHIEU].reason, /ULB exceeded/);
+});
+
+// The reserved cost center pool is a shared resource: it is 3 business seats × 3,000
+// = 9,000 credits and it has no overage budget, so once it is exhausted every member
+// competing for it is blocked — not just the members processed last.
+function sharedPoolState() {
+    return {
+        enterprise: {
+            businessSeats: 3, enterpriseSeats: 0, meteredEnabled: true,
+            enterpriseBudget: 1000, enterpriseHardStop: true, universalULB: null
+        },
+        teams: [], orgs: [],
+        costCenters: [{
+            id: 'cc-rnd', name: 'RND', poolEnabled: true, overagesAllowed: true,
+            budget: 0, budgetHardStop: true, ulb: null,
+            userIds: [PHILIPPE, MATTHIEU, THIERRY]
+        }],
+        users: [
+            { id: PHILIPPE, name: 'Philippe', license: 'business', individualULB: null },
+            { id: MATTHIEU, name: 'Matthieu', license: 'business', individualULB: null },
+            { id: THIERRY, name: 'Thierry', license: 'business', individualULB: null }
+        ],
+        usage: {}, usageBaseline: {}, usageSequence: [],
+        simulationUnit: 'credits', globalBudgetPercents: {}
+    };
+}
+
+test('an exhausted cost center pool blocks every member, whatever the change order', () => {
+    const sim = loadSimulator();
+    sim.setState(sharedPoolState());
+    const state = sim.getState();
+    // Baseline uses 8,700 of the 9,000 pool, leaving 300 credits residual.
+    state.users.forEach(u => { state.usage[u.id] = 2900; });
+    sim.call('setStartingPoint');
+
+    // Each user asks for 200 more (600 total) but only 300 pool credits remain and
+    // there is no overage budget, so the group is over-subscribed.
+    sim.call('applyUserUsageChange', THIERRY, 3100);
+    sim.call('applyUserUsageChange', MATTHIEU, 3100);
+    sim.call('applyUserUsageChange', PHILIPPE, 3100);
+
+    const byId = resultsById(sim);
+    // The 300 residual credits are shared concurrently (100 each), so nobody is fully
+    // served and, with no overage budget, all three are blocked.
+    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
+        assert.equal(byId[id].status, 'blocked', `${id} should be blocked`);
+        assert.equal(byId[id].creditsFromCC, 3000, `${id} keeps its fair 100-credit pool share above baseline`);
+    });
 });
