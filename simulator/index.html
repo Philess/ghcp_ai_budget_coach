@@ -256,12 +256,290 @@
         @media (max-width: 640px) {
             .budget-control-grid { grid-template-columns: 1fr; }
         }
+
+        /* ─── Setup Wizard ─────────────────────────────────────────────────── */
+        .wizard-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.72);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .wizard-modal {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 780px;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .wizard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+
+        .wizard-header h2 { font-size: 1.05rem; font-weight: 600; }
+
+        .wizard-close {
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        .wizard-close:hover { color: var(--color-text); background: none; }
+
+        .wizard-stepper {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--color-border);
+            overflow-x: auto;
+            flex-shrink: 0;
+            gap: 0;
+        }
+
+        .wizard-step-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: var(--color-text-muted);
+            white-space: nowrap;
+        }
+
+        .wizard-step-item.active { color: var(--color-accent); font-weight: 600; }
+        .wizard-step-item.completed { color: var(--color-success); }
+
+        .wizard-step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .wizard-step-item.active .wizard-step-num {
+            background: var(--color-accent-emphasis);
+            border-color: var(--color-accent-emphasis);
+            color: #fff;
+        }
+
+        .wizard-step-item.completed .wizard-step-num {
+            background: var(--color-success);
+            border-color: var(--color-success);
+            color: #fff;
+        }
+
+        .wizard-step-sep {
+            width: 16px;
+            height: 1px;
+            background: var(--color-border);
+            margin: 0 3px;
+            flex-shrink: 0;
+        }
+
+        .wizard-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .wizard-body h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .wizard-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-top: 1px solid var(--color-border);
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .wizard-error {
+            color: var(--color-danger);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+
+        .wizard-entry-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .wizard-entry-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            gap: 8px;
+        }
+
+        .wizard-entry-item-info { flex: 1; min-width: 0; }
+
+        .wizard-review-section { margin-bottom: 18px; }
+
+        .wizard-review-section h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .wizard-review-item {
+            padding: 7px 10px;
+            border-left: 2px solid var(--color-accent);
+            margin-bottom: 5px;
+            background: var(--color-bg);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            font-size: 0.8125rem;
+        }
+
+        .wizard-success { text-align: center; padding: 28px 20px; }
+        .wizard-success-icon { font-size: 2.8rem; margin-bottom: 12px; }
+
+        @media (max-width: 600px) {
+            .wizard-stepper { gap: 0; }
+            .wizard-step-item span:last-child { display: none; }
+            .wizard-step-sep { width: 10px; }
+        }
+
+        .wizard-existing-section { margin-top: 18px; }
+        .wizard-existing-section h4 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .wizard-entry-item.existing {
+            opacity: 0.7;
+            border-style: dashed;
+            transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+        }
+        .wizard-entry-item.existing:hover, .wizard-entry-item.existing.editing {
+            opacity: 1;
+            background: var(--color-surface-raised);
+            border-color: var(--color-accent);
+            border-style: solid;
+        }
+        .wizard-existing-edit-form {
+            background: var(--color-surface-raised);
+            border: 1px solid var(--color-accent);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            padding: 12px;
+            margin-bottom: 4px;
+        }
+
+
+        .wizard-checkbox-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 6px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            min-height: 40px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .wizard-checkbox-list .checkbox-label {
+            background: var(--color-surface-raised);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 3px 8px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .wizard-checkbox-list .checkbox-label:has(input:checked) {
+            background: var(--color-accent-emphasis);
+            border-color: var(--color-accent-emphasis);
+            color: #fff;
+        }
+        .wizard-checkbox-list .checkbox-label input { display: none; }
+
+        @keyframes wizard-btn-blink {
+            0%, 100% { background: var(--color-accent); }
+            25%, 75% { background: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.35); }
+        }
+        .wizard-btn-blink {
+            animation: wizard-btn-blink 0.8s ease-in-out 2;
+        }
+
+        /* ── Dashboard empty state ── */
+        .empty-state-dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 55vh;
+            padding: 60px 24px;
+            text-align: center;
+        }
+        .empty-state-dashboard .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state-dashboard h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 8px; }
+        .empty-state-dashboard p { color: var(--color-text-muted); margin-bottom: 32px; max-width: 460px; line-height: 1.6; }
+        .cta-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .btn-cta {
+            padding: 14px 28px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            border-radius: var(--radius);
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .btn-cta:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-cta-primary { background: var(--color-accent-emphasis); color: #fff; }
+        .btn-cta-secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
     </style>
 </head>
 <body>
     <header>
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
+            <button id="wizardOpenBtn" onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -270,17 +548,14 @@
     </header>
 
     <nav id="mainNav">
-        <button class="active" data-panel="enterprise">🏢 Enterprise</button>
-        <button data-panel="costcenters" id="tab-costcenters">📂 Cost Centers</button>
-        <button data-panel="users" id="tab-users">👥 Users</button>
-        <button data-panel="budgets">💰 Budgets</button>
-        <button data-panel="pool">📊 Pool View</button>
-        <button data-panel="simulate">⚡ Simulate</button>
+        <button class="active" data-panel="simulate">📊 Dashboard</button>
+        <button data-panel="pool">🏊 Pool View</button>
+        <button data-panel="enterprise">⚙️ Settings</button>
     </nav>
 
     <main>
         <!-- ═══════════════ ENTERPRISE TAB ═══════════════ -->
-        <div id="panel-enterprise" class="panel active">
+        <div id="panel-enterprise" class="panel">
             <div class="card">
                 <h2>🏢 License Seats</h2>
                 <p class="help-text" style="margin-bottom: 12px">Configure how many Copilot Business and Enterprise seats your enterprise has. The AI credit pool is calculated from these.</p>
@@ -527,51 +802,77 @@
             </div>
         </div>
 
-        <!-- ═══════════════ SIMULATE TAB ═══════════════ -->
-        <div id="panel-simulate" class="panel">
-            <div class="sim-workflow-note">
-                <strong>💡 How this simulation works</strong>
-                <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
-                <ol>
-                    <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
-                    <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. Every change is re-simulated for everyone: the shared cost center and enterprise pools are split concurrently across all users, while the overage (metered) budgets are drawn in the exact order you make the changes — so once a pool and its overage budget are both exhausted, every member competing for them is blocked.</li>
-                </ol>
-            </div>
-            <div class="card">
-                <h2>🎛️ Global Budget Usage Simulation</h2>
-                <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
-                <div class="sim-controls-header" style="margin-bottom:16px">
-                    <div class="simulation-unit-switch">
-                        <label for="simulationUnitMode">Display unit</label>
-                        <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
-                            <option value="credits">AI credits</option>
-                            <option value="dollars">$</option>
-                        </select>
-                    </div>
-                    <div class="sim-controls-actions">
-                        <span id="startingPointStatus" class="help-text"></span>
-                        <button type="button" class="btn-primary" onclick="setStartingPoint()">📌 Set as Starting Point</button>
-                        <button type="button" onclick="resetUsage()">Reset Usage</button>
-                    </div>
+        <!-- ═══════════════ SIMULATION DASHBOARD ═══════════════ -->
+        <div id="panel-simulate" class="panel active">
+            <!-- Empty state: shown when no data is configured -->
+            <div id="dashboardEmpty" class="empty-state-dashboard" style="display:none">
+                <div class="empty-icon">🤖</div>
+                <h2>No simulation data yet</h2>
+                <p>Create your first simulation by following the guided setup wizard, or load an existing configuration from a file.</p>
+                <div class="cta-buttons">
+                    <button class="btn-cta btn-cta-primary" onclick="openWizardAtStep(0)">🧙 Start a new simulation</button>
+                    <button class="btn-cta btn-cta-secondary" onclick="document.getElementById('importFile').click()">📤 Import data from file</button>
                 </div>
-                <div class="sim-pool-reservations">
-                    <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
-                    <div id="ccPoolToggles"></div>
-                </div>
-                <div id="globalBudgetControls"></div>
             </div>
+            <!-- Dashboard content: shown when data exists -->
+            <div id="dashboardContent">
+                <div class="sim-workflow-note">
+                    <strong>💡 How this simulation works</strong>
+                    <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
+                    <ol>
+                        <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
+                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. Every change is re-simulated for everyone: the shared cost center and enterprise pools are split concurrently across all users, while the overage (metered) budgets are drawn in the exact order you make the changes — so once a pool and its overage budget are both exhausted, every member competing for them is blocked.</li>
+                    </ol>
+                </div>
+                <div class="card">
+                    <h2>🎛️ Global Budget Usage Simulation</h2>
+                    <p class="help-text" style="margin-bottom:12px">Set what percentage of each budget is consumed to distribute usage equally among targeted users. Changes here push to individual users, but individual user edits are not reflected back here (one-way).</p>
+                    <div class="sim-controls-header" style="margin-bottom:16px">
+                        <div class="simulation-unit-switch">
+                            <label for="simulationUnitMode">Display unit</label>
+                            <select id="simulationUnitMode" onchange="setSimulationUnit(this.value)">
+                                <option value="credits">AI credits</option>
+                                <option value="dollars">$</option>
+                            </select>
+                        </div>
+                        <div class="sim-controls-actions">
+                            <span id="startingPointStatus" class="help-text"></span>
+                            <button type="button" class="btn-primary" onclick="setStartingPoint()">📌 Set as Starting Point</button>
+                            <button type="button" onclick="resetUsage()">Reset Usage</button>
+                        </div>
+                    </div>
+                    <div class="sim-pool-reservations">
+                        <h3 class="budget-group-title">🏊 Pool Reservations per Cost Center <span class="help-text">Enable a reserved portion of the shared pool per cost center (member count × credits per seat).</span></h3>
+                        <div id="ccPoolToggles"></div>
+                    </div>
+                    <div id="globalBudgetControls"></div>
+                </div>
 
-            <div class="card" id="simulationResultsCard" style="display:none">
-                <h2>📋 Simulation Results</h2>
-                <div id="simBudgetStatus" style="margin-bottom:4px"></div>
-                <div class="stat-grid" id="simSummaryStats"></div>
-                <div class="sim-search-bar">
-                    <input type="text" id="simUserFilter" placeholder="🔍 Filter users by name…" oninput="filterSimUsers(this.value)">
+                <div class="card" id="simulationResultsCard" style="display:none">
+                    <h2>📋 Simulation Results</h2>
+                    <div id="simBudgetStatus" style="margin-bottom:4px"></div>
+                    <div class="stat-grid" id="simSummaryStats"></div>
+                    <div class="sim-search-bar">
+                        <input type="text" id="simUserFilter" placeholder="🔍 Filter users by name…" oninput="filterSimUsers(this.value)">
+                    </div>
+                    <div id="simulationResults"></div>
                 </div>
-                <div id="simulationResults"></div>
             </div>
         </div>
     </main>
+
+    <!-- ═══════════════ SETUP WIZARD OVERLAY ═══════════════ -->
+    <div id="wizardOverlay" class="wizard-overlay" style="display:none" onclick="handleWizardOverlayClick(event)">
+        <div class="wizard-modal">
+            <div class="wizard-header">
+                <h2>🧙 Manual Setup Wizard</h2>
+                <button class="wizard-close" onclick="closeWizard()">✕</button>
+            </div>
+            <div class="wizard-stepper" id="wizardStepper"></div>
+            <div class="wizard-body" id="wizardBody"></div>
+            <div class="wizard-footer" id="wizardFooter"></div>
+        </div>
+    </div>
 
     <script>
     // ─── State ───────────────────────────────────────────────────────────────────
@@ -663,6 +964,19 @@
 
     function formatBudgetDollarsFromCredits(credits) {
         return `$${creditsToDollars(credits).toFixed(2)}`;
+    }
+
+    function formatAICreditReference(credits) {
+        return `${fmt(Math.round(Math.max(0, credits)))} AI credits`;
+    }
+
+    function formatBudgetWithCreditReferenceFromCredits(credits) {
+        return `${formatBudgetDollarsFromCredits(credits)} (${formatAICreditReference(credits)})`;
+    }
+
+    function formatBudgetWithCreditReferenceFromDollars(amount) {
+        const safeAmount = Math.max(0, Number(amount) || 0);
+        return `$${safeAmount.toFixed(2)} (${formatAICreditReference(meteredCreditsFromBudget(safeAmount))})`;
     }
 
     function meteredCreditsFromBudget(amount) {
@@ -2490,15 +2804,14 @@
         document.getElementById('panel-' + e.target.dataset.panel).classList.add('active');
         const panel = e.target.dataset.panel;
         if (panel === 'pool') renderPoolView();
-        if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); }
+        if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); renderDashboardState(); }
         if (panel === 'budgets') renderBudgets();
         if (panel === 'enterprise') { renderEnterpriseStats(); }
     });
 
     // ─── Tab Counts ────────────────────────────────────────────────────────────
     function renderTabCounts() {
-        document.getElementById('tab-users').textContent = `👥 Users${state.users.length ? ' (' + state.users.length + ')' : ''}`;
-        document.getElementById('tab-costcenters').textContent = `📂 Cost Centers${state.costCenters.length ? ' (' + state.costCenters.length + ')' : ''}`;
+        // no-op: tab labels are static; counts are visible in the wizard per-step
     }
 
     // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -2523,9 +2836,1273 @@
         renderGlobalBudgetSimulation();
         renderTabCounts();
         updateUserCreateMode();
+        renderDashboardState();
+    }
+
+    // ─── Dashboard empty / content state ────────────────────────────────────────
+    function hasAnyData() {
+        return state.users.length > 0 || state.costCenters.length > 0 ||
+               state.orgs.length > 0 || state.teams.length > 0;
+    }
+
+    function renderDashboardState() {
+        const empty = document.getElementById('dashboardEmpty');
+        const content = document.getElementById('dashboardContent');
+        if (!empty || !content) return;
+        const showEmpty = !hasAnyData();
+        empty.style.display = showEmpty ? 'flex' : 'none';
+        content.style.display = showEmpty ? 'none' : 'block';
+    }
+
+    // ─── Setup Wizard ─────────────────────────────────────────────────────────────
+    const WIZARD_STEPS = [
+        { label: 'Organizations' },
+        { label: 'Teams' },
+        { label: 'Cost Centers' },
+        { label: 'Users' },
+        { label: 'User Budgets' },
+        { label: 'Overage Budgets' },
+        { label: 'Review' }
+    ];
+
+    const MAX_BULK_USER_COUNT = 500;
+
+    function escapeRegexPattern(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    let wizardStep = 0;
+    let wizardDone = false;
+    let wizardData = null;
+    let wizardEditingExistingKey = null;
+
+    function defaultWizardData() {
+        return {
+            orgs: [],
+            teams: [],
+            costCenters: [],
+            users: [],
+            userBudgets: {
+                universalULB: state.enterprise.universalULB !== null ? creditsToDollars(state.enterprise.universalULB).toFixed(2) : '',
+                individual: [],
+                costCenter: []
+            },
+            overageBudgets: {
+                enterpriseBudget: state.enterprise.enterpriseBudget,
+                enterpriseHardStop: state.enterprise.enterpriseHardStop,
+                orgs: [],
+                costCenters: []
+            }
+        };
+    }
+
+    function openWizard() {
+        wizardStep = 0;
+        wizardDone = false;
+        wizardData = defaultWizardData();
+        wizardEditingExistingKey = null;
+        document.getElementById('wizardOverlay').style.display = 'flex';
+        renderWizard();
+    }
+
+    function openWizardAtStep(step) {
+        wizardStep = step;
+        wizardDone = false;
+        wizardData = defaultWizardData();
+        wizardEditingExistingKey = null;
+        document.getElementById('wizardOverlay').style.display = 'flex';
+        renderWizard();
+    }
+
+    function closeWizard() {
+        if (!wizardDone) {
+            const hasData = wizardData && (
+                wizardData.orgs.length > 0 || wizardData.teams.length > 0 ||
+                wizardData.costCenters.length > 0 || wizardData.users.length > 0 ||
+                wizardData.userBudgets.individual.length > 0 ||
+                wizardData.userBudgets.costCenter.length > 0 ||
+                wizardData.overageBudgets.orgs.length > 0 ||
+                wizardData.overageBudgets.costCenters.length > 0
+            );
+            if (hasData && !confirm('Close wizard? Unsaved entries will be lost.')) return;
+        }
+        document.getElementById('wizardOverlay').style.display = 'none';
+    }
+
+    function handleWizardOverlayClick(e) {
+        if (e.target === document.getElementById('wizardOverlay')) closeWizard();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('wizardOverlay').style.display !== 'none') closeWizard();
+    });
+
+    function renderWizard() {
+        renderWizardStepper();
+        renderWizardBody();
+        renderWizardFooter();
+    }
+
+    function renderWizardStepper() {
+        const el = document.getElementById('wizardStepper');
+        let html = '';
+        WIZARD_STEPS.forEach((step, i) => {
+            if (i > 0) html += '<div class="wizard-step-sep"></div>';
+            const cls = i === wizardStep ? 'active' : (i < wizardStep || wizardDone ? 'completed' : '');
+            const num = (i < wizardStep || wizardDone) ? '✓' : (i + 1);
+            html += `<div class="wizard-step-item ${cls}">
+                <span class="wizard-step-num">${num}</span>
+                <span>${escapeHtml(step.label)}</span>
+            </div>`;
+        });
+        el.innerHTML = html;
+    }
+
+    function renderWizardFooter() {
+        const el = document.getElementById('wizardFooter');
+        if (wizardDone) {
+            el.innerHTML = `<div></div><button class="btn-primary" onclick="closeWizard()">✓ Close</button>`;
+            return;
+        }
+        const isReview = wizardStep === WIZARD_STEPS.length - 1;
+        const backBtn = wizardStep > 0
+            ? `<button onclick="wizardBack()">← Back</button>`
+            : `<div></div>`;
+        const nextBtn = isReview
+            ? `<button class="btn-primary" onclick="confirmWizard()">✓ Confirm &amp; Create</button>`
+            : `<button class="btn-primary" onclick="wizardNext()">Next →</button>`;
+        el.innerHTML = `${backBtn}<div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:0.75rem;color:var(--color-text-muted)">Step ${wizardStep + 1} of ${WIZARD_STEPS.length}</span>
+            ${nextBtn}
+        </div>`;
+    }
+
+    function captureWizardStepValues(step) {
+        if (step === 4) {
+            const el = document.getElementById('wizardUniversalULB');
+            if (el) wizardData.userBudgets.universalULB = el.value;
+        }
+        if (step === 5) {
+            const budgetEl = document.getElementById('wizardEntBudget');
+            const hardStopEl = document.getElementById('wizardEntHardStop');
+            if (budgetEl) wizardData.overageBudgets.enterpriseBudget = parseFloat(budgetEl.value) || 0;
+            if (hardStopEl) wizardData.overageBudgets.enterpriseHardStop = hardStopEl.checked;
+        }
+    }
+
+    function wizardBack() {
+        captureWizardStepValues(wizardStep);
+        if (wizardStep > 0) { wizardStep--; renderWizard(); }
+    }
+
+    function wizardNext() {
+        captureWizardStepValues(wizardStep);
+        if (wizardStep < WIZARD_STEPS.length - 1) { wizardStep++; renderWizard(); }
+    }
+
+    function renderWizardBody() {
+        const el = document.getElementById('wizardBody');
+        const renderers = [
+            renderWizardStepOrgs, renderWizardStepTeams, renderWizardStepCostCenters,
+            renderWizardStepUsers, renderWizardStepUserBudgets,
+            renderWizardStepOverageBudgets, renderWizardStepReview
+        ];
+        el.innerHTML = renderers[wizardStep]();
+    }
+
+    // ─── Wizard Existing Item Edit / Delete ──────────────────────────────────────
+    function wizardToggleExistingEdit(key) {
+        wizardEditingExistingKey = wizardEditingExistingKey === key ? null : key;
+        renderWizardBody();
+    }
+
+    function wizardSaveExistingOrg(id) {
+        const org = state.orgs.find(o => o.id === id);
+        if (!org) return;
+        const newName = (document.getElementById('wzeOrgName_' + id) || {}).value?.trim() || '';
+        const errEl = document.getElementById('wzeOrgErr_' + id);
+        if (!newName) { if (errEl) errEl.textContent = 'Name is required.'; return; }
+        if (state.orgs.some(o => o.name === newName && o.id !== id)) { if (errEl) errEl.textContent = `"${newName}" already exists.`; return; }
+        const oldName = org.name;
+        org.name = newName;
+        if (oldName !== newName) wizardData.costCenters.forEach(cc => { if (cc.orgNames) cc.orgNames = cc.orgNames.map(n => n === oldName ? newName : n); });
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingOrg(id) {
+        const org = state.orgs.find(o => o.id === id);
+        if (!org || !confirm(`Delete organization "${org.name}"? Users and cost centers will be unlinked.`)) return;
+        state.orgs = state.orgs.filter(o => o.id !== id);
+        state.users.forEach(u => { if (u.orgId === id) u.orgId = null; });
+        state.costCenters.forEach(cc => { if (cc.orgIds) cc.orgIds = cc.orgIds.filter(oid => oid !== id); });
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardSaveExistingTeam(id) {
+        const team = state.teams.find(t => t.id === id);
+        if (!team) return;
+        const newName = (document.getElementById('wzeTeamName_' + id) || {}).value?.trim() || '';
+        const errEl = document.getElementById('wzeTeamErr_' + id);
+        if (!newName) { if (errEl) errEl.textContent = 'Name is required.'; return; }
+        if (state.teams.some(t => t.name === newName && t.id !== id)) { if (errEl) errEl.textContent = `"${newName}" already exists.`; return; }
+        const oldName = team.name;
+        team.name = newName;
+        if (oldName !== newName) wizardData.costCenters.forEach(cc => { if (cc.teamNames) cc.teamNames = cc.teamNames.map(n => n === oldName ? newName : n); });
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingTeam(id) {
+        const team = state.teams.find(t => t.id === id);
+        if (!team || !confirm(`Delete team "${team.name}"? Users and cost centers will be unlinked.`)) return;
+        state.teams = state.teams.filter(t => t.id !== id);
+        state.users.forEach(u => { if (u.teamId === id) u.teamId = null; });
+        state.costCenters.forEach(cc => { if (cc.teamIds) cc.teamIds = cc.teamIds.filter(tid => tid !== id); if (cc.teamId === id) cc.teamId = null; });
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardSaveExistingCC(id) {
+        const cc = state.costCenters.find(c => c.id === id);
+        if (!cc) return;
+        const newName = (document.getElementById('wzeCCName_' + id) || {}).value?.trim() || '';
+        const errEl = document.getElementById('wzeCCErr_' + id);
+        if (!newName) { if (errEl) errEl.textContent = 'Name is required.'; return; }
+        if (state.costCenters.some(c => c.name === newName && c.id !== id)) { if (errEl) errEl.textContent = `"${newName}" already exists.`; return; }
+        const teamSel = document.getElementById('wzeCCTeams_' + id);
+        const orgSel = document.getElementById('wzeCCOrgs_' + id);
+        cc.name = newName;
+        if (teamSel) { cc.teamIds = Array.from(teamSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value); cc.teamId = cc.teamIds[0] || null; }
+        if (orgSel) cc.orgIds = Array.from(orgSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingCC(id) {
+        const cc = state.costCenters.find(c => c.id === id);
+        if (!cc || !confirm(`Delete cost center "${cc.name}"? Users assigned to it will be unlinked.`)) return;
+        state.costCenters = state.costCenters.filter(c => c.id !== id);
+        state.users.forEach(u => { if (u.costCenterId === id) u.costCenterId = null; });
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardSaveExistingUser(id) {
+        const user = state.users.find(u => u.id === id);
+        if (!user) return;
+        const ccSel = document.getElementById('wzeUserCC_' + id);
+        const orgSel = document.getElementById('wzeUserOrg_' + id);
+        const teamSel = document.getElementById('wzeUserTeam_' + id);
+        const licSel = document.getElementById('wzeUserLic_' + id);
+        if (ccSel) user.costCenterId = ccSel.value || null;
+        if (orgSel) user.orgId = orgSel.value || null;
+        if (teamSel) user.teamId = teamSel.value || null;
+        if (licSel) user.license = licSel.value;
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingUser(id) {
+        const user = state.users.find(u => u.id === id);
+        if (!user || !confirm(`Delete user "${user.name}"?`)) return;
+        state.users = state.users.filter(u => u.id !== id);
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardSaveExistingULB(type, id) {
+        const errEl = document.getElementById('wzeULBErr_' + type + '_' + id);
+        const newValDollars = parseFloat((document.getElementById('wzeULBVal_' + type + '_' + id) || {}).value);
+        if (!Number.isFinite(newValDollars) || newValDollars < 0) { if (errEl) errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        const newVal = dollarsToCredits(newValDollars);
+        if (type === 'universal') state.enterprise.universalULB = newVal;
+        else if (type === 'user') { const u = state.users.find(u => u.id === id); if (u) u.individualULB = newVal; }
+        else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (c) c.ulb = newVal; }
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingULB(type, id) {
+        if (type === 'universal') { if (!confirm('Remove universal ULB?')) return; state.enterprise.universalULB = null; }
+        else if (type === 'user') { const u = state.users.find(u => u.id === id); if (!u || !confirm(`Remove individual ULB for "${u.name}"?`)) return; u.individualULB = null; }
+        else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (!c || !confirm(`Remove ULB for cost center "${c.name}"?`)) return; c.ulb = null; }
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardSaveExistingOverage(type, id) {
+        const errEl = document.getElementById('wzeOverageErr_' + type + '_' + id);
+        const newVal = parseFloat((document.getElementById('wzeOverageVal_' + type + '_' + id) || {}).value);
+        if (isNaN(newVal) || newVal < 0) { if (errEl) errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        const hardStop = (document.getElementById('wzeOverageHS_' + type + '_' + id) || {}).checked ?? true;
+        if (type === 'enterprise') { state.enterprise.enterpriseBudget = newVal; state.enterprise.enterpriseHardStop = hardStop; }
+        else if (type === 'org') { const o = state.orgs.find(o => o.id === id); if (o) { o.budget = newVal; o.budgetHardStop = hardStop; } }
+        else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (c) { c.budget = newVal; c.budgetHardStop = hardStop; } }
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    function wizardDeleteExistingOverage(type, id) {
+        if (type === 'enterprise') { if (!confirm('Reset enterprise overage budget to 0?')) return; state.enterprise.enterpriseBudget = 0; }
+        else if (type === 'org') { const o = state.orgs.find(o => o.id === id); if (!o || !confirm(`Remove overage budget for "${o.name}"?`)) return; o.budget = null; o.budgetHardStop = true; }
+        else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (!c || !confirm(`Remove overage budget for "${c.name}"?`)) return; c.budget = null; c.budgetHardStop = true; }
+        saveState(); wizardEditingExistingKey = null; renderWizardBody();
+    }
+
+    // ─── Wizard Step 1: Organizations ─────────────────────────────────────────────
+    function wizardAddOrg() {
+        const input = document.getElementById('wizardOrgName');
+        const name = input.value.trim();
+        const errEl = document.getElementById('wizardOrgError');
+        if (!name) { errEl.textContent = 'Organization name is required.'; return; }
+        if (wizardData.orgs.some(o => o.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.orgs.some(o => o.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        wizardData.orgs.push({ name });
+        input.value = '';
+        errEl.textContent = '';
+        renderWizardOrgList();
+    }
+
+    function wizardRemoveOrg(name) {
+        wizardData.orgs = wizardData.orgs.filter(o => o.name !== name);
+        wizardData.costCenters.forEach(cc => { cc.orgNames = (cc.orgNames || []).filter(n => n !== name); });
+        wizardData.overageBudgets.orgs = wizardData.overageBudgets.orgs.filter(b => b.orgName !== name);
+        renderWizardOrgList();
+    }
+
+    function renderWizardOrgList() {
+        const el = document.getElementById('wizardOrgList');
+        if (!el) return;
+        if (wizardData.orgs.length === 0) { el.innerHTML = '<p class="help-text">No organizations added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.orgs.map(o =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+            <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOrg('${escapeInlineArg(o.name)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardStepOrgs() {
+        const existingOrgs = state.orgs;
+        const existingHtml = existingOrgs.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingOrgs.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingOrgs.map(o => {
+                    const key = 'org:' + o.id;
+                    const isEditing = wizardEditingExistingKey === key;
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                        <div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOrg('${escapeInlineArg(o.id)}')">🗑 Delete</button></div></div>`;
+                    if (!isEditing) return row;
+                    return row + `<div class="wizard-existing-edit-form">
+                        <div class="form-row" style="margin-bottom:8px">
+                            <div class="form-group" style="flex:1"><label>Organization Name</label>
+                                <input type="text" id="wzeOrgName_${escapeHtml(o.id)}" value="${escapeHtml(o.name)}"></div>
+                        </div>
+                        <div id="wzeOrgErr_${escapeHtml(o.id)}" class="wizard-error"></div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOrg('${escapeInlineArg(o.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOrg('${escapeInlineArg(o.id)}')">✓ Save</button>
+                        </div></div>`;
+                }).join('') + `</div></div>` : '';
+        const listHtml = wizardData.orgs.length === 0
+            ? '<p class="help-text">No organizations added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.orgs.map(o =>
+                `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong></div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOrg('${escapeInlineArg(o.name)}')">✕</button></div>`
+            ).join('') + '</div>';
+        return `<h3>Step 1: Organizations</h3>
+            <p class="help-text" style="margin-bottom:16px">Add the GitHub organizations in your enterprise. These group users and scope overage budgets.</p>
+            <form onsubmit="event.preventDefault(); wizardAddOrg()">
+                <div class="inline-form">
+                    <div class="form-group" style="flex:1"><label>Organization Name</label>
+                        <input type="text" id="wizardOrgName" placeholder="e.g., acme-corp"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardOrgError"></div>
+            </form>
+            <div id="wizardOrgList">${listHtml}</div>
+            ${existingHtml}`;
+    }
+
+    // ─── Wizard Step 2: Enterprise Teams ──────────────────────────────────────────
+    function wizardAddTeam() {
+        const input = document.getElementById('wizardTeamName');
+        const name = input.value.trim();
+        const errEl = document.getElementById('wizardTeamError');
+        if (!name) { errEl.textContent = 'Team name is required.'; return; }
+        if (wizardData.teams.some(t => t.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.teams.some(t => t.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        wizardData.teams.push({ name });
+        input.value = '';
+        errEl.textContent = '';
+        renderWizardTeamList();
+    }
+
+    function wizardRemoveTeam(name) {
+        wizardData.teams = wizardData.teams.filter(t => t.name !== name);
+        wizardData.costCenters.forEach(cc => { cc.teamNames = (cc.teamNames || []).filter(n => n !== name); });
+        wizardData.users.forEach(u => { if (u.teamName === name) u.teamName = ''; });
+        renderWizardTeamList();
+    }
+
+    function renderWizardTeamList() {
+        const el = document.getElementById('wizardTeamList');
+        if (!el) return;
+        if (wizardData.teams.length === 0) { el.innerHTML = '<p class="help-text">No teams added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.teams.map(t =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+            <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveTeam('${escapeInlineArg(t.name)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardStepTeams() {
+        const existingTeams = state.teams;
+        const existingHtml = existingTeams.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingTeams.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingTeams.map(t => {
+                    const key = 'team:' + t.id;
+                    const isEditing = wizardEditingExistingKey === key;
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                        <div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingTeam('${escapeInlineArg(t.id)}')">🗑 Delete</button></div></div>`;
+                    if (!isEditing) return row;
+                    return row + `<div class="wizard-existing-edit-form">
+                        <div class="form-row" style="margin-bottom:8px">
+                            <div class="form-group" style="flex:1"><label>Team Name</label>
+                                <input type="text" id="wzeTeamName_${escapeHtml(t.id)}" value="${escapeHtml(t.name)}"></div>
+                        </div>
+                        <div id="wzeTeamErr_${escapeHtml(t.id)}" class="wizard-error"></div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingTeam('${escapeInlineArg(t.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingTeam('${escapeInlineArg(t.id)}')">✓ Save</button>
+                        </div></div>`;
+                }).join('') + `</div></div>` : '';
+        const listHtml = wizardData.teams.length === 0
+            ? '<p class="help-text">No teams added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.teams.map(t =>
+                `<div class="wizard-entry-item"><div class="wizard-entry-item-info"><strong>${escapeHtml(t.name)}</strong></div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveTeam('${escapeInlineArg(t.name)}')">✕</button></div>`
+            ).join('') + '</div>';
+        return `<h3>Step 2: Enterprise Teams</h3>
+            <p class="help-text" style="margin-bottom:16px">Add teams that group users within your enterprise. Teams can be assigned to cost centers.</p>
+            <form onsubmit="event.preventDefault(); wizardAddTeam()">
+                <div class="inline-form">
+                    <div class="form-group" style="flex:1"><label>Team Name</label>
+                        <input type="text" id="wizardTeamName" placeholder="e.g., engineers"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardTeamError"></div>
+            </form>
+            <div id="wizardTeamList">${listHtml}</div>
+            ${existingHtml}`;
+    }
+
+    // ─── Wizard Step 3: Cost Centers ──────────────────────────────────────────────
+    function wizardAddCostCenter() {
+        const nameInput = document.getElementById('wizardCCName');
+        const name = nameInput.value.trim();
+        const errEl = document.getElementById('wizardCCError');
+        if (!name) { errEl.textContent = 'Cost center name is required.'; return; }
+        if (wizardData.costCenters.some(cc => cc.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+        if (state.costCenters.some(cc => cc.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+        const teamSel = document.getElementById('wizardCCTeams');
+        const orgSel = document.getElementById('wizardCCOrgs');
+        const teamNames = teamSel ? Array.from(teamSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value) : [];
+        const orgNames = orgSel ? Array.from(orgSel.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value) : [];
+        wizardData.costCenters.push({ name, teamNames, orgNames });
+        nameInput.value = '';
+        if (teamSel) teamSel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        if (orgSel) orgSel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        errEl.textContent = '';
+        renderWizardCCList();
+    }
+
+    function wizardRemoveCC(name) {
+        wizardData.costCenters = wizardData.costCenters.filter(cc => cc.name !== name);
+        wizardData.users.forEach(u => { if (u.ccName === name) u.ccName = ''; });
+        wizardData.userBudgets.costCenter = wizardData.userBudgets.costCenter.filter(b => b.ccName !== name);
+        wizardData.overageBudgets.costCenters = wizardData.overageBudgets.costCenters.filter(b => b.ccName !== name);
+        renderWizardCCList();
+    }
+
+    function renderWizardCCList() {
+        const el = document.getElementById('wizardCCList');
+        if (!el) return;
+        if (wizardData.costCenters.length === 0) { el.innerHTML = '<p class="help-text">No cost centers added yet.</p>'; return; }
+        el.innerHTML = '<div class="wizard-entry-list">' + wizardData.costCenters.map(cc => {
+            const parts = [];
+            if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+            if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+            return `<div class="wizard-entry-item">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
+                    ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}
+                </div>
+                <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveCC('${escapeInlineArg(cc.name)}')">✕</button></div>`;
+        }).join('') + '</div>';
+    }
+
+    function renderWizardStepCostCenters() {
+        const allTeams = [...state.teams.map(t => t.name), ...wizardData.teams.map(t => t.name)];
+        const allOrgs = [...state.orgs.map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const allTeamsForWizard = allTeams;
+        const allOrgsForWizard = allOrgs;
+        const listHtml = wizardData.costCenters.length === 0
+            ? '<p class="help-text">No cost centers added yet.</p>'
+            : '<div class="wizard-entry-list">' + wizardData.costCenters.map(cc => {
+                const parts = [];
+                if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+                if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
+                        ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}
+                    </div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveCC('${escapeInlineArg(cc.name)}')">✕</button></div>`;
+            }).join('') + '</div>';
+        const existingCCs = state.costCenters;
+        const existingHtml = existingCCs.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingCCs.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingCCs.map(cc => {
+                    const key = 'cc:' + cc.id;
+                    const isEditing = wizardEditingExistingKey === key;
+                    const teams = state.teams.filter(t => (cc.teamIds || []).includes(t.id));
+                    const orgs = state.orgs.filter(o => (cc.orgIds || []).includes(o.id));
+                    const parts = [];
+                    if (teams.length > 0) parts.push(`Teams: ${teams.map(t => t.name).join(', ')}`);
+                    if (orgs.length > 0) parts.push(`Orgs: ${orgs.map(o => o.name).join(', ')}`);
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                        <div class="wizard-entry-item-info"><strong>${escapeHtml(cc.name)}</strong>
+                            ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}</div>
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingCC('${escapeInlineArg(cc.id)}')">🗑 Delete</button></div></div>`;
+                    if (!isEditing) return row;
+                    return row + `<div class="wizard-existing-edit-form">
+                        <div class="form-row" style="margin-bottom:8px">
+                            <div class="form-group" style="flex:1"><label>Cost Center Name</label>
+                                <input type="text" id="wzeCCName_${escapeHtml(cc.id)}" value="${escapeHtml(cc.name)}"></div>
+                            ${state.teams.length > 0 ? `<div class="form-group"><label>Teams</label>
+                                <div class="wizard-checkbox-list" id="wzeCCTeams_${escapeHtml(cc.id)}">${state.teams.map(t => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(t.id)}"${(cc.teamIds || []).includes(t.id) ? ' checked' : ''}> ${escapeHtml(t.name)}</label>`).join('')}</div></div>` : ''}
+                            ${state.orgs.length > 0 ? `<div class="form-group"><label>Organizations</label>
+                                <div class="wizard-checkbox-list" id="wzeCCOrgs_${escapeHtml(cc.id)}">${state.orgs.map(o => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(o.id)}"${(cc.orgIds || []).includes(o.id) ? ' checked' : ''}> ${escapeHtml(o.name)}</label>`).join('')}</div></div>` : ''}
+                        </div>
+                        <div id="wzeCCErr_${escapeHtml(cc.id)}" class="wizard-error"></div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingCC('${escapeInlineArg(cc.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingCC('${escapeInlineArg(cc.id)}')">✓ Save</button>
+                        </div></div>`;
+                }).join('') + `</div></div>` : '';
+        return `<h3>Step 3: Cost Centers</h3>
+            <p class="help-text" style="margin-bottom:16px">Create cost centers and assign teams and organizations to them. Cost centers enable AI credit pool reservations and scoped budgets.</p>
+            <form onsubmit="event.preventDefault(); wizardAddCostCenter()">
+                <div class="form-row">
+                    <div class="form-group"><label>Cost Center Name</label>
+                        <input type="text" id="wizardCCName" placeholder="e.g., Engineering"></div>
+                    ${allTeams.length > 0 ? `<div class="form-group"><label>Teams</label>
+                        <div class="wizard-checkbox-list" id="wizardCCTeams">${allTeamsForWizard.map(n => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}</div></div>` : ''}
+                    ${allOrgs.length > 0 ? `<div class="form-group"><label>Organizations</label>
+                        <div class="wizard-checkbox-list" id="wizardCCOrgs">${allOrgsForWizard.map(n => `<label class="checkbox-label"><input type="checkbox" value="${escapeHtml(n)}"> ${escapeHtml(n)}</label>`).join('')}</div></div>` : ''}
+                </div>
+                <div style="margin-top:8px"><button type="submit" class="btn-primary">+ Add Cost Center</button></div>
+                <div class="wizard-error" id="wizardCCError"></div>
+            </form>
+            <div id="wizardCCList">${listHtml}</div>
+            ${existingHtml}`;
+    }
+
+    // ─── Wizard Step 4: Users ─────────────────────────────────────────────────────
+    function wizardAddUser() {
+        const mode = document.getElementById('wizardUserMode').value;
+        const errEl = document.getElementById('wizardUserError');
+        const ccName = document.getElementById('wizardUserCC').value;
+        const orgName = document.getElementById('wizardUserOrg').value;
+        const teamName = document.getElementById('wizardUserTeam').value;
+        const license = document.getElementById('wizardUserLicense').value;
+
+        if (mode === 'bulk') {
+            const count = parseInt(document.getElementById('wizardBulkCount').value) || 0;
+            const prefix = document.getElementById('wizardBulkPrefix').value.trim() || 'user';
+            if (count <= 0 || count > MAX_BULK_USER_COUNT) { errEl.textContent = `Enter a number between 1 and ${MAX_BULK_USER_COUNT}.`; return; }
+            const prefixPattern = new RegExp(`^${escapeRegexPattern(prefix)}-(\\d+)$`);
+            const existingNums = [...state.users, ...wizardData.users]
+                .map(u => { const m = u.name.match(prefixPattern); return m ? parseInt(m[1]) : 0; })
+                .filter(n => n > 0);
+            let nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+            for (let i = 0; i < count; i++) {
+                const name = `${prefix}-${nextNum + i}`;
+                if (!state.users.some(u => u.name === name) && !wizardData.users.some(u => u.name === name)) {
+                    wizardData.users.push({ name, license, ccName, orgName, teamName });
+                }
+            }
+            errEl.textContent = '';
+        } else {
+            const name = document.getElementById('wizardUserName').value.trim();
+            if (!name) { errEl.textContent = 'Username is required.'; return; }
+            if (wizardData.users.some(u => u.name === name)) { errEl.textContent = `"${name}" is already in this list.`; return; }
+            if (state.users.some(u => u.name === name)) { errEl.textContent = `"${name}" already exists in the simulator.`; return; }
+            wizardData.users.push({ name, license, ccName, orgName, teamName });
+            document.getElementById('wizardUserName').value = '';
+            errEl.textContent = '';
+        }
+        renderWizardUserList();
+    }
+
+    function wizardRemoveUser(name) {
+        wizardData.users = wizardData.users.filter(u => u.name !== name);
+        wizardData.userBudgets.individual = wizardData.userBudgets.individual.filter(b => b.userName !== name);
+        renderWizardUserList();
+    }
+
+    function wizardUpdateUserMode() {
+        const isSingle = document.getElementById('wizardUserMode').value === 'single';
+        document.getElementById('wizardSingleFields').hidden = !isSingle;
+        document.getElementById('wizardBulkFields').hidden = isSingle;
+        const btn = document.getElementById('wizardUserAddBtn');
+        if (btn) btn.textContent = isSingle ? '+ Add User' : '⚡ Generate Users';
+    }
+
+    function renderWizardUserList() {
+        const el = document.getElementById('wizardUserList');
+        if (!el) return;
+        if (wizardData.users.length === 0) { el.innerHTML = '<p class="help-text">No users added yet.</p>'; return; }
+        el.innerHTML = `<p class="help-text" style="margin-bottom:6px">${wizardData.users.length} user(s) added.</p>` +
+            '<div class="wizard-entry-list">' + wizardData.users.map(u => {
+                const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUser('${escapeInlineArg(u.name)}')">✕</button></div>`;
+            }).join('') + '</div>';
+    }
+
+    function renderWizardStepUsers() {
+        const allCC = [...state.costCenters.map(c => c.name), ...wizardData.costCenters.map(c => c.name)];
+        const allOrgs = [...state.orgs.map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const allTeams = [...state.teams.map(t => t.name), ...wizardData.teams.map(t => t.name)];
+        const ccOpts = '<option value="">(None)</option>' + allCC.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const orgOpts = '<option value="">(None)</option>' + allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const teamOpts = '<option value="">(None)</option>' + allTeams.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const listHtml = wizardData.users.length === 0
+            ? '<p class="help-text">No users added yet.</p>'
+            : `<p class="help-text" style="margin-bottom:6px">${wizardData.users.length} user(s) added.</p>` +
+              '<div class="wizard-entry-list">' + wizardData.users.map(u => {
+                const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                return `<div class="wizard-entry-item">
+                    <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUser('${escapeInlineArg(u.name)}')">✕</button></div>`;
+              }).join('') + '</div>';
+        const existingUsers = state.users;
+        const existingHtml = existingUsers.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingUsers.length})</h4>
+                <div class="wizard-entry-list">` +
+                existingUsers.map(u => {
+                    const cc = state.costCenters.find(c => c.id === u.costCenterId);
+                    const org = state.orgs.find(o => o.id === u.orgId);
+                    const team = state.teams.find(t => t.id === u.teamId);
+                    const meta = [u.license, cc && `CC: ${cc.name}`, org && `Org: ${org.name}`, team && `Team: ${team.name}`].filter(Boolean).join(' · ');
+                    const key = 'user:' + u.id;
+                    const isEditing = wizardEditingExistingKey === key;
+                    const ccEditOpts = '<option value="">(None)</option>' + state.costCenters.map(c => `<option value="${escapeHtml(c.id)}"${u.costCenterId === c.id ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+                    const orgEditOpts = '<option value="">(None)</option>' + state.orgs.map(o => `<option value="${escapeHtml(o.id)}"${u.orgId === o.id ? ' selected' : ''}>${escapeHtml(o.name)}</option>`).join('');
+                    const teamEditOpts = '<option value="">(None)</option>' + state.teams.map(t => `<option value="${escapeHtml(t.id)}"${u.teamId === t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
+                    const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                        <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                            <div class="help-text">${escapeHtml(meta)}</div></div>
+                        <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingUser('${escapeInlineArg(u.id)}')">🗑 Delete</button></div></div>`;
+                    if (!isEditing) return row;
+                    return row + `<div class="wizard-existing-edit-form">
+                        <div class="form-row" style="margin-bottom:8px">
+                            <div class="form-group"><label>License</label>
+                                <select id="wzeUserLic_${escapeHtml(u.id)}">
+                                    <option value="business"${u.license !== 'enterprise' ? ' selected' : ''}>Business</option>
+                                    <option value="enterprise"${u.license === 'enterprise' ? ' selected' : ''}>Enterprise</option>
+                                </select></div>
+                            <div class="form-group"><label>Cost Center</label>
+                                <select id="wzeUserCC_${escapeHtml(u.id)}">${ccEditOpts}</select></div>
+                            <div class="form-group"><label>Organization</label>
+                                <select id="wzeUserOrg_${escapeHtml(u.id)}">${orgEditOpts}</select></div>
+                            <div class="form-group"><label>Team</label>
+                                <select id="wzeUserTeam_${escapeHtml(u.id)}">${teamEditOpts}</select></div>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingUser('${escapeInlineArg(u.id)}')">🗑 Delete</button>
+                            <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingUser('${escapeInlineArg(u.id)}')">✓ Save</button>
+                        </div></div>`;
+                }).join('') + `</div></div>` : '';
+        return `<h3>Step 4: Users</h3>
+            <p class="help-text" style="margin-bottom:16px">Add individual users or generate multiple in bulk. Assign each user a license, cost center, organization, and team.</p>
+            <form onsubmit="event.preventDefault(); wizardAddUser()">
+                <div class="form-row">
+                    <div class="form-group"><label>Creation Mode</label>
+                        <select id="wizardUserMode" onchange="wizardUpdateUserMode()">
+                            <option value="single">Single user</option>
+                            <option value="bulk">Bulk users</option>
+                        </select></div>
+                    <div id="wizardSingleFields" class="form-group"><label>Username</label>
+                        <input type="text" id="wizardUserName" placeholder="e.g., alice"></div>
+                    <div id="wizardBulkFields" class="form-group" hidden><label>Count &amp; Prefix</label>
+                        <div style="display:flex;gap:6px">
+                            <input type="number" id="wizardBulkCount" value="10" min="1" max="500" style="width:72px">
+                            <input type="text" id="wizardBulkPrefix" value="user" placeholder="prefix" style="flex:1">
+                        </div></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>License</label>
+                        <select id="wizardUserLicense"><option value="business">Business</option><option value="enterprise">Enterprise</option></select></div>
+                    <div class="form-group"><label>Cost Center</label><select id="wizardUserCC">${ccOpts}</select></div>
+                    <div class="form-group"><label>Organization</label><select id="wizardUserOrg">${orgOpts}</select></div>
+                    <div class="form-group"><label>Team</label><select id="wizardUserTeam">${teamOpts}</select></div>
+                </div>
+                <div style="margin-top:8px">
+                    <button type="submit" id="wizardUserAddBtn" class="btn-primary">+ Add User</button></div>
+                <div class="wizard-error" id="wizardUserError"></div>
+            </form>
+            <div id="wizardUserList">${listHtml}</div>
+            ${existingHtml}`;
+    }
+
+    // ─── Wizard Step 5: User-Level Budgets ────────────────────────────────────────
+    function wizardUpdateULBTargets() {
+        const typeEl = document.getElementById('wizardULBType');
+        const targetEl = document.getElementById('wizardULBTarget');
+        if (!typeEl || !targetEl) return;
+        const type = typeEl.value;
+        if (type === 'individual') {
+            const used = new Set(wizardData.userBudgets.individual.map(b => b.userName));
+            const allUsers = [
+                ...state.users.filter(u => u.individualULB === null && !used.has(u.name)).map(u => u.name),
+                ...wizardData.users.filter(u => !used.has(u.name)).map(u => u.name)
+            ];
+            targetEl.innerHTML = allUsers.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        } else {
+            const used = new Set(wizardData.userBudgets.costCenter.map(b => b.ccName));
+            const allCCs = [
+                ...state.costCenters.filter(cc => cc.ulb === null && !used.has(cc.name)).map(cc => cc.name),
+                ...wizardData.costCenters.filter(cc => !used.has(cc.name)).map(cc => cc.name)
+            ];
+            targetEl.innerHTML = allCCs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        }
+    }
+
+    function wizardAddUserBudget() {
+        const type = document.getElementById('wizardULBType').value;
+        const target = document.getElementById('wizardULBTarget').value;
+        const valueDollars = parseFloat(document.getElementById('wizardULBValue').value);
+        const value = Number.isFinite(valueDollars) ? dollarsToCredits(valueDollars) : NaN;
+        const errEl = document.getElementById('wizardULBError');
+        if (!target) { errEl.textContent = 'Select a target.'; return; }
+        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        if (type === 'individual') {
+            if (wizardData.userBudgets.individual.some(b => b.userName === target)) { errEl.textContent = `"${target}" already has a budget.`; return; }
+            wizardData.userBudgets.individual.push({ userName: target, budget: value });
+        } else {
+            if (wizardData.userBudgets.costCenter.some(b => b.ccName === target)) { errEl.textContent = `"${target}" already has a budget.`; return; }
+            wizardData.userBudgets.costCenter.push({ ccName: target, budget: value });
+        }
+        document.getElementById('wizardULBValue').value = '';
+        errEl.textContent = '';
+        renderWizardULBList();
+        wizardUpdateULBTargets();
+    }
+
+    function wizardRemoveUserBudget(type, target) {
+        if (type === 'individual') wizardData.userBudgets.individual = wizardData.userBudgets.individual.filter(b => b.userName !== target);
+        else wizardData.userBudgets.costCenter = wizardData.userBudgets.costCenter.filter(b => b.ccName !== target);
+        renderWizardULBList();
+        wizardUpdateULBTargets();
+    }
+
+    function wizardULBListHtml() {
+        const items = [
+            ...wizardData.userBudgets.costCenter.map(b => ({ type: 'costcenter', target: b.ccName, budget: b.budget })),
+            ...wizardData.userBudgets.individual.map(b => ({ type: 'individual', target: b.userName, budget: b.budget }))
+        ];
+        if (items.length === 0) return '<p class="help-text">No user-level budgets added yet.</p>';
+        return '<div class="wizard-entry-list">' + items.map(b =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
+                <strong>${escapeHtml(b.target)}</strong>
+                <span class="badge ${b.type === 'individual' ? 'badge-warning' : 'badge-info'}" style="margin-left:6px">${b.type === 'individual' ? 'Individual' : 'Cost Center'}</span>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(b.budget)}</span>
+            </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUserBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardULBList() {
+        const el = document.getElementById('wizardULBList');
+        if (el) el.innerHTML = wizardULBListHtml();
+    }
+
+    function renderWizardStepUserBudgets() {
+        const allUsers = [...state.users.filter(u => u.individualULB === null).map(u => u.name), ...wizardData.users.map(u => u.name)];
+        const targetOpts = allUsers.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        const universalVal = wizardData.userBudgets.universalULB !== null ? String(wizardData.userBudgets.universalULB) : '';
+
+        // Existing ULBs from state
+        const existingULBItems = [];
+        if (state.enterprise.universalULB !== null) {
+            const key = 'ulb:universal:_';
+            const isEditing = wizardEditingExistingKey === key;
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                <div class="wizard-entry-item-info"><strong>Universal ULB</strong>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(state.enterprise.universalULB)}/user</span></div>
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('universal','_')">🗑 Remove</button></div></div>`;
+            existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
+                <div class="form-row" style="margin-bottom:8px">
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_universal__" min="0" step="0.01" value="${escapeHtml(creditsToDollars(state.enterprise.universalULB).toFixed(2))}"></div>
+                </div>
+                <div id="wzeULBErr_universal__" class="wizard-error"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('universal','_')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('universal','_')">✓ Save</button>
+                </div></div>` : row);
+        }
+        state.users.filter(u => u.individualULB !== null).forEach(u => {
+            const key = 'ulb:user:' + u.id;
+            const isEditing = wizardEditingExistingKey === key;
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
+                    <span class="badge badge-warning" style="margin-left:6px">Individual</span>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(u.individualULB)}</span></div>
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button></div></div>`;
+            existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
+                <div class="form-row" style="margin-bottom:8px">
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_user_${escapeHtml(u.id)}" min="0" step="0.01" value="${escapeHtml(creditsToDollars(u.individualULB).toFixed(2))}"></div>
+                </div>
+                <div id="wzeULBErr_user_${escapeHtml(u.id)}" class="wizard-error"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('user','${escapeInlineArg(u.id)}')">✓ Save</button>
+                </div></div>` : row);
+        });
+        state.costCenters.filter(c => c.ulb !== null).forEach(c => {
+            const key = 'ulb:cc:' + c.id;
+            const isEditing = wizardEditingExistingKey === key;
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
+                    <span class="badge badge-info" style="margin-left:6px">Cost Center</span>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(c.ulb)}</span></div>
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
+            existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
+                <div class="form-row" style="margin-bottom:8px">
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_cc_${escapeHtml(c.id)}" min="0" step="0.01" value="${escapeHtml(creditsToDollars(c.ulb).toFixed(2))}"></div>
+                </div>
+                <div id="wzeULBErr_cc_${escapeHtml(c.id)}" class="wizard-error"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingULB('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
+                </div></div>` : row);
+        });
+        const existingULBHtml = existingULBItems.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingULBItems.length})</h4>
+                <div class="wizard-entry-list">${existingULBItems.join('')}</div></div>` : '';
+
+        return `<h3>Step 5: User-Level Budgets</h3>
+            <p class="help-text" style="margin-bottom:16px">Optionally set per-user dollar caps (ULBs). These are always hard stops. Precedence: Individual &gt; Cost Center &gt; Universal. AI credit equivalents are shown for reference.</p>
+            <div class="form-group" style="margin-bottom:16px">
+                <label>Universal ULB — applies to all users unless overridden (leave blank for no limit)</label>
+                <input type="number" id="wizardUniversalULB" placeholder="No limit" min="0" step="0.01" value="${escapeHtml(universalVal)}">
+            </div>
+            <div class="section-divider"></div>
+            <h3 style="margin:0 0 8px">Add Specific Budget</h3>
+            <form onsubmit="event.preventDefault(); wizardAddUserBudget()">
+                <div class="inline-form">
+                    <div class="form-group"><label>Type</label>
+                        <select id="wizardULBType" onchange="wizardUpdateULBTargets()">
+                            <option value="individual">Individual User</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select></div>
+                    <div class="form-group"><label>Target</label><select id="wizardULBTarget">${targetOpts}</select></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wizardULBValue" min="0" step="0.01" placeholder="e.g., 50"></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardULBError"></div>
+            </form>
+            <div id="wizardULBList">${wizardULBListHtml()}</div>
+            ${existingULBHtml}`;
+    }
+
+    // ─── Wizard Step 6: Overage Budgets ───────────────────────────────────────────
+    function wizardUpdateOverageTargets() {
+        const typeEl = document.getElementById('wizardOverageType');
+        const targetEl = document.getElementById('wizardOverageTarget');
+        if (!typeEl || !targetEl) return;
+        const type = typeEl.value;
+        if (type === 'org') {
+            const used = new Set(wizardData.overageBudgets.orgs.map(b => b.orgName));
+            const all = [
+                ...state.orgs.filter(o => o.budget === null && !used.has(o.name)).map(o => o.name),
+                ...wizardData.orgs.filter(o => !used.has(o.name)).map(o => o.name)
+            ];
+            targetEl.innerHTML = all.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        } else {
+            const used = new Set(wizardData.overageBudgets.costCenters.map(b => b.ccName));
+            const all = [
+                ...state.costCenters.filter(cc => cc.budget === null && !used.has(cc.name)).map(cc => cc.name),
+                ...wizardData.costCenters.filter(cc => !used.has(cc.name)).map(cc => cc.name)
+            ];
+            targetEl.innerHTML = all.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+        }
+    }
+
+    function wizardAddOverageBudget() {
+        const type = document.getElementById('wizardOverageType').value;
+        const target = document.getElementById('wizardOverageTarget').value;
+        const value = parseFloat(document.getElementById('wizardOverageValue').value);
+        const hardStop = document.getElementById('wizardOverageHardStop').checked;
+        const errEl = document.getElementById('wizardOverageError');
+        if (!target) { errEl.textContent = 'Select a target.'; return; }
+        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        if (type === 'org') {
+            if (wizardData.overageBudgets.orgs.some(b => b.orgName === target)) { errEl.textContent = `"${target}" already has an overage budget.`; return; }
+            wizardData.overageBudgets.orgs.push({ orgName: target, budget: value, hardStop });
+        } else {
+            if (wizardData.overageBudgets.costCenters.some(b => b.ccName === target)) { errEl.textContent = `"${target}" already has an overage budget.`; return; }
+            wizardData.overageBudgets.costCenters.push({ ccName: target, budget: value, hardStop });
+        }
+        document.getElementById('wizardOverageValue').value = '';
+        errEl.textContent = '';
+        renderWizardOverageList();
+        wizardUpdateOverageTargets();
+    }
+
+    function wizardRemoveOverageBudget(type, target) {
+        if (type === 'org') wizardData.overageBudgets.orgs = wizardData.overageBudgets.orgs.filter(b => b.orgName !== target);
+        else wizardData.overageBudgets.costCenters = wizardData.overageBudgets.costCenters.filter(b => b.ccName !== target);
+        renderWizardOverageList();
+        wizardUpdateOverageTargets();
+    }
+
+    function wizardOverageListHtml() {
+        const items = [
+            ...wizardData.overageBudgets.orgs.map(b => ({ type: 'org', target: b.orgName, budget: b.budget, hardStop: b.hardStop })),
+            ...wizardData.overageBudgets.costCenters.map(b => ({ type: 'costcenter', target: b.ccName, budget: b.budget, hardStop: b.hardStop }))
+        ];
+        if (items.length === 0) return '<p class="help-text">No scoped overage budgets added yet.</p>';
+        return '<div class="wizard-entry-list">' + items.map(b =>
+            `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
+                <strong>${escapeHtml(b.target)}</strong>
+                <span class="badge ${b.type === 'org' ? 'badge-info' : 'badge-warning'}" style="margin-left:6px">${b.type === 'org' ? 'Organization' : 'Cost Center'}</span>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(b.budget)} · ${b.hardStop ? 'hard stop' : 'soft stop'}</span>
+            </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOverageBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
+        ).join('') + '</div>';
+    }
+
+    function renderWizardOverageList() {
+        const el = document.getElementById('wizardOverageList');
+        if (el) el.innerHTML = wizardOverageListHtml();
+    }
+
+    function renderWizardStepOverageBudgets() {
+        const allOrgs = [...state.orgs.filter(o => o.budget === null).map(o => o.name), ...wizardData.orgs.map(o => o.name)];
+        const orgOpts = allOrgs.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+
+        // Existing overage budgets from state
+        const existingOverageItems = [];
+        // Enterprise budget is always shown (it has a current value)
+        const entKey = 'overage:enterprise:_';
+        const entEditing = wizardEditingExistingKey === entKey;
+        const entRow = `<div class="wizard-entry-item existing${entEditing ? ' editing' : ''}">
+            <div class="wizard-entry-item-info"><strong>Enterprise</strong>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(state.enterprise.enterpriseBudget)} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}</span></div>
+            <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(entKey)}')">✏️ Edit</button></div></div>`;
+        existingOverageItems.push(entEditing ? entRow + `<div class="wizard-existing-edit-form">
+            <div class="form-row" style="margin-bottom:8px">
+                <div class="form-group"><label>Budget ($)</label>
+                    <input type="number" id="wzeOverageVal_enterprise__" min="0" step="50" value="${escapeHtml(String(state.enterprise.enterpriseBudget))}"></div>
+                <div class="form-group"><label>&nbsp;</label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="wzeOverageHS_enterprise__" ${state.enterprise.enterpriseHardStop ? 'checked' : ''}> Hard stop</label></div>
+            </div>
+            <div id="wzeOverageErr_enterprise__" class="wizard-error"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('enterprise','_')">✓ Save</button>
+            </div></div>` : entRow);
+
+        state.orgs.filter(o => o.budget !== null).forEach(o => {
+            const key = 'overage:org:' + o.id;
+            const isEditing = wizardEditingExistingKey === key;
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong>
+                    <span class="badge badge-info" style="margin-left:6px">Organization</span>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(o.budget)} · ${o.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button></div></div>`;
+            existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
+                <div class="form-row" style="margin-bottom:8px">
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeOverageVal_org_${escapeHtml(o.id)}" min="0" step="50" value="${escapeHtml(String(o.budget))}"></div>
+                    <div class="form-group"><label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="wzeOverageHS_org_${escapeHtml(o.id)}" ${o.budgetHardStop ? 'checked' : ''}> Hard stop</label></div>
+                </div>
+                <div id="wzeOverageErr_org_${escapeHtml(o.id)}" class="wizard-error"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('org','${escapeInlineArg(o.id)}')">✓ Save</button>
+                </div></div>` : row);
+        });
+        state.costCenters.filter(c => c.budget !== null).forEach(c => {
+            const key = 'overage:cc:' + c.id;
+            const isEditing = wizardEditingExistingKey === key;
+            const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
+                <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
+                    <span class="badge badge-warning" style="margin-left:6px">Cost Center</span>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(c.budget)} · ${c.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
+                <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
+            existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
+                <div class="form-row" style="margin-bottom:8px">
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeOverageVal_cc_${escapeHtml(c.id)}" min="0" step="50" value="${escapeHtml(String(c.budget))}"></div>
+                    <div class="form-group"><label>&nbsp;</label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="wzeOverageHS_cc_${escapeHtml(c.id)}" ${c.budgetHardStop ? 'checked' : ''}> Hard stop</label></div>
+                </div>
+                <div id="wzeOverageErr_cc_${escapeHtml(c.id)}" class="wizard-error"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button>
+                    <button type="button" class="btn-primary btn-sm" onclick="wizardSaveExistingOverage('cc','${escapeInlineArg(c.id)}')">✓ Save</button>
+                </div></div>` : row);
+        });
+        const existingOverageHtml = existingOverageItems.length > 0
+            ? `<div class="wizard-existing-section">
+                <h4>Already in Simulator (${existingOverageItems.length})</h4>
+                <div class="wizard-entry-list">${existingOverageItems.join('')}</div></div>` : '';
+
+        return `<h3>Step 6: Overage Budgets</h3>
+            <p class="help-text" style="margin-bottom:16px">Configure metered dollar budgets that cap $0.01/credit charges once the credit pool is exhausted. AI credit equivalents are shown for reference.</p>
+            <div class="form-row" style="margin-bottom:16px">
+                <div class="form-group"><label>Enterprise metered budget ($)</label>
+                    <input type="number" id="wizardEntBudget" value="${wizardData.overageBudgets.enterpriseBudget}" min="0" step="50">
+                    <p class="help-text">Reference: ${formatAICreditReference(meteredCreditsFromBudget(wizardData.overageBudgets.enterpriseBudget))}</p></div>
+                <div class="form-group"><label>&nbsp;</label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="wizardEntHardStop" ${wizardData.overageBudgets.enterpriseHardStop ? 'checked' : ''}>
+                        Hard stop when exhausted
+                    </label></div>
+            </div>
+            <div class="section-divider"></div>
+            <h3 style="margin:0 0 8px">Add Scoped Overage Budget</h3>
+            <form onsubmit="event.preventDefault(); wizardAddOverageBudget()">
+                <div class="inline-form">
+                    <div class="form-group"><label>Type</label>
+                        <select id="wizardOverageType" onchange="wizardUpdateOverageTargets()">
+                            <option value="org">Organization</option>
+                            <option value="costcenter">Cost Center</option>
+                        </select></div>
+                    <div class="form-group"><label>Target</label><select id="wizardOverageTarget">${orgOpts}</select></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wizardOverageValue" min="0" step="50" placeholder="e.g., 500"></div>
+                    <div class="form-group"><label>&nbsp;</label>
+                        <label class="checkbox-label"><input type="checkbox" id="wizardOverageHardStop" checked> Hard stop</label></div>
+                    <button type="submit" class="btn-primary">+ Add</button>
+                </div>
+                <div class="wizard-error" id="wizardOverageError"></div>
+            </form>
+            <div id="wizardOverageList">${wizardOverageListHtml()}</div>
+            ${existingOverageHtml}`;
+    }
+
+    // ─── Wizard Step 7: Review ────────────────────────────────────────────────────
+    function renderWizardStepReview() {
+        const sections = [];
+
+        if (wizardData.orgs.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>🏛️ Organizations (${wizardData.orgs.length})</h3>
+                ${wizardData.orgs.map(o => `<div class="wizard-review-item">${escapeHtml(o.name)}</div>`).join('')}</div>`);
+        }
+        if (wizardData.teams.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>👥 Enterprise Teams (${wizardData.teams.length})</h3>
+                ${wizardData.teams.map(t => `<div class="wizard-review-item">${escapeHtml(t.name)}</div>`).join('')}</div>`);
+        }
+        if (wizardData.costCenters.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>📂 Cost Centers (${wizardData.costCenters.length})</h3>
+                ${wizardData.costCenters.map(cc => {
+                    const parts = [];
+                    if (cc.teamNames && cc.teamNames.length > 0) parts.push(`Teams: ${cc.teamNames.join(', ')}`);
+                    if (cc.orgNames && cc.orgNames.length > 0) parts.push(`Orgs: ${cc.orgNames.join(', ')}`);
+                    return `<div class="wizard-review-item"><strong>${escapeHtml(cc.name)}</strong>
+                        ${parts.length > 0 ? `<div class="help-text">${escapeHtml(parts.join(' · '))}</div>` : ''}</div>`;
+                }).join('')}</div>`);
+        }
+        if (wizardData.users.length > 0) {
+            sections.push(`<div class="wizard-review-section"><h3>👤 Users (${wizardData.users.length})</h3>
+                ${wizardData.users.map(u => {
+                    const meta = [u.license, u.ccName && `CC: ${u.ccName}`, u.orgName && `Org: ${u.orgName}`, u.teamName && `Team: ${u.teamName}`].filter(Boolean).join(' · ');
+                    return `<div class="wizard-review-item"><strong>${escapeHtml(u.name)}</strong>
+                        <div class="help-text">${escapeHtml(meta)}</div></div>`;
+                }).join('')}</div>`);
+        }
+        const ulbTotal = wizardData.userBudgets.individual.length + wizardData.userBudgets.costCenter.length;
+        const hasUniversal = wizardData.userBudgets.universalULB !== '' && wizardData.userBudgets.universalULB !== null;
+        if (hasUniversal || ulbTotal > 0) {
+            let ulbHtml = '';
+            if (hasUniversal) {
+                const universalDollars = parseFloat(wizardData.userBudgets.universalULB);
+                if (Number.isFinite(universalDollars) && universalDollars >= 0) {
+                    ulbHtml += `<div class="wizard-review-item"><strong>Universal:</strong> ${formatBudgetWithCreditReferenceFromCredits(dollarsToCredits(universalDollars))}/user</div>`;
+                }
+            }
+            wizardData.userBudgets.costCenter.forEach(b => {
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (Cost Center): ${formatBudgetWithCreditReferenceFromCredits(b.budget)}</div>`;
+            });
+            wizardData.userBudgets.individual.forEach(b => {
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.userName)}</strong> (Individual): ${formatBudgetWithCreditReferenceFromCredits(b.budget)}</div>`;
+            });
+            sections.push(`<div class="wizard-review-section"><h3>💰 User-Level Budgets</h3>${ulbHtml}</div>`);
+        }
+        const entBudgetChanged = wizardData.overageBudgets.enterpriseBudget !== state.enterprise.enterpriseBudget
+            || wizardData.overageBudgets.enterpriseHardStop !== state.enterprise.enterpriseHardStop;
+        const hasOvBudgets = wizardData.overageBudgets.orgs.length > 0 || wizardData.overageBudgets.costCenters.length > 0;
+        if (entBudgetChanged || hasOvBudgets) {
+            let ovHtml = '';
+            if (entBudgetChanged) ovHtml += `<div class="wizard-review-item"><strong>Enterprise:</strong> ${formatBudgetWithCreditReferenceFromDollars(wizardData.overageBudgets.enterpriseBudget)} ${wizardData.overageBudgets.enterpriseHardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            wizardData.overageBudgets.orgs.forEach(b => {
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.orgName)}</strong> (Org): ${formatBudgetWithCreditReferenceFromDollars(b.budget)} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            });
+            wizardData.overageBudgets.costCenters.forEach(b => {
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (CC): ${formatBudgetWithCreditReferenceFromDollars(b.budget)} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            });
+            sections.push(`<div class="wizard-review-section"><h3>💳 Overage Budgets</h3>${ovHtml}</div>`);
+        }
+
+        if (sections.length === 0) {
+            return `<h3>Step 7: Review &amp; Confirm</h3>
+                <div class="empty-state" style="padding:32px">
+                    <p>Nothing to create yet.</p>
+                    <p style="margin-top:8px">Go back and add organizations, teams, cost centers, users, or budgets.</p>
+                </div>`;
+        }
+        return `<h3>Step 7: Review &amp; Confirm</h3>
+            <p class="help-text" style="margin-bottom:16px">Review everything that will be created. Go back to make changes, or click <strong>Confirm &amp; Create</strong> to commit.</p>
+            ${sections.join('')}`;
+    }
+
+    // ─── Wizard: Confirm & Create ─────────────────────────────────────────────────
+    function confirmWizard() {
+        if (wizardDone) return;
+        captureWizardStepValues(5);
+
+        const skipped = [];
+        let idSeq = 0;
+        const uid = () => `_w${Date.now()}${idSeq++}_${Math.random().toString(36).slice(2, 7)}`;
+
+        // 1. Organizations
+        wizardData.orgs.forEach(o => {
+            if (state.orgs.some(e => e.name === o.name)) { skipped.push(`Organization "${o.name}" already exists — skipped.`); return; }
+            state.orgs.push({ id: 'org' + uid(), name: o.name, budget: null, budgetHardStop: true });
+        });
+
+        // 2. Teams
+        wizardData.teams.forEach(t => {
+            if (state.teams.some(e => e.name === t.name)) { skipped.push(`Team "${t.name}" already exists — skipped.`); return; }
+            state.teams.push({ id: 'team' + uid(), name: t.name });
+        });
+
+        // 3. Cost Centers
+        wizardData.costCenters.forEach(cc => {
+            if (state.costCenters.some(e => e.name === cc.name)) { skipped.push(`Cost center "${cc.name}" already exists — skipped.`); return; }
+            const teamIds = (cc.teamNames || []).map(n => { const t = state.teams.find(t => t.name === n); return t ? t.id : null; }).filter(Boolean);
+            const orgIds = (cc.orgNames || []).map(n => { const o = state.orgs.find(o => o.name === n); return o ? o.id : null; }).filter(Boolean);
+            state.costCenters.push({
+                id: 'cc' + uid(), name: cc.name, teamIds, orgIds, userIds: [],
+                teamId: teamIds[0] || null, poolEnabled: false, overagesAllowed: true,
+                budget: null, budgetHardStop: true, ulb: null
+            });
+        });
+
+        // 4. Users
+        wizardData.users.forEach(u => {
+            if (state.users.some(e => e.name === u.name)) { skipped.push(`User "${u.name}" already exists — skipped.`); return; }
+            const cc = u.ccName ? state.costCenters.find(c => c.name === u.ccName) : null;
+            const org = u.orgName ? state.orgs.find(o => o.name === u.orgName) : null;
+            const team = u.teamName ? state.teams.find(t => t.name === u.teamName) : null;
+            state.users.push({
+                id: 'user' + uid(), name: u.name,
+                costCenterId: cc ? cc.id : null,
+                orgId: org ? org.id : null,
+                teamId: team ? team.id : null,
+                license: u.license || 'business',
+                individualULB: null
+            });
+        });
+
+        // 5. User-level budgets
+        const ulbVal = wizardData.userBudgets.universalULB;
+        if (ulbVal !== '' && ulbVal !== null) {
+            const parsedDollars = parseFloat(ulbVal);
+            if (Number.isFinite(parsedDollars) && parsedDollars >= 0) state.enterprise.universalULB = dollarsToCredits(parsedDollars);
+        }
+        wizardData.userBudgets.individual.forEach(b => {
+            const user = state.users.find(u => u.name === b.userName);
+            if (user) user.individualULB = b.budget;
+            else skipped.push(`User "${b.userName}" not found for ULB — skipped.`);
+        });
+        wizardData.userBudgets.costCenter.forEach(b => {
+            const cc = state.costCenters.find(c => c.name === b.ccName);
+            if (cc) cc.ulb = b.budget;
+            else skipped.push(`Cost center "${b.ccName}" not found for ULB — skipped.`);
+        });
+
+        // 6. Overage budgets
+        state.enterprise.enterpriseBudget = wizardData.overageBudgets.enterpriseBudget;
+        state.enterprise.enterpriseHardStop = wizardData.overageBudgets.enterpriseHardStop;
+        wizardData.overageBudgets.orgs.forEach(b => {
+            const org = state.orgs.find(o => o.name === b.orgName);
+            if (org) { org.budget = b.budget; org.budgetHardStop = b.hardStop; }
+            else skipped.push(`Organization "${b.orgName}" not found for overage budget — skipped.`);
+        });
+        wizardData.overageBudgets.costCenters.forEach(b => {
+            const cc = state.costCenters.find(c => c.name === b.ccName);
+            if (cc) { cc.budget = b.budget; cc.budgetHardStop = b.hardStop; }
+            else skipped.push(`Cost center "${b.ccName}" not found for overage budget — skipped.`);
+        });
+
+        recalcAutoSeats();
+        saveState();
+        renderAll();
+
+        wizardDone = true;
+        const skippedHtml = skipped.length > 0
+            ? `<div style="margin-top:16px;background:rgba(210,153,34,0.1);border:1px solid var(--color-warning);border-radius:var(--radius);padding:12px;text-align:left">
+                <strong style="color:var(--color-warning)">⚠️ ${skipped.length} item(s) skipped (already existed):</strong>
+                <ul style="margin-top:6px;padding-left:18px;font-size:0.8rem">${skipped.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+               </div>`
+            : '';
+        const createdParts = [
+            wizardData.orgs.length > 0 && `${wizardData.orgs.length} organization(s)`,
+            wizardData.teams.length > 0 && `${wizardData.teams.length} team(s)`,
+            wizardData.costCenters.length > 0 && `${wizardData.costCenters.length} cost center(s)`,
+            wizardData.users.length > 0 && `${wizardData.users.length} user(s)`,
+            (wizardData.userBudgets.individual.length + wizardData.userBudgets.costCenter.length > 0) && 'user-level budgets',
+            (wizardData.overageBudgets.orgs.length + wizardData.overageBudgets.costCenters.length > 0) && 'overage budgets'
+        ].filter(Boolean);
+
+        document.getElementById('wizardBody').innerHTML = `
+            <div class="wizard-success">
+                <div class="wizard-success-icon">✅</div>
+                <h2 style="margin-bottom:8px">Setup Complete!</h2>
+                <p style="color:var(--color-text-muted);margin-bottom:16px">Your configuration has been created and saved.</p>
+                ${createdParts.length > 0 ? `<p style="font-size:0.875rem;margin-bottom:12px">Created: ${createdParts.join(', ')}.</p>` : ''}
+                <p class="help-text" style="max-width:440px;margin:0 auto">
+                   💡 <strong>Next steps:</strong> Use <strong>⚙️ Settings</strong> to enable AI credit pool reservations for your cost centers,
+                   then head to <strong>📊 Dashboard</strong> to model usage patterns and verify your budget setup.
+                </p>
+                ${skippedHtml}
+            </div>`;
+        renderWizardStepper();
+        renderWizardFooter();
     }
 
     renderAll();
+
+    // Blink the wizard button twice in orange on page load to make it visible
+    (function () {
+        const btn = document.getElementById('wizardOpenBtn');
+        if (!btn) return;
+        btn.classList.add('wizard-btn-blink');
+        btn.addEventListener('animationend', function onEnd() {
+            btn.classList.remove('wizard-btn-blink');
+            btn.removeEventListener('animationend', onEnd);
+        });
+    })();
     </script>
 </body>
 </html>
