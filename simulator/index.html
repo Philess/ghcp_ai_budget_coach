@@ -964,6 +964,19 @@
         return `$${creditsToDollars(credits).toFixed(2)}`;
     }
 
+    function formatAICreditReference(credits) {
+        return `${fmt(Math.round(Math.max(0, credits)))} AI credits`;
+    }
+
+    function formatBudgetWithCreditReferenceFromCredits(credits) {
+        return `${formatBudgetDollarsFromCredits(credits)} (${formatAICreditReference(credits)})`;
+    }
+
+    function formatBudgetWithCreditReferenceFromDollars(amount) {
+        const safeAmount = Math.max(0, Number(amount) || 0);
+        return `$${safeAmount.toFixed(2)} (${formatAICreditReference(meteredCreditsFromBudget(safeAmount))})`;
+    }
+
     function meteredCreditsFromBudget(amount) {
         return Math.floor((Math.max(0, amount) * CREDITS_PER_DOLLAR) + Number.EPSILON);
     }
@@ -2650,7 +2663,7 @@
             costCenters: [],
             users: [],
             userBudgets: {
-                universalULB: state.enterprise.universalULB !== null ? String(state.enterprise.universalULB) : '',
+                universalULB: state.enterprise.universalULB !== null ? creditsToDollars(state.enterprise.universalULB).toFixed(2) : '',
                 individual: [],
                 costCenter: []
             },
@@ -2873,8 +2886,9 @@
 
     function wizardSaveExistingULB(type, id) {
         const errEl = document.getElementById('wzeULBErr_' + type + '_' + id);
-        const newVal = parseInt((document.getElementById('wzeULBVal_' + type + '_' + id) || {}).value);
-        if (isNaN(newVal) || newVal < 0) { if (errEl) errEl.textContent = 'Enter a valid budget (≥ 0).'; return; }
+        const newValDollars = parseFloat((document.getElementById('wzeULBVal_' + type + '_' + id) || {}).value);
+        if (!Number.isFinite(newValDollars) || newValDollars < 0) { if (errEl) errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
+        const newVal = dollarsToCredits(newValDollars);
         if (type === 'universal') state.enterprise.universalULB = newVal;
         else if (type === 'user') { const u = state.users.find(u => u.id === id); if (u) u.individualULB = newVal; }
         else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (c) c.ulb = newVal; }
@@ -3347,10 +3361,11 @@
     function wizardAddUserBudget() {
         const type = document.getElementById('wizardULBType').value;
         const target = document.getElementById('wizardULBTarget').value;
-        const value = parseInt(document.getElementById('wizardULBValue').value);
+        const valueDollars = parseFloat(document.getElementById('wizardULBValue').value);
+        const value = Number.isFinite(valueDollars) ? dollarsToCredits(valueDollars) : NaN;
         const errEl = document.getElementById('wizardULBError');
         if (!target) { errEl.textContent = 'Select a target.'; return; }
-        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ 0 credits).'; return; }
+        if (isNaN(value) || value < 0) { errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
         if (type === 'individual') {
             if (wizardData.userBudgets.individual.some(b => b.userName === target)) { errEl.textContent = `"${target}" already has a budget.`; return; }
             wizardData.userBudgets.individual.push({ userName: target, budget: value });
@@ -3381,7 +3396,7 @@
             `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
                 <strong>${escapeHtml(b.target)}</strong>
                 <span class="badge ${b.type === 'individual' ? 'badge-warning' : 'badge-info'}" style="margin-left:6px">${b.type === 'individual' ? 'Individual' : 'Cost Center'}</span>
-                <span style="margin-left:6px;font-size:0.875rem">${fmt(b.budget)} credits</span>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(b.budget)}</span>
             </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveUserBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
         ).join('') + '</div>';
     }
@@ -3403,12 +3418,12 @@
             const isEditing = wizardEditingExistingKey === key;
             const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>Universal ULB</strong>
-                    <span style="margin-left:6px;font-size:0.875rem">${fmt(state.enterprise.universalULB)} credits/user</span></div>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(state.enterprise.universalULB)}/user</span></div>
                 <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('universal','_')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
-                    <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_universal__" min="0" value="${escapeHtml(String(state.enterprise.universalULB))}"></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_universal__" min="0" step="0.01" value="${escapeHtml(creditsToDollars(state.enterprise.universalULB).toFixed(2))}"></div>
                 </div>
                 <div id="wzeULBErr_universal__" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -3422,12 +3437,12 @@
             const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(u.name)}</strong>
                     <span class="badge badge-warning" style="margin-left:6px">Individual</span>
-                    <span style="margin-left:6px;font-size:0.875rem">${fmt(u.individualULB)} credits</span></div>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(u.individualULB)}</span></div>
                 <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('user','${escapeInlineArg(u.id)}')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
-                    <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_user_${escapeHtml(u.id)}" min="0" value="${escapeHtml(String(u.individualULB))}"></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_user_${escapeHtml(u.id)}" min="0" step="0.01" value="${escapeHtml(creditsToDollars(u.individualULB).toFixed(2))}"></div>
                 </div>
                 <div id="wzeULBErr_user_${escapeHtml(u.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -3441,12 +3456,12 @@
             const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
                     <span class="badge badge-info" style="margin-left:6px">Cost Center</span>
-                    <span style="margin-left:6px;font-size:0.875rem">${fmt(c.ulb)} credits</span></div>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromCredits(c.ulb)}</span></div>
                 <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingULB('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
             existingULBItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
-                    <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wzeULBVal_cc_${escapeHtml(c.id)}" min="0" value="${escapeHtml(String(c.ulb))}"></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wzeULBVal_cc_${escapeHtml(c.id)}" min="0" step="0.01" value="${escapeHtml(creditsToDollars(c.ulb).toFixed(2))}"></div>
                 </div>
                 <div id="wzeULBErr_cc_${escapeHtml(c.id)}" class="wizard-error"></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -3460,10 +3475,10 @@
                 <div class="wizard-entry-list">${existingULBItems.join('')}</div></div>` : '';
 
         return `<h3>Step 5: User-Level Budgets</h3>
-            <p class="help-text" style="margin-bottom:16px">Optionally set per-user credit caps (ULBs). These are always hard stops. Precedence: Individual &gt; Cost Center &gt; Universal.</p>
+            <p class="help-text" style="margin-bottom:16px">Optionally set per-user dollar caps (ULBs). These are always hard stops. Precedence: Individual &gt; Cost Center &gt; Universal. AI credit equivalents are shown for reference.</p>
             <div class="form-group" style="margin-bottom:16px">
                 <label>Universal ULB — applies to all users unless overridden (leave blank for no limit)</label>
-                <input type="number" id="wizardUniversalULB" placeholder="No limit" min="0" value="${escapeHtml(universalVal)}">
+                <input type="number" id="wizardUniversalULB" placeholder="No limit" min="0" step="0.01" value="${escapeHtml(universalVal)}">
             </div>
             <div class="section-divider"></div>
             <h3 style="margin:0 0 8px">Add Specific Budget</h3>
@@ -3475,8 +3490,8 @@
                             <option value="costcenter">Cost Center</option>
                         </select></div>
                     <div class="form-group"><label>Target</label><select id="wizardULBTarget">${targetOpts}</select></div>
-                    <div class="form-group"><label>Budget (credits)</label>
-                        <input type="number" id="wizardULBValue" min="0" placeholder="e.g., 5000"></div>
+                    <div class="form-group"><label>Budget ($)</label>
+                        <input type="number" id="wizardULBValue" min="0" step="0.01" placeholder="e.g., 50"></div>
                     <button type="submit" class="btn-primary">+ Add</button>
                 </div>
                 <div class="wizard-error" id="wizardULBError"></div>
@@ -3546,7 +3561,7 @@
             `<div class="wizard-entry-item"><div class="wizard-entry-item-info">
                 <strong>${escapeHtml(b.target)}</strong>
                 <span class="badge ${b.type === 'org' ? 'badge-info' : 'badge-warning'}" style="margin-left:6px">${b.type === 'org' ? 'Organization' : 'Cost Center'}</span>
-                <span style="margin-left:6px;font-size:0.875rem">$${b.budget} · ${b.hardStop ? 'hard stop' : 'soft stop'}</span>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(b.budget)} · ${b.hardStop ? 'hard stop' : 'soft stop'}</span>
             </div><button type="button" class="btn-danger btn-sm" onclick="wizardRemoveOverageBudget('${escapeInlineArg(b.type)}','${escapeInlineArg(b.target)}')">✕</button></div>`
         ).join('') + '</div>';
     }
@@ -3567,7 +3582,7 @@
         const entEditing = wizardEditingExistingKey === entKey;
         const entRow = `<div class="wizard-entry-item existing${entEditing ? ' editing' : ''}">
             <div class="wizard-entry-item-info"><strong>Enterprise</strong>
-                <span style="margin-left:6px;font-size:0.875rem">$${state.enterprise.enterpriseBudget} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}</span></div>
+                <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(state.enterprise.enterpriseBudget)} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}</span></div>
             <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(entKey)}')">✏️ Edit</button></div></div>`;
         existingOverageItems.push(entEditing ? entRow + `<div class="wizard-existing-edit-form">
             <div class="form-row" style="margin-bottom:8px">
@@ -3588,7 +3603,7 @@
             const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(o.name)}</strong>
                     <span class="badge badge-info" style="margin-left:6px">Organization</span>
-                    <span style="margin-left:6px;font-size:0.875rem">$${o.budget} · ${o.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(o.budget)} · ${o.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
                 <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('org','${escapeInlineArg(o.id)}')">🗑 Remove</button></div></div>`;
             existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
@@ -3610,7 +3625,7 @@
             const row = `<div class="wizard-entry-item existing${isEditing ? ' editing' : ''}">
                 <div class="wizard-entry-item-info"><strong>${escapeHtml(c.name)}</strong>
                     <span class="badge badge-warning" style="margin-left:6px">Cost Center</span>
-                    <span style="margin-left:6px;font-size:0.875rem">$${c.budget} · ${c.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
+                    <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(c.budget)} · ${c.budgetHardStop ? 'hard stop' : 'soft stop'}</span></div>
                 <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(key)}')">✏️ Edit</button><button type="button" class="btn-danger btn-sm" onclick="wizardDeleteExistingOverage('cc','${escapeInlineArg(c.id)}')">🗑 Remove</button></div></div>`;
             existingOverageItems.push(isEditing ? row + `<div class="wizard-existing-edit-form">
                 <div class="form-row" style="margin-bottom:8px">
@@ -3632,10 +3647,11 @@
                 <div class="wizard-entry-list">${existingOverageItems.join('')}</div></div>` : '';
 
         return `<h3>Step 6: Overage Budgets</h3>
-            <p class="help-text" style="margin-bottom:16px">Configure metered dollar budgets that cap $0.01/credit charges once the credit pool is exhausted.</p>
+            <p class="help-text" style="margin-bottom:16px">Configure metered dollar budgets that cap $0.01/credit charges once the credit pool is exhausted. AI credit equivalents are shown for reference.</p>
             <div class="form-row" style="margin-bottom:16px">
                 <div class="form-group"><label>Enterprise metered budget ($)</label>
-                    <input type="number" id="wizardEntBudget" value="${wizardData.overageBudgets.enterpriseBudget}" min="0" step="50"></div>
+                    <input type="number" id="wizardEntBudget" value="${wizardData.overageBudgets.enterpriseBudget}" min="0" step="50">
+                    <p class="help-text">Reference: ${formatAICreditReference(meteredCreditsFromBudget(wizardData.overageBudgets.enterpriseBudget))}</p></div>
                 <div class="form-group"><label>&nbsp;</label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="wizardEntHardStop" ${wizardData.overageBudgets.enterpriseHardStop ? 'checked' : ''}>
@@ -3698,12 +3714,17 @@
         const hasUniversal = wizardData.userBudgets.universalULB !== '' && wizardData.userBudgets.universalULB !== null;
         if (hasUniversal || ulbTotal > 0) {
             let ulbHtml = '';
-            if (hasUniversal) ulbHtml += `<div class="wizard-review-item"><strong>Universal:</strong> ${fmt(parseInt(wizardData.userBudgets.universalULB))} credits/user</div>`;
+            if (hasUniversal) {
+                const universalDollars = parseFloat(wizardData.userBudgets.universalULB);
+                if (Number.isFinite(universalDollars) && universalDollars >= 0) {
+                    ulbHtml += `<div class="wizard-review-item"><strong>Universal:</strong> ${formatBudgetWithCreditReferenceFromCredits(dollarsToCredits(universalDollars))}/user</div>`;
+                }
+            }
             wizardData.userBudgets.costCenter.forEach(b => {
-                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (Cost Center): ${fmt(b.budget)} credits</div>`;
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (Cost Center): ${formatBudgetWithCreditReferenceFromCredits(b.budget)}</div>`;
             });
             wizardData.userBudgets.individual.forEach(b => {
-                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.userName)}</strong> (Individual): ${fmt(b.budget)} credits</div>`;
+                ulbHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.userName)}</strong> (Individual): ${formatBudgetWithCreditReferenceFromCredits(b.budget)}</div>`;
             });
             sections.push(`<div class="wizard-review-section"><h3>💰 User-Level Budgets</h3>${ulbHtml}</div>`);
         }
@@ -3712,12 +3733,12 @@
         const hasOvBudgets = wizardData.overageBudgets.orgs.length > 0 || wizardData.overageBudgets.costCenters.length > 0;
         if (entBudgetChanged || hasOvBudgets) {
             let ovHtml = '';
-            if (entBudgetChanged) ovHtml += `<div class="wizard-review-item"><strong>Enterprise:</strong> $${wizardData.overageBudgets.enterpriseBudget} ${wizardData.overageBudgets.enterpriseHardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+            if (entBudgetChanged) ovHtml += `<div class="wizard-review-item"><strong>Enterprise:</strong> ${formatBudgetWithCreditReferenceFromDollars(wizardData.overageBudgets.enterpriseBudget)} ${wizardData.overageBudgets.enterpriseHardStop ? '(hard stop)' : '(soft stop)'}</div>`;
             wizardData.overageBudgets.orgs.forEach(b => {
-                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.orgName)}</strong> (Org): $${b.budget} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.orgName)}</strong> (Org): ${formatBudgetWithCreditReferenceFromDollars(b.budget)} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
             });
             wizardData.overageBudgets.costCenters.forEach(b => {
-                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (CC): $${b.budget} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+                ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.ccName)}</strong> (CC): ${formatBudgetWithCreditReferenceFromDollars(b.budget)} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
             });
             sections.push(`<div class="wizard-review-section"><h3>💳 Overage Budgets</h3>${ovHtml}</div>`);
         }
@@ -3786,8 +3807,8 @@
         // 5. User-level budgets
         const ulbVal = wizardData.userBudgets.universalULB;
         if (ulbVal !== '' && ulbVal !== null) {
-            const parsed = parseInt(ulbVal);
-            if (!isNaN(parsed) && parsed >= 0) state.enterprise.universalULB = parsed;
+            const parsedDollars = parseFloat(ulbVal);
+            if (Number.isFinite(parsedDollars) && parsedDollars >= 0) state.enterprise.universalULB = dollarsToCredits(parsedDollars);
         }
         wizardData.userBudgets.individual.forEach(b => {
             const user = state.users.find(u => u.name === b.userName);
