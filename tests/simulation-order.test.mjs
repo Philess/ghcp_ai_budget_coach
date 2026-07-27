@@ -81,26 +81,28 @@ test('changes are applied in the order they were made, not in user list order', 
     const sim = setupAtStartingPoint();
     sim.call('applyUserUsageChange', THIERRY, 3060);   // 60 metered → $0.60
     sim.call('applyUserUsageChange', MATTHIEU, 3040);  // 40 metered → $1.00 (budget full)
-    sim.call('applyUserUsageChange', PHILIPPE, 3010);  // nothing left → blocked
+    sim.call('applyUserUsageChange', PHILIPPE, 3010);  // nothing left → all blocked
 
+    // When the CC budget is exhausted, ALL users in that CC are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].status, 'metered');
-    assert.equal(byId[THIERRY].creditsMetered, 60);
-    assert.equal(byId[MATTHIEU].status, 'metered');
-    assert.equal(byId[MATTHIEU].creditsMetered, 40);
+    assert.equal(byId[THIERRY].status, 'blocked');
+    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
+    assert.equal(byId[MATTHIEU].status, 'blocked');
+    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
     assert.equal(byId[PHILIPPE].status, 'blocked');
     assert.match(byId[PHILIPPE].reason, /CC budget exhausted/);
 });
 
-test('the reverse change order blocks the user changed last', () => {
+test('the reverse change order blocks all users when budget exhausted', () => {
     const sim = setupAtStartingPoint();
     sim.call('applyUserUsageChange', PHILIPPE, 3060);
     sim.call('applyUserUsageChange', MATTHIEU, 3040);
     sim.call('applyUserUsageChange', THIERRY, 3010);
 
+    // When the CC budget is exhausted, ALL users in that CC are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[PHILIPPE].status, 'metered');
-    assert.equal(byId[MATTHIEU].status, 'metered');
+    assert.equal(byId[PHILIPPE].status, 'blocked');
+    assert.equal(byId[MATTHIEU].status, 'blocked');
     assert.equal(byId[THIERRY].status, 'blocked');
 });
 
@@ -113,11 +115,10 @@ test('re-editing a user records a new step and moves them to the most recent pos
     // Every change is kept as a distinct step, in the order they were made.
     assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU, THIERRY]);
 
-    // Thierry's re-edit makes him the most recent change, so he is now applied after
-    // Matthieu: Matthieu takes the whole $1 overage budget and Thierry is blocked.
+    // Matthieu exhausts the budget, so all users in the CC are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[MATTHIEU].status, 'metered');
-    assert.equal(byId[MATTHIEU].creditsMetered, 100);
+    assert.equal(byId[MATTHIEU].status, 'blocked');
+    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
     assert.equal(byId[THIERRY].status, 'blocked');
     assert.match(byId[THIERRY].reason, /CC budget exhausted/);
 });
@@ -147,10 +148,10 @@ test('users that were never edited are applied after the recorded sequence', () 
     sim.call('applyUserUsageChange', THIERRY, 3060);
 
     assert.deepEqual(sequenceOf(sim), [THIERRY]);
+    // Both users consume metered credits, exhausting the budget, so both are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].creditsMetered, 60);
-    assert.equal(byId[PHILIPPE].creditsMetered, 40);
-    assert.equal(byId[PHILIPPE].status, 'metered');
+    assert.equal(byId[THIERRY].status, 'blocked');
+    assert.equal(byId[PHILIPPE].status, 'blocked');
 });
 
 test('setting a new starting point clears the change sequence', () => {
@@ -221,6 +222,36 @@ test('user-level budgets still block regardless of the change order', () => {
     const byId = resultsById(sim);
     assert.equal(byId[MATTHIEU].status, 'blocked');
     assert.match(byId[MATTHIEU].reason, /ULB exceeded/);
+});
+
+test('exhausting the cost center budget blocks members still served from the pool', () => {
+    const sim = setupAtStartingPoint();
+    // Philippe never changes: his 3,000 credits are fully served from the pool with
+    // zero overage. Matthieu alone drives the RND overage budget over its $1 cap.
+    sim.call('applyUserUsageChange', MATTHIEU, 3200); // wants 200 overage, budget only covers 100
+
+    const byId = resultsById(sim);
+    // The cost center is over budget, so the whole cost center is frozen — even
+    // Philippe and Thierry, who only ever touched the free pool, are blocked.
+    assert.equal(byId[MATTHIEU].status, 'blocked');
+    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
+    assert.equal(byId[PHILIPPE].status, 'blocked');
+    assert.match(byId[PHILIPPE].reason, /CC budget exhausted/);
+    assert.equal(byId[THIERRY].status, 'blocked');
+    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
+});
+
+test('the cost center stays served when overage fits inside the budget', () => {
+    const sim = setupAtStartingPoint();
+    // Combined overage of 30 + 40 = 70 credits fits inside the 100-credit ($1) budget,
+    // so nobody is shut down and unchanged members remain served from the pool.
+    sim.call('applyUserUsageChange', THIERRY, 3030);
+    sim.call('applyUserUsageChange', MATTHIEU, 3040);
+
+    const byId = resultsById(sim);
+    assert.equal(byId[THIERRY].status, 'metered');
+    assert.equal(byId[MATTHIEU].status, 'metered');
+    assert.equal(byId[PHILIPPE].status, 'served');
 });
 
 // The reserved cost center pool is a shared resource: it is 3 business seats × 3,000

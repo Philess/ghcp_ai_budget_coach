@@ -1893,6 +1893,66 @@
                 user, state.usage[user.id] || 0, poolState, baselineResults[user.id], poolCaps[user.id]);
         });
 
+        // Phase 3 — Hard-stop budget propagation (order-independent). A budget with a
+        // hard stop caps the TOTAL overage its scope can draw. If the members' combined
+        // overage demand exceeds that capacity, the budget is exhausted and the scope is
+        // shut down — so the outcome never depends on the order the changes were made in
+        // nor on floating-point crumbs left in the residual balance.
+        //
+        //  • Cost center / org budgets model an admin spending cap on a group: when the
+        //    cap is blown, the whole group is frozen, so EVERY member with usage is
+        //    blocked, even the ones served for free from a pool.
+        //  • The enterprise budget only caps metered overage: exhausting it stops paid
+        //    usage, but users still served for free from a pool keep going — so only the
+        //    users that actually needed overage are blocked.
+        const poolDrawOf = (r) => (r ? r.creditsFromCC + r.creditsFromEntPool : 0);
+        const overageDemandOf = (r) => (r ? Math.max(0, r.usage - poolDrawOf(r)) : 0);
+        // A user only presses on a budget if their usage reached the overage phase —
+        // i.e. they were metered or blocked by a budget, not stopped earlier by their
+        // ULB, a pool with overages disabled, or a disabled metered policy.
+        const reachedOverage = (r) => !!r && (r.status === 'metered' || (r.status === 'blocked' && /budget/i.test(r.reason)));
+        const scopeOverageDemand = (members) => members.reduce((sum, u) => {
+            const r = resultsByUser[u.id];
+            return sum + (reachedOverage(r) ? overageDemandOf(r) : 0);
+        }, 0);
+        const blockScope = (members, reason, onlyOverage) => {
+            members.forEach(u => {
+                const r = resultsByUser[u.id];
+                if (!r || r.usage <= 0) return;
+                if (onlyOverage && !(reachedOverage(r) && overageDemandOf(r) > 0)) return;
+                r.status = 'blocked';
+                r.reason = reason;
+            });
+        };
+
+        // Cost center budgets — a blown cap freezes the whole cost center.
+        state.costCenters.forEach(cc => {
+            if (!cc.budgetHardStop || cc.budget === null) return;
+            const capacity = meteredCreditsFromBudget(cc.budget);
+            const members = state.users.filter(u => { const c = getUserCC(u); return c && c.id === cc.id; });
+            if (scopeOverageDemand(members) > capacity) {
+                blockScope(members, `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`, false);
+            }
+        });
+
+        // Org budgets — a blown cap freezes the whole org.
+        state.orgs.forEach(org => {
+            if (!org.budgetHardStop || org.budget === null) return;
+            const capacity = meteredCreditsFromBudget(org.budget);
+            const members = state.users.filter(u => u.orgId === org.id);
+            if (scopeOverageDemand(members) > capacity) {
+                blockScope(members, `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`, false);
+            }
+        });
+
+        // Enterprise budget — only caps paid overage, so pool-served users keep going.
+        if (state.enterprise.enterpriseHardStop && state.enterprise.enterpriseBudget !== null) {
+            const capacity = meteredCreditsFromBudget(state.enterprise.enterpriseBudget);
+            if (scopeOverageDemand(state.users) > capacity) {
+                blockScope(state.users, `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`, true);
+            }
+        }
+
         // Results are reported in list order, independent of the application order.
         const results = state.users.map(user => resultsByUser[user.id]);
         return { results, poolState };
