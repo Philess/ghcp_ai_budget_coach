@@ -821,7 +821,7 @@
                     <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
                     <ol>
                         <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
-                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. These changes are applied on top of the baseline to reveal the real moment a user gets blocked.</li>
+                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. Every change is re-simulated for everyone: the shared cost center and enterprise pools are split concurrently across all users, while the overage (metered) budgets are drawn in the exact order you make the changes — so once a pool and its overage budget are both exhausted, every member competing for them is blocked.</li>
                     </ol>
                 </div>
                 <div class="card">
@@ -894,6 +894,7 @@
             users: [],
             usage: {},
             usageBaseline: {},
+            usageSequence: [],
             simulationUnit: 'credits',
             globalBudgetPercents: {}
         };
@@ -944,6 +945,7 @@
             users: Array.isArray(parsed.users) ? parsed.users : [],
             usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
             usageBaseline: parsed.usageBaseline && typeof parsed.usageBaseline === 'object' && !Array.isArray(parsed.usageBaseline) ? parsed.usageBaseline : {},
+            usageSequence: Array.isArray(parsed.usageSequence) ? parsed.usageSequence.filter(id => typeof id === 'string') : [],
             globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
         };
     }
@@ -1440,6 +1442,8 @@
     function deleteUser(id) {
         state.users = state.users.filter(u => u.id !== id);
         delete state.usage[id];
+        delete state.usageBaseline[id];
+        if (Array.isArray(state.usageSequence)) state.usageSequence = state.usageSequence.filter(uid => uid !== id);
         // Remove from CC userIds
         state.costCenters.forEach(cc => {
             if (cc.userIds) cc.userIds = cc.userIds.filter(uid => uid !== id);
@@ -1941,7 +1945,7 @@
         return null;
     }
 
-    function evaluateUser(user, userUsage, poolState, baselineResult = null) {
+    function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCaps = null) {
         const baseCC = baselineResult ? baselineResult.creditsFromCC : 0;
         const baseEnt = baselineResult ? baselineResult.creditsFromEntPool : 0;
         const baseMetered = baselineResult ? baselineResult.creditsMetered : 0;
@@ -1985,7 +1989,8 @@
 
         // Step 2: CC pool
         if (cc && cc.poolEnabled) {
-            const available = poolState.ccPools[cc.id] || 0;
+            const cap = poolCaps ? Math.max(0, poolCaps.cc) : Infinity;
+            const available = Math.min(poolState.ccPools[cc.id] || 0, cap);
             const drawn = Math.min(remaining, available);
             poolState.ccPools[cc.id] -= drawn;
             result.creditsFromCC += drawn;
@@ -2000,7 +2005,8 @@
 
         // Step 3: Enterprise pool
         if (remaining > 0) {
-            const drawn = Math.min(remaining, poolState.enterprisePool);
+            const cap = poolCaps ? Math.max(0, poolCaps.ent) : Infinity;
+            const drawn = Math.min(remaining, poolState.enterprisePool, cap);
             poolState.enterprisePool -= drawn;
             result.creditsFromEntPool += drawn;
             remaining -= drawn;
@@ -2080,11 +2086,101 @@
         return result;
     }
 
-    function runSimulation() {
-        if (state.users.length === 0) {
-            document.getElementById('simulationResultsCard').style.display = 'none';
-            return;
+    // Fair-share ("water-filling") split of a shared pool of `capacity` integer
+    // credits across demanders. Everyone gets an equal share; whoever needs less than
+    // their share frees the excess for the others, until the capacity is used up or
+    // every demand is met. Returns a { id: allocatedCredits } map. This models a shared
+    // pool consumed concurrently over the month, so the result never depends on the
+    // order users are processed in.
+    function shareCapacity(demands, capacity) {
+        const alloc = {};
+        demands.forEach(d => { alloc[d.id] = 0; });
+        let remaining = Math.max(0, Math.floor(capacity));
+        let active = demands
+            .map(d => ({ id: d.id, need: Math.max(0, Math.floor(d.need)) }))
+            .filter(d => d.need > 0);
+
+        while (remaining > 0 && active.length > 0) {
+            const share = Math.floor(remaining / active.length);
+            if (share === 0) break; // leftover smaller than the number of demanders
+            const still = [];
+            active.forEach(d => {
+                const give = Math.min(d.need, share);
+                alloc[d.id] += give;
+                d.need -= give;
+                remaining -= give;
+                if (d.need > 0) still.push(d);
+            });
+            active = still;
         }
+
+        // Hand out any indivisible remainder one credit at a time to the neediest.
+        active.sort((a, b) => b.need - a.need);
+        let i = 0;
+        while (remaining > 0 && active.some(d => d.need > 0)) {
+            const d = active[i % active.length];
+            if (d.need > 0) { alloc[d.id] += 1; d.need -= 1; remaining -= 1; }
+            i++;
+        }
+        return alloc;
+    }
+
+    // Credits a user still wants to draw in phase 2 (above the baseline already
+    // consumed), or 0 when they consume nothing or are already blocked by their ULB.
+    function phase2Demand(user, baselineResult) {
+        const usage = state.usage[user.id] || 0;
+        if (usage === 0) return 0;
+        const ulb = getEffectiveULB(user);
+        if (ulb.value !== null && usage > ulb.value) return 0;
+        const baselineDrawn = baselineResult
+            ? baselineResult.creditsFromCC + baselineResult.creditsFromEntPool + baselineResult.creditsMetered
+            : 0;
+        return Math.max(0, usage - baselineDrawn);
+    }
+
+    // Fair-share caps for every user's phase-2 pool draw. The cost center pool and the
+    // enterprise pool are shared resources, so they are split concurrently across all
+    // demanders rather than being handed out first-come-first-served. Overage/metered
+    // budgets are NOT capped here — those stay ordered by when the change was made.
+    function computePoolCaps(poolState, baselineResults) {
+        const caps = {};
+        state.users.forEach(u => { caps[u.id] = { cc: 0, ent: 0 }; });
+        const demand = {};
+        state.users.forEach(u => { demand[u.id] = phase2Demand(u, baselineResults[u.id]); });
+
+        // Cost center pools: split each pool across its own members.
+        state.costCenters.forEach(cc => {
+            if (!cc.poolEnabled) return;
+            const members = state.users.filter(u => {
+                const userCC = getUserCC(u);
+                return userCC && userCC.id === cc.id && demand[u.id] > 0;
+            });
+            const alloc = shareCapacity(
+                members.map(u => ({ id: u.id, need: demand[u.id] })),
+                poolState.ccPools[cc.id] || 0
+            );
+            members.forEach(u => { caps[u.id].cc = alloc[u.id] || 0; });
+        });
+
+        // Enterprise pool: split across users who reach it — those with no cost center
+        // pool, plus cost-center-pool users whose overage falls through when allowed.
+        const entDemanders = state.users
+            .map(u => {
+                const cc = getUserCC(u);
+                if (cc && cc.poolEnabled) {
+                    if (!cc.overagesAllowed) return null; // blocked before the enterprise pool
+                    return { id: u.id, need: Math.max(0, demand[u.id] - caps[u.id].cc) };
+                }
+                return { id: u.id, need: demand[u.id] };
+            })
+            .filter(d => d && d.need > 0);
+        const entAlloc = shareCapacity(entDemanders, poolState.enterprisePool);
+        entDemanders.forEach(d => { caps[d.id].ent = entAlloc[d.id] || 0; });
+
+        return caps;
+    }
+
+    function computeSimulationResults() {
         const poolState = initPoolState();
         const baseline = state.usageBaseline || {};
 
@@ -2098,10 +2194,90 @@
             baselineResults[user.id] = base > 0 ? evaluateUser(user, base, poolState) : null;
         });
 
-        // Phase 2 — Applied changes: each user's usage above the baseline is drawn from
-        // what remains, in sequence, revealing the real point where a user gets blocked.
-        const results = state.users.map(user =>
-            evaluateUser(user, state.usage[user.id] || 0, poolState, baselineResults[user.id]));
+        // Phase 2 — Applied changes. The reserved/enterprise pool is a shared resource,
+        // so it is split concurrently across everyone (fair-share caps): once a cost
+        // center's pool and overage budget are exhausted, every member competing for
+        // them is blocked, not just the users processed last. Only the overage/metered
+        // budgets are drawn in the order the changes were made, revealing who keeps the
+        // scarce budget when there is still some room.
+        const poolCaps = computePoolCaps(poolState, baselineResults);
+        const resultsByUser = {};
+        getUsageApplicationOrder().forEach(user => {
+            resultsByUser[user.id] = evaluateUser(
+                user, state.usage[user.id] || 0, poolState, baselineResults[user.id], poolCaps[user.id]);
+        });
+
+        // Phase 3 — Hard-stop budget propagation (order-independent). A budget with a
+        // hard stop caps the TOTAL overage its scope can draw. If the members' combined
+        // overage demand exceeds that capacity, the budget is exhausted and the scope is
+        // shut down — so the outcome never depends on the order the changes were made in
+        // nor on floating-point crumbs left in the residual balance.
+        //
+        //  • Cost center / org budgets model an admin spending cap on a group: when the
+        //    cap is blown, the whole group is frozen, so EVERY member with usage is
+        //    blocked, even the ones served for free from a pool.
+        //  • The enterprise budget only caps metered overage: exhausting it stops paid
+        //    usage, but users still served for free from a pool keep going — so only the
+        //    users that actually needed overage are blocked.
+        const poolDrawOf = (r) => (r ? r.creditsFromCC + r.creditsFromEntPool : 0);
+        const overageDemandOf = (r) => (r ? Math.max(0, r.usage - poolDrawOf(r)) : 0);
+        // A user only presses on a budget if their usage reached the overage phase —
+        // i.e. they were metered or blocked by a budget, not stopped earlier by their
+        // ULB, a pool with overages disabled, or a disabled metered policy.
+        const reachedOverage = (r) => !!r && (r.status === 'metered' || (r.status === 'blocked' && /budget/i.test(r.reason)));
+        const scopeOverageDemand = (members) => members.reduce((sum, u) => {
+            const r = resultsByUser[u.id];
+            return sum + (reachedOverage(r) ? overageDemandOf(r) : 0);
+        }, 0);
+        const blockScope = (members, reason, onlyOverage) => {
+            members.forEach(u => {
+                const r = resultsByUser[u.id];
+                if (!r || r.usage <= 0) return;
+                if (onlyOverage && !(reachedOverage(r) && overageDemandOf(r) > 0)) return;
+                r.status = 'blocked';
+                r.reason = reason;
+            });
+        };
+
+        // Cost center budgets — a blown cap freezes the whole cost center.
+        state.costCenters.forEach(cc => {
+            if (!cc.budgetHardStop || cc.budget === null) return;
+            const capacity = meteredCreditsFromBudget(cc.budget);
+            const members = state.users.filter(u => { const c = getUserCC(u); return c && c.id === cc.id; });
+            if (scopeOverageDemand(members) > capacity) {
+                blockScope(members, `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`, false);
+            }
+        });
+
+        // Org budgets — a blown cap freezes the whole org.
+        state.orgs.forEach(org => {
+            if (!org.budgetHardStop || org.budget === null) return;
+            const capacity = meteredCreditsFromBudget(org.budget);
+            const members = state.users.filter(u => u.orgId === org.id);
+            if (scopeOverageDemand(members) > capacity) {
+                blockScope(members, `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`, false);
+            }
+        });
+
+        // Enterprise budget — only caps paid overage, so pool-served users keep going.
+        if (state.enterprise.enterpriseHardStop && state.enterprise.enterpriseBudget !== null) {
+            const capacity = meteredCreditsFromBudget(state.enterprise.enterpriseBudget);
+            if (scopeOverageDemand(state.users) > capacity) {
+                blockScope(state.users, `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`, true);
+            }
+        }
+
+        // Results are reported in list order, independent of the application order.
+        const results = state.users.map(user => resultsByUser[user.id]);
+        return { results, poolState };
+    }
+
+    function runSimulation() {
+        if (state.users.length === 0) {
+            document.getElementById('simulationResultsCard').style.display = 'none';
+            return;
+        }
+        const { results, poolState } = computeSimulationResults();
         renderSimulationResults(results, poolState);
     }
 
@@ -2314,8 +2490,47 @@
         state.usage[userId] = Math.max(0, parseInt(value, 10) || 0);
     }
 
+    // Every consumption change is recorded as its own step, in the exact order the
+    // user made them — going 50 → 100 → 80 on one user records three steps. Because
+    // only the latest value of a user is simulated, re-editing a user is treated as a
+    // brand new change: it moves that user to the most recent position in the order.
+    function recordUsageChange(userId) {
+        if (!Array.isArray(state.usageSequence)) state.usageSequence = [];
+        state.usageSequence.push(userId);
+    }
+
+    function clearUsageSequence() {
+        state.usageSequence = [];
+    }
+
+    // Users in the order their consumption must be applied. Each user is placed by
+    // their most recent change (the last time they appear in the sequence), so the
+    // earliest still-current change is applied first; users never edited come last,
+    // in list order (covers imported/legacy states).
+    function getUsageApplicationOrder() {
+        const sequence = Array.isArray(state.usageSequence) ? state.usageSequence : [];
+        const lastIndex = new Map();
+        sequence.forEach((id, idx) => { lastIndex.set(id, idx); });
+        const seen = new Set();
+        const ordered = [];
+        sequence.forEach((id, idx) => {
+            if (lastIndex.get(id) !== idx) return; // keep only the most recent change
+            const user = state.users.find(u => u.id === id);
+            if (!user || seen.has(id)) return;
+            seen.add(id);
+            ordered.push(user);
+        });
+        state.users.forEach(user => {
+            if (seen.has(user.id)) return;
+            seen.add(user.id);
+            ordered.push(user);
+        });
+        return ordered;
+    }
+
     function applyUserUsageChange(userId, creditsValue) {
         setUserUsageValue(userId, creditsValue);
+        recordUsageChange(userId);
         saveState();
         runSimulation();
     }
@@ -2412,6 +2627,9 @@
         });
 
         state.users.forEach(u => { state.usage[u.id] = newUsage[u.id] || 0; });
+        // A global distribution replaces every user's consumption at once, so no
+        // per-user change order applies until the user edits users individually again.
+        clearUsageSequence();
         saveState();
         runSimulation();
     }
@@ -2544,6 +2762,7 @@
 
     function setStartingPoint() {
         state.usageBaseline = { ...state.usage };
+        clearUsageSequence();
         saveState();
         updateStartingPointStatus();
         runSimulation();
@@ -2571,6 +2790,7 @@
         state.usage = {};
         state.usageBaseline = {};
         state.globalBudgetPercents = {};
+        clearUsageSequence();
         saveState();
         renderGlobalBudgetSimulation();
     }
