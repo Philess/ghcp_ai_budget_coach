@@ -205,3 +205,9 @@ npm run test:all
 
 For interactive browser troubleshooting, use `npm run test:e2e:headed` or
 `npm run test:e2e:debug`.
+
+Pull requests from branches in this repository receive an automatically updated
+**Simulator Test Results** comment and GitHub Check combining the unit and
+Playwright suites. The workflow also uploads JUnit XML and the Playwright HTML
+report on every run; failed runs retain traces, screenshots, and videos for
+diagnosis.

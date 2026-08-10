@@ -194,9 +194,19 @@ npm run test:e2e:headed
 npm run test:e2e:debug
 ```
 
-Playwright retains traces, screenshots, videos, and its HTML report for failed
-CI runs. Tests use a fresh browser context and fresh fixture object for every
-case; no local-storage state is shared between tests.
+CI emits JUnit XML for both test layers. Same-repository pull requests receive
+one automatically updated **Simulator Test Results** comment plus a named
+GitHub Check with totals, duration, and failure annotations. The same result is
+available in the workflow job summary.
+
+Every non-cancelled run uploads a `simulator-test-report` artifact containing
+the JUnit files and Playwright HTML report. Failed runs additionally retain
+traces, screenshots, videos, and the HTML report in
+`playwright-diagnostics`. Fork pull requests keep normal workflow checks and
+artifacts but skip write-token publishing.
+
+Tests use a fresh browser context and fresh fixture object for every case; no
+local-storage state is shared between tests.
 
 ## Acceptance criteria
 
