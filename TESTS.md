@@ -28,8 +28,9 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   of its resolved members.
 - Users without a reserved cost-center pool draw from the unreserved
   enterprise pool.
-- Included pools are shared concurrently. Residual capacity is fairly divided
-  between competing users rather than consumed in user-list order.
+- Included pools are shared concurrently. Both the starting point and the
+  post-baseline draws divide the available capacity fairly between competing
+  users rather than consuming it in user-list order.
 - Post-baseline metered usage is evaluated in the order in which user values
   were last changed.
 - **Last Call** is the actual result of a user's latest simulated consumption.

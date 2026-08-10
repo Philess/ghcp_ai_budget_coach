@@ -1247,6 +1247,17 @@ function shareCapacity(demands, capacity) {
     return alloc;
 }
 
+// Credits a user wants to draw in the baseline phase ("starting point"), or 0 when
+// they have no baseline or the baseline alone already exceeds their ULB.
+function baselineDemand(user, baseline) {
+    const usage = state.usage[user.id] || 0;
+    const base = Math.min(baseline[user.id] || 0, usage);
+    if (base <= 0) return 0;
+    const ulb = getEffectiveULB(user);
+    if (ulb.value !== null && base > ulb.value) return 0;
+    return base;
+}
+
 // Credits a user still wants to draw in phase 2 (above the baseline already
 // consumed), or 0 when they consume nothing or are already blocked by their ULB.
 function phase2Demand(user, baselineResult) {
@@ -1260,15 +1271,13 @@ function phase2Demand(user, baselineResult) {
     return Math.max(0, usage - baselineDrawn);
 }
 
-// Fair-share caps for every user's phase-2 pool draw. The cost center pool and the
-// enterprise pool are shared resources, so they are split concurrently across all
+// Fair-share caps for every user's pool draw in one phase. The cost center pool and
+// the enterprise pool are shared resources, so they are split concurrently across all
 // demanders rather than being handed out first-come-first-served. Overage/metered
 // budgets are NOT capped here — those stay ordered by when the change was made.
-function computePoolCaps(poolState, baselineResults) {
+function computePoolCaps(poolState, demand) {
     const caps = {};
     state.users.forEach(u => { caps[u.id] = { cc: 0, ent: 0 }; });
-    const demand = {};
-    state.users.forEach(u => { demand[u.id] = phase2Demand(u, baselineResults[u.id]); });
 
     // Cost center pools: split each pool across its own members.
     state.costCenters.forEach(cc => {
@@ -1369,12 +1378,18 @@ function computeSimulationResults(options = {}) {
 
     // Phase 1 — Starting point: every user consumes their saved baseline together,
     // depleting the shared pools/budgets concurrently so no user is starved by list
-    // order. Only the pool state mutation is kept; the breakdown feeds phase 2.
+    // order. The shared pools are split with the same fair-share caps used in phase 2.
+    // Only the pool state mutation is kept; the breakdown feeds phase 2.
+    const baselineDemands = {};
+    state.users.forEach(user => { baselineDemands[user.id] = baselineDemand(user, baseline); });
+    const baselineCaps = computePoolCaps(poolState, baselineDemands);
     const baselineResults = {};
     state.users.forEach(user => {
         const total = state.usage[user.id] || 0;
         const base = Math.min(baseline[user.id] || 0, total);
-        baselineResults[user.id] = base > 0 ? evaluateUser(user, base, poolState) : null;
+        baselineResults[user.id] = base > 0
+            ? evaluateUser(user, base, poolState, null, baselineCaps[user.id])
+            : null;
     });
 
     // Phase 2 — Applied changes. The reserved/enterprise pool is a shared resource,
@@ -1383,7 +1398,11 @@ function computeSimulationResults(options = {}) {
     // them is blocked, not just the users processed last. Only the overage/metered
     // budgets are drawn in the order the changes were made, revealing who keeps the
     // scarce budget when there is still some room.
-    const poolCaps = computePoolCaps(poolState, baselineResults);
+    const phase2Demands = {};
+    state.users.forEach(user => {
+        phase2Demands[user.id] = phase2Demand(user, baselineResults[user.id]);
+    });
+    const poolCaps = computePoolCaps(poolState, phase2Demands);
     const resultsByUser = {};
     getUsageApplicationOrder().forEach(user => {
         resultsByUser[user.id] = evaluateUser(

@@ -537,3 +537,52 @@ test('cost-center ULB applies to members resolved through an enterprise team', (
     assertLastCall(byId[PHILIPPE], 'blocked', /ULB exceeded.*CC: Platform CC/);
     assertNextCall(byId[PHILIPPE], 'blocked', /ULB exceeded.*CC: Platform CC/);
 });
+
+// The starting point is consumed by everyone at once, so an over-subscribed pool is
+// split fairly instead of being handed entirely to the first user in the list.
+function baselineSharingState(userOrder) {
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;   // 1,900 pool credits for two users
+    state.enterprise.enterpriseBudget = null;
+    state.enterprise.enterpriseHardStop = false;
+    state.costCenters = [];
+    state.users = userOrder.map(id => ({
+        id,
+        name: id,
+        license: 'business',
+        individualULB: null
+    }));
+    return state;
+}
+
+test('an over-subscribed starting point is shared fairly whatever the user order', () => {
+    [[PHILIPPE, MATTHIEU], [MATTHIEU, PHILIPPE]].forEach(order => {
+        const sim = loadSimulator();
+        sim.setState(baselineSharingState(order));
+        const state = sim.getState();
+        state.users.forEach(u => { state.usage[u.id] = 1900; });
+        sim.call('setStartingPoint');
+
+        const byId = resultsById(sim);
+        order.forEach(id => {
+            assert.equal(byId[id].creditsFromEntPool, 950, `${id} gets half of the pool`);
+            assert.equal(byId[id].creditsMetered, 950, `${id} meters the other half`);
+        });
+    });
+});
+
+test('an over-subscribed starting point blocks nobody in particular when metering is off', () => {
+    const state = baselineSharingState([PHILIPPE, MATTHIEU]);
+    state.enterprise.meteredEnabled = false;
+    const sim = loadSimulator();
+    sim.setState(state);
+    const simState = sim.getState();
+    simState.users.forEach(u => { simState.usage[u.id] = 1900; });
+    sim.call('setStartingPoint');
+
+    const byId = resultsById(sim);
+    [PHILIPPE, MATTHIEU].forEach(id => {
+        assert.equal(byId[id].creditsFromEntPool, 950);
+        assertLastCall(byId[id], 'blocked', /metered usage not enabled/);
+    });
+});
