@@ -42,6 +42,10 @@ jobs:
           --test-reporter-destination=test-reports/unit-junit.xml
           "tests/*.test.mjs"
 
+      - name: Normalize unit test report
+        if: ${{ !cancelled() && hashFiles('test-reports/unit-junit.xml') != '' }}
+        run: node tests/reporting/normalize-node-junit.mjs test-reports/unit-junit.xml
+
       - name: Run Playwright tests
         if: ${{ !cancelled() }}
         run: npm run test:e2e
