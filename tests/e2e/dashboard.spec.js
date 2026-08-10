@@ -7,7 +7,7 @@ test('summary and gauges agree with served, metered, and blocked rows', async ({
         enterprise: {
             businessSeats: 3,
             meteredEnabled: true,
-            enterpriseBudget: 10,
+            enterpriseBudget: 2,
             enterpriseHardStop: true
         },
         costCenters: [{
@@ -42,6 +42,7 @@ test('summary and gauges agree with served, metered, and blocked rows', async ({
     expect(await simulator.summary('served')).toBe('1');
     expect(await simulator.summary('metered')).toBe('1');
     expect(await simulator.summary('blocked')).toBe('1');
+    expect(await simulator.summary('blocked-next')).toBe('2');
     expect(await simulator.summary('metered-total')).toBe('200 AI credits');
     expect(await simulator.gaugeValues('cc-pool-cc-served')).toMatchObject({
         used: '1,000 AI credits',
@@ -49,8 +50,8 @@ test('summary and gauges agree with served, metered, and blocked rows', async ({
     });
     expect(await simulator.gaugeValues('enterprise-budget')).toMatchObject({
         used: '200 AI credits',
-        total: '1,000 AI credits',
-        percent: '20.0%'
+        total: '200 AI credits',
+        percent: '100.0%'
     });
 });
 

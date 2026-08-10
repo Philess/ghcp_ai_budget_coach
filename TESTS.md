@@ -32,10 +32,16 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   between competing users rather than consumed in user-list order.
 - Post-baseline metered usage is evaluated in the order in which user values
   were last changed.
-- Exhausting a hard-stop cost-center or organization budget freezes every
-  active user in that scope.
+- **Last Call** is the actual result of a user's latest simulated consumption.
+  A later action by another user never retroactively rewrites it.
+- **Next Call** projects one additional credit from the final shared pool and
+  budget state.
+- Exhausting a hard-stop cost-center or organization budget blocks Next Call
+  for every active user in that scope. The action that exceeds the cap is
+  blocked on both Last Call and Next Call.
 - Exhausting the enterprise hard-stop budget blocks users that need overage;
-  users still fully served from an included pool remain served.
+  their Next Call is blocked, while users still fully served from an included
+  pool remain served.
 - Exactly reaching a pool or budget cap is allowed. A hard stop takes effect
   when demand exceeds the cap.
 
@@ -43,8 +49,8 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
 
 | Layer | Responsibility |
 |---|---|
-| Node unit tests | Calculation details, fair sharing, ordering, state normalization, and boundary behavior without a browser |
-| Playwright E2E tests | Configuration workflows, browser persistence, rendered status/reasons/accounting, and multi-step transitions |
+| Node unit tests | Calculation details, fair sharing, ordering, two-status projections, state normalization, and boundary behavior without a browser |
+| Playwright E2E tests | Configuration workflows, browser persistence, rendered Last Call/Next Call statuses, reasons/accounting, and multi-step transitions |
 
 One E2E scenario creates a representative enterprise through the real UI.
 Decision-matrix scenarios preload deterministic state through `localStorage`,
@@ -59,7 +65,7 @@ the tests isolated and fast without bypassing the behavior being tested.
 | `engineering-cc` | Engineering org and enterprise team mapped to an Engineering cost center | Reserved pool, membership resolution, CC ULB, and CC overage |
 | `multi-scope` | Engineering and Marketing orgs/teams/cost centers plus an unassigned user | Scope isolation and combined budget checks |
 | `ulb-precedence` | Universal, cost-center, and individual ULBs at different values | Most-specific ULB precedence |
-| `ordered-overage` | Three Business users at a 1,900-credit baseline; $1 CC budget | Deterministic served-to-metered-to-blocked transitions |
+| `ordered-overage` | Three Business users at a 1,900-credit baseline; $1 CC hard-stop budget; explicit action order | Deterministic Last Call outcomes and final-state Next Call freeze |
 
 Every fixture defines `usage`, `usageBaseline`, `usageSequence`,
 `simulationUnit`, and `globalBudgetPercents` explicitly.
@@ -96,14 +102,14 @@ Every fixture defines `usage`, `usageBaseline`, `usageSequence`,
 |---|---|---|
 | MTR-01 | Exhaust pools with metered policy disabled | `blocked`; reason identifies disabled metered usage; budget gauges remain unused |
 | MTR-02 | Exhaust pools with metering and all budgets available | `metered`; visible credits and cost are correct |
-| MTR-03 | Exercise CC hard stop one below, at, and one above its cap | Below/at remain metered; above blocks every active CC member only |
-| MTR-04 | Exercise organization hard stop one below, at, and one above its cap | Below/at remain metered; above blocks every active org member only |
-| MTR-05 | Exercise enterprise hard stop one below, at, and one above its cap | Below/at remain metered; above blocks overage users but not pool-only users |
+| MTR-03 | Exercise CC hard stop one below, at, and one above its cap | Below/at have metered Last Call; the failing action is blocked on both statuses, earlier members retain Last Call, and every active CC member has blocked Next Call |
+| MTR-04 | Exercise organization hard stop one below, at, and one above its cap | Below/at have metered Last Call; the failing action is blocked on both statuses, earlier members retain Last Call, and every active org member has blocked Next Call |
+| MTR-05 | Exercise enterprise hard stop one below, at, and one above its cap | The failing overage action is blocked on both statuses; earlier overage users retain Last Call but have blocked Next Call, while pool-only users remain served |
 | MTR-06 | Exceed a CC budget with hard stop disabled | Usage remains `metered`; the gauge may exceed 100% |
 | MTR-07 | Exceed an org budget with hard stop disabled | Usage remains `metered`; the gauge may exceed 100% |
 | MTR-08 | Exceed enterprise budget with hard stop disabled | Usage remains `metered`; the gauge may exceed 100% |
-| MTR-09 | Configure CC, org, and enterprise caps together | The smallest applicable headroom controls; the reason identifies that scope |
-| MTR-10 | Configure a zero-dollar hard-stop budget | The first metered credit is blocked for the applicable scope |
+| MTR-09 | Configure CC, org, and enterprise caps together | The smallest applicable headroom controls Next Call; a failing action is blocked on both statuses and the reason identifies that scope |
+| MTR-10 | Configure a zero-dollar hard-stop budget | The first metered credit is blocked on both statuses; all applicable scope members have blocked Next Call |
 | MTR-11 | Meter 1, 100, and 101 credits | Values render as $0.01, $1.00, and $1.01 in rows, summary, and gauges |
 
 ### User-level budgets
@@ -127,21 +133,21 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | ID | Step | Expected transition |
 |---|---|---|
 | SEQ-01 | Distribute baseline usage and click **Set as Starting Point** | All three users are `served`; baseline is consumed concurrently; edit order is empty |
-| SEQ-02 | Change Thierry from 1,900 to 1,960 | Thierry becomes `metered`; others stay `served`; CC budget usage is $0.60 |
-| SEQ-03 | Change Matthieu from 1,900 to 1,940 | Thierry and Matthieu are `metered`; Philippe stays `served`; budget is exactly $1.00 |
-| SEQ-04 | Change Philippe from 1,900 to 1,910 | Demand exceeds the CC cap; all three become `blocked` with the CC-budget reason |
-| SEQ-05 | Repeat the changes in reverse order | Edit order follows browser actions; pool sharing stays fair; final scope freeze is order-independent |
+| SEQ-02 | Change Thierry from 1,900 to 1,960 | Thierry's Last Call is `metered`; others' Last Call stays `served`; CC budget usage is $0.60 |
+| SEQ-03 | Change Matthieu from 1,900 to 1,940 | Thierry and Matthieu have `metered` Last Call; Philippe stays `served`; budget is exactly $1.00 |
+| SEQ-04 | Change Philippe from 1,900 to 1,910 | Philippe is Last Call `blocked` / Next Call `blocked`; Thierry and Matthieu are Last Call `metered` / Next Call `blocked`; all show the CC-budget Next Call reason |
+| SEQ-05 | Repeat the changes in reverse order | Last Call follows action order: the action that exceeds the cap is blocked on both statuses, prior successful actions retain their outcomes; final blocked Next Call for the scope is order-independent |
 | SEQ-06 | Re-edit an earlier user | Its latest edit becomes its effective application position and persists |
 | SEQ-07 | Apply a new global distribution | Usage is atomically replaced and per-user edit order clears |
 | SEQ-08 | Set a new starting point | Baseline becomes current usage and edit order clears |
 | SEQ-09 | Reset usage | Usage, baseline, global percentages, and edit order clear |
-| SEQ-10 | Reload after ordered edits | The same baseline, order, values, statuses, and reasons are restored |
+| SEQ-10 | Reload after ordered edits | The same baseline, order, values, Last Call/Next Call statuses, and reasons are restored |
 
 ### Dashboard and lifecycle
 
 | ID | Setup and actions | Expected result |
 |---|---|---|
-| UI-01 | Mix served, metered, and blocked rows | Summary counts and total metered usage equal the rows |
+| UI-01 | Mix served, metered, and blocked Last Calls with blocked Next Calls | Summary counts each status column correctly and total metered usage equals actual metered Last Calls |
 | UI-02 | Consume pool and scoped budgets | Gauges show correct used, total, percentage, and threshold color |
 | UI-03 | Switch credits to dollars and back | Underlying usage/status is unchanged and values convert exactly |
 | UI-04 | Filter users by name | Only row visibility changes; usage and order do not |
@@ -164,6 +170,8 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | Pool reservations follow membership and license count | CFG-02, CFG-04, CFG-06 |
 | User outside a cost center uses unreserved pool | CFG-05, POOL-07 |
 | Baseline and pools are concurrent; metered edits are ordered | POOL-05, POOL-06, SEQ-01 through SEQ-10 |
+| Last Call is historical; Next Call projects final shared state | MTR-03 through MTR-05, MTR-09, MTR-10, SEQ-02 through SEQ-05, UI-01 |
+| Scope hard stops freeze Next Call without rewriting earlier Last Calls | MTR-03 through MTR-05, SEQ-04, SEQ-05 |
 
 ## Running tests
 
@@ -190,14 +198,16 @@ case; no local-storage state is shared between tests.
 
 - Every README flowchart branch and “Key Interactions & Gotchas” row maps to a
   scenario above.
-- Every outcome assertion includes the status and relevant source/reason and
-  accounting; status alone is insufficient.
-- Multi-step browser tests demonstrate `served -> metered -> blocked` from a
-  saved starting point.
+- Every outcome assertion includes both Last Call and Next Call plus the
+  relevant source/reason and accounting; statuses alone are insufficient.
+- Multi-step browser tests demonstrate successful metered Last Calls, a blocked
+  failing Last Call, and blocked Next Call for the final hard-stopped scope from
+  a saved starting point.
 - Direct, enterprise-team, organization, direct-list, and no-cost-center
   membership paths are covered.
 - Hard-stop on/off and exact-cap boundaries are covered for cost-center,
-  organization, and enterprise budgets.
+  organization, and enterprise budgets, including the non-retroactive Last Call
+  and scope-wide Next Call freeze semantics.
 - All documentation, UI labels, calculations, fixtures, and assertions use
   1,900 Business / 3,900 Enterprise credits.
 - The test suite passes from a clean checkout in headless Chromium.

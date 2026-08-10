@@ -18,6 +18,7 @@ function defaultState() {
         usage: {},
         usageBaseline: {},
         usageSequence: [],
+        lastCallOutcomes: {},
         simulationUnit: 'credits',
         globalBudgetPercents: {}
     };
@@ -69,6 +70,7 @@ function normalizeState(parsed) {
         usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
         usageBaseline: parsed.usageBaseline && typeof parsed.usageBaseline === 'object' && !Array.isArray(parsed.usageBaseline) ? parsed.usageBaseline : {},
         usageSequence: Array.isArray(parsed.usageSequence) ? parsed.usageSequence.filter(id => typeof id === 'string') : [],
+        lastCallOutcomes: parsed.lastCallOutcomes && typeof parsed.lastCallOutcomes === 'object' && !Array.isArray(parsed.lastCallOutcomes) ? parsed.lastCallOutcomes : {},
         globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
     };
 }
@@ -571,6 +573,7 @@ function deleteUser(id) {
     state.users = state.users.filter(u => u.id !== id);
     delete state.usage[id];
     delete state.usageBaseline[id];
+    if (state.lastCallOutcomes) delete state.lastCallOutcomes[id];
     if (Array.isArray(state.usageSequence)) state.usageSequence = state.usageSequence.filter(uid => uid !== id);
     // Remove from CC userIds
     state.costCenters.forEach(cc => {
@@ -1146,48 +1149,40 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
             return result;
         }
 
-        // CC budget check
-        if (cc && cc.budget !== null) {
-            const ccUsed = poolState.ccMetered[cc.id] || 0;
-            const ccRemaining = cc.budget - ccUsed;
-            const affordable = meteredCreditsFromBudget(ccRemaining);
-            if (affordable <= 0 && cc.budgetHardStop) {
-                result.status = 'blocked';
-                result.reason = `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`;
-                return result;
-            }
-            if (remaining > affordable && cc.budgetHardStop) remaining = Math.max(0, affordable);
-        }
-
-        // Org budget check
         const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
-        if (org && org.budget !== null) {
-            const orgUsed = poolState.orgMetered[org.id] || 0;
-            const orgRemaining = org.budget - orgUsed;
-            const affordable = meteredCreditsFromBudget(orgRemaining);
-            if (affordable <= 0 && org.budgetHardStop) {
-                result.status = 'blocked';
-                result.reason = `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`;
-                return result;
-            }
-            if (remaining > affordable && org.budgetHardStop) remaining = Math.max(0, affordable);
+        const hardStops = [];
+        if (cc && cc.budget !== null && cc.budgetHardStop) {
+            hardStops.push({
+                affordable: meteredCreditsFromBudget(cc.budget - (poolState.ccMetered[cc.id] || 0)),
+                reason: `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`
+            });
+        }
+        if (org && org.budget !== null && org.budgetHardStop) {
+            hardStops.push({
+                affordable: meteredCreditsFromBudget(org.budget - (poolState.orgMetered[org.id] || 0)),
+                reason: `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`
+            });
+        }
+        if (state.enterprise.enterpriseBudget !== null && state.enterprise.enterpriseHardStop) {
+            hardStops.push({
+                affordable: meteredCreditsFromBudget(
+                    state.enterprise.enterpriseBudget - poolState.enterpriseMetered),
+                reason: `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`
+            });
         }
 
-        // Enterprise budget check
-        const entRemaining = state.enterprise.enterpriseBudget - poolState.enterpriseMetered;
-        const entAffordable = meteredCreditsFromBudget(entRemaining);
-        if (entAffordable <= 0 && state.enterprise.enterpriseHardStop) {
+        const limitingStop = hardStops.reduce(
+            (limit, candidate) => !limit || candidate.affordable < limit.affordable ? candidate : limit,
+            null);
+        if (limitingStop && limitingStop.affordable <= 0) {
             result.status = 'blocked';
-            result.reason = `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`;
+            result.reason = limitingStop.reason;
             return result;
         }
-        if (remaining > entAffordable && state.enterprise.enterpriseHardStop) remaining = Math.max(0, entAffordable);
-
-        if (remaining <= 0) {
-            result.status = 'blocked';
-            result.reason = 'All applicable budgets exhausted';
-            return result;
-        }
+        const hardStopReason = limitingStop && remaining > limitingStop.affordable
+            ? limitingStop.reason
+            : '';
+        if (hardStopReason) remaining = limitingStop.affordable;
 
         const deltaCost = remaining * 0.01;
         result.creditsMetered += remaining;
@@ -1196,7 +1191,8 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + deltaCost;
         poolState.enterpriseMetered += deltaCost;
 
-        result.status = 'metered';
+        result.status = hardStopReason ? 'blocked' : 'metered';
+        result.reason = hardStopReason;
         result.source = `${formatSimulationCredits(result.creditsFromCC)} CC pool + ${formatSimulationCredits(result.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(result.creditsMetered)} metered`;
         return result;
     }
@@ -1306,7 +1302,68 @@ function computePoolCaps(poolState, baselineResults) {
     return caps;
 }
 
-function computeSimulationResults() {
+function formatCallSource(outcome) {
+    if ((outcome.usage || 0) === 0) return 'No usage';
+    if (outcome.status === 'metered') {
+        return `${formatSimulationCredits(outcome.creditsFromCC)} CC pool + ${formatSimulationCredits(outcome.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(outcome.creditsMetered)} metered`;
+    }
+    if (outcome.creditsFromCC > 0 && outcome.creditsFromEntPool > 0) {
+        return `CC pool (${formatSimulationCredits(outcome.creditsFromCC)}) + Ent. pool (${formatSimulationCredits(outcome.creditsFromEntPool)})`;
+    }
+    return outcome.creditsFromCC > 0 ? 'CC pool' : 'Enterprise pool';
+}
+
+function callReasonData(user, result) {
+    if (result.status !== 'blocked') return null;
+    const reason = result.reason || '';
+    const cc = getUserCC(user);
+    const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+    if (reason.startsWith('ULB exceeded')) {
+        const ulb = getEffectiveULB(user);
+        return { type: 'ulb', limit: ulb.value, source: ulb.source };
+    }
+    if (reason.startsWith('CC budget exhausted') && cc) {
+        return { type: 'cc-budget', budget: cc.budget, name: cc.name };
+    }
+    if (reason.startsWith('Org budget exhausted') && org) {
+        return { type: 'org-budget', budget: org.budget, name: org.name };
+    }
+    if (reason.startsWith('Enterprise budget exhausted')) {
+        return { type: 'enterprise-budget', budget: state.enterprise.enterpriseBudget };
+    }
+    if (reason.startsWith('CC pool exhausted') && cc) {
+        return { type: 'cc-pool', name: cc.name };
+    }
+    if (reason === 'Pool exhausted & metered usage not enabled') {
+        return { type: 'metered-disabled' };
+    }
+    return { type: 'text', text: reason };
+}
+
+function formatCallReason(data, fallback = '') {
+    if (!data) return fallback;
+    if (data.type === 'ulb') {
+        return `ULB exceeded (${formatSimulationCredits(data.limit)} limit via ${data.source})`;
+    }
+    if (data.type === 'cc-budget') {
+        return `CC budget exhausted (${formatSimulationBudget(data.budget)}, ${data.name})`;
+    }
+    if (data.type === 'org-budget') {
+        return `Org budget exhausted (${formatSimulationBudget(data.budget)}, ${data.name})`;
+    }
+    if (data.type === 'enterprise-budget') {
+        return `Enterprise budget exhausted (${formatSimulationBudget(data.budget)})`;
+    }
+    if (data.type === 'cc-pool') {
+        return `CC pool exhausted & overages not allowed (${data.name})`;
+    }
+    if (data.type === 'metered-disabled') {
+        return 'Pool exhausted & metered usage not enabled';
+    }
+    return data.text || fallback;
+}
+
+function computeSimulationResults(options = {}) {
     const poolState = initPoolState();
     const baseline = state.usageBaseline || {};
 
@@ -1333,65 +1390,153 @@ function computeSimulationResults() {
             user, state.usage[user.id] || 0, poolState, baselineResults[user.id], poolCaps[user.id]);
     });
 
-    // Phase 3 — Hard-stop budget propagation (order-independent). A budget with a
+    // Phase 3 — Collect final hard-stop state (order-independent). A budget with a
     // hard stop caps the TOTAL overage its scope can draw. If the members' combined
     // overage demand exceeds that capacity, the budget is exhausted and the scope is
-    // shut down — so the outcome never depends on the order the changes were made in
-    // nor on floating-point crumbs left in the residual balance.
+    // frozen for subsequent calls. This must not rewrite the ordered outcome of calls
+    // that already happened.
     //
-    //  • Cost center / org budgets model an admin spending cap on a group: when the
-    //    cap is blown, the whole group is frozen, so EVERY member with usage is
-    //    blocked, even the ones served for free from a pool.
-    //  • The enterprise budget only caps metered overage: exhausting it stops paid
-    //    usage, but users still served for free from a pool keep going — so only the
-    //    users that actually needed overage are blocked.
-    const poolDrawOf = (r) => (r ? r.creditsFromCC + r.creditsFromEntPool : 0);
-    const overageDemandOf = (r) => (r ? Math.max(0, r.usage - poolDrawOf(r)) : 0);
-    // A user only presses on a budget if their usage reached the overage phase —
-    // i.e. they were metered or blocked by a budget, not stopped earlier by their
-    // ULB, a pool with overages disabled, or a disabled metered policy.
-    const reachedOverage = (r) => !!r && (r.status === 'metered' || (r.status === 'blocked' && /budget/i.test(r.reason)));
-    const scopeOverageDemand = (members) => members.reduce((sum, u) => {
-        const r = resultsByUser[u.id];
-        return sum + (reachedOverage(r) ? overageDemandOf(r) : 0);
-    }, 0);
-    const blockScope = (members, reason, onlyOverage) => {
-        members.forEach(u => {
-            const r = resultsByUser[u.id];
-            if (!r || r.usage <= 0) return;
-            if (onlyOverage && !(reachedOverage(r) && overageDemandOf(r) > 0)) return;
-            r.status = 'blocked';
-            r.reason = reason;
-        });
-    };
+    //  • Cost center / org budgets model an admin spending cap on a group: once the
+    //    cap is consumed, the whole group is frozen for its next call.
+    //  • The enterprise budget only caps metered overage, so remaining pool credits
+    //    can still serve a user's next call.
+    const frozenCCs = new Set();
+    const frozenOrgs = new Set();
+    let enterpriseOverageExhausted = false;
 
-    // Cost center budgets — a blown cap freezes the whole cost center.
+    // A hard-stop scope freezes only when its final metered spend leaves no credit
+    // of headroom. Using actual spend avoids falsely freezing a broader scope when
+    // a tighter nested budget stopped the draw first.
     state.costCenters.forEach(cc => {
         if (!cc.budgetHardStop || cc.budget === null) return;
-        const capacity = meteredCreditsFromBudget(cc.budget);
-        const members = state.users.filter(u => { const c = getUserCC(u); return c && c.id === cc.id; });
-        if (scopeOverageDemand(members) > capacity) {
-            blockScope(members, `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`, false);
+        const remaining = meteredCreditsFromBudget(
+            cc.budget - (poolState.ccMetered[cc.id] || 0));
+        if (remaining < 1) {
+            frozenCCs.add(cc.id);
         }
     });
 
-    // Org budgets — a blown cap freezes the whole org.
     state.orgs.forEach(org => {
         if (!org.budgetHardStop || org.budget === null) return;
-        const capacity = meteredCreditsFromBudget(org.budget);
-        const members = state.users.filter(u => u.orgId === org.id);
-        if (scopeOverageDemand(members) > capacity) {
-            blockScope(members, `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`, false);
+        const remaining = meteredCreditsFromBudget(
+            org.budget - (poolState.orgMetered[org.id] || 0));
+        if (remaining < 1) {
+            frozenOrgs.add(org.id);
         }
     });
 
-    // Enterprise budget — only caps paid overage, so pool-served users keep going.
     if (state.enterprise.enterpriseHardStop && state.enterprise.enterpriseBudget !== null) {
-        const capacity = meteredCreditsFromBudget(state.enterprise.enterpriseBudget);
-        if (scopeOverageDemand(state.users) > capacity) {
-            blockScope(state.users, `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`, true);
-        }
+        enterpriseOverageExhausted = meteredCreditsFromBudget(
+            state.enterprise.enterpriseBudget - poolState.enterpriseMetered) < 1;
     }
+
+    const projectNextCall = (user) => {
+        const usage = state.usage[user.id] || 0;
+        const ulb = getEffectiveULB(user);
+        if (ulb.value !== null && usage + 1 > ulb.value) {
+            return {
+                status: 'blocked',
+                reason: `ULB exceeded (${formatSimulationCredits(ulb.value)} limit via ${ulb.source})`
+            };
+        }
+
+        const cc = getUserCC(user);
+        if (cc && frozenCCs.has(cc.id)) {
+            return {
+                status: 'blocked',
+                reason: `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`
+            };
+        }
+        const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+        if (org && frozenOrgs.has(org.id)) {
+            return {
+                status: 'blocked',
+                reason: `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`
+            };
+        }
+
+        if (cc && cc.poolEnabled && (poolState.ccPools[cc.id] || 0) >= 1) {
+            return { status: 'served', reason: `CC pool available (${cc.name})` };
+        }
+        if (cc && cc.poolEnabled && !cc.overagesAllowed) {
+            return {
+                status: 'blocked',
+                reason: `CC pool exhausted & overages not allowed (${cc.name})`
+            };
+        }
+        if (poolState.enterprisePool >= 1) {
+            return { status: 'served', reason: 'Enterprise pool available' };
+        }
+        if (!state.enterprise.meteredEnabled) {
+            return { status: 'blocked', reason: 'Pool exhausted & metered usage not enabled' };
+        }
+
+        if (cc && cc.budget !== null && cc.budgetHardStop
+            && meteredCreditsFromBudget(cc.budget - (poolState.ccMetered[cc.id] || 0)) < 1) {
+            return {
+                status: 'blocked',
+                reason: `CC budget exhausted (${formatSimulationBudget(cc.budget)}, ${cc.name})`
+            };
+        }
+        if (org && org.budget !== null && org.budgetHardStop
+            && meteredCreditsFromBudget(org.budget - (poolState.orgMetered[org.id] || 0)) < 1) {
+            return {
+                status: 'blocked',
+                reason: `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`
+            };
+        }
+        if (state.enterprise.enterpriseHardStop
+            && state.enterprise.enterpriseBudget !== null
+            && (enterpriseOverageExhausted
+                || meteredCreditsFromBudget(
+                    state.enterprise.enterpriseBudget - poolState.enterpriseMetered) < 1)) {
+            return {
+                status: 'blocked',
+                reason: `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`
+            };
+        }
+        return { status: 'metered', reason: 'Metered usage available' };
+    };
+
+    Object.values(resultsByUser).forEach(r => {
+        const evaluatedStatus = r.status;
+        const evaluatedReason = r.reason;
+        const saved = !options.ignoreSavedLastCalls && state.lastCallOutcomes
+            ? state.lastCallOutcomes[r.userId]
+            : null;
+        r.lastCallStatus = saved && saved.status ? saved.status : evaluatedStatus;
+        r.lastCallReasonData = saved && saved.reasonData
+            ? saved.reasonData
+            : callReasonData(state.users.find(u => u.id === r.userId), {
+                status: evaluatedStatus,
+                reason: evaluatedReason
+            });
+        r.lastCallReason = formatCallReason(
+            r.lastCallReasonData,
+            saved && typeof saved.reason === 'string' ? saved.reason : evaluatedReason);
+        r.lastCallUsage = saved && Number.isFinite(saved.usage) ? saved.usage : r.usage;
+        r.lastCallCreditsFromCC = saved && Number.isFinite(saved.creditsFromCC)
+            ? saved.creditsFromCC : r.creditsFromCC;
+        r.lastCallCreditsFromEntPool = saved && Number.isFinite(saved.creditsFromEntPool)
+            ? saved.creditsFromEntPool : r.creditsFromEntPool;
+        r.lastCallCreditsMetered = saved && Number.isFinite(saved.creditsMetered)
+            ? saved.creditsMetered : r.creditsMetered;
+        r.lastCallMeteredCost = saved && Number.isFinite(saved.meteredCost)
+            ? saved.meteredCost : r.meteredCost;
+        r.lastCallSource = formatCallSource({
+            status: r.lastCallStatus,
+            usage: r.lastCallUsage,
+            creditsFromCC: r.lastCallCreditsFromCC,
+            creditsFromEntPool: r.lastCallCreditsFromEntPool,
+            creditsMetered: r.lastCallCreditsMetered
+        });
+        const next = projectNextCall(state.users.find(u => u.id === r.userId));
+        r.nextCallStatus = next.status;
+        r.nextCallReason = next.reason;
+        // Compatibility for consumers that still read the former single-status fields.
+        r.status = r.lastCallStatus;
+        r.reason = r.lastCallReason;
+    });
 
     // Results are reported in list order, independent of the application order.
     const results = state.users.map(user => resultsByUser[user.id]);
@@ -1413,15 +1558,17 @@ function renderSimulationResults(results, poolState) {
     // Budget status gauges
     document.getElementById('simBudgetStatus').innerHTML = renderBudgetStatusGauges(poolState);
 
-    const served = results.filter(r => r.status === 'served').length;
-    const metered = results.filter(r => r.status === 'metered').length;
-    const blocked = results.filter(r => r.status === 'blocked').length;
-    const totalMeteredCost = results.reduce((s, r) => s + r.meteredCost, 0);
+    const served = results.filter(r => r.lastCallStatus === 'served').length;
+    const metered = results.filter(r => r.lastCallStatus === 'metered').length;
+    const blocked = results.filter(r => r.lastCallStatus === 'blocked').length;
+    const blockedNext = results.filter(r => r.nextCallStatus === 'blocked').length;
+    const totalMeteredCost = results.reduce((s, r) => s + r.lastCallMeteredCost, 0);
 
     document.getElementById('simSummaryStats').innerHTML = `
         <div class="stat-card" data-summary="served"><div class="stat-value" style="color:var(--color-success)">${served}</div><div class="stat-label">Served (Pool)</div></div>
         <div class="stat-card" data-summary="metered"><div class="stat-value" style="color:var(--color-warning)">${metered}</div><div class="stat-label">Metered</div></div>
         <div class="stat-card" data-summary="blocked"><div class="stat-value" style="color:var(--color-danger)">${blocked}</div><div class="stat-label">Blocked</div></div>
+        <div class="stat-card" data-summary="blocked-next"><div class="stat-value" style="color:var(--color-danger)">${blockedNext}</div><div class="stat-label">Next Call Blocked</div></div>
         <div class="stat-card" data-summary="metered-total"><div class="stat-value">${formatSimulationBudget(totalMeteredCost)}</div><div class="stat-label">${isSimulationDollarMode() ? 'Total Metered Cost' : 'Total Metered Usage'}</div></div>
         <div class="stat-card" data-summary="enterprise-pool-remaining"><div class="stat-value">${formatSimulationCredits(Math.max(0, poolState.enterprisePool))}</div><div class="stat-label">Ent. Pool Remaining</div></div>
     `;
@@ -1430,7 +1577,9 @@ function renderSimulationResults(results, poolState) {
         <th>User</th>
         <th>Cost Center</th>
         <th>Consumption (${escapeHtml(getSimulationUnitLabel())})</th>
-        <th>Status</th>
+        <th>Last Call</th>
+        <th>Next Call</th>
+        <th>Next Call Reason</th>
         <th>ULB Remaining</th>
         <th>Details</th>
     </tr></thead><tbody>`;
@@ -1439,10 +1588,12 @@ function renderSimulationResults(results, poolState) {
         const cc = user ? getUserCC(user) : null;
         const userMax = user ? getUserSimulationMax(user) : 0;
         const maxCredits = Math.max(userMax, r.usage);
-        const rowClass = r.status === 'blocked' ? 'result-blocked' : r.status === 'metered' ? 'result-metered' : '';
-        const badge = r.status === 'blocked' ? '<span class="badge badge-danger">Blocked</span>' :
-                      r.status === 'metered' ? '<span class="badge badge-warning">Metered</span>' :
-                      '<span class="badge badge-success">Served</span>';
+        const rowClass = r.lastCallStatus === 'blocked' ? 'result-blocked' : r.lastCallStatus === 'metered' ? 'result-metered' : '';
+        const statusBadge = (status, legacyRole = false) => {
+            const badgeClass = status === 'blocked' ? 'badge-danger' : status === 'metered' ? 'badge-warning' : 'badge-success';
+            const role = legacyRole ? ' data-role="status"' : '';
+            return `<span class="badge ${badgeClass}"${role}>${escapeHtml(status)}</span>`;
+        };
         html += `<tr class="${rowClass}" data-user-id="${escapeHtml(r.userId)}" data-user-name="${escapeHtml(r.user.toLowerCase())}">
             <td data-role="user-name"><strong>${escapeHtml(r.user)}</strong></td>
             <td data-role="cost-center">${cc ? escapeHtml(cc.name) : '—'}</td>
@@ -1457,9 +1608,11 @@ function renderSimulationResults(results, poolState) {
                         onchange="applyUserUsageChange('${escapeInlineArg(r.userId)}', simulationValueToCredits(this.value))">
                 </div>
             </td>
-            <td data-role="status">${badge}</td>
+            <td data-role="status-last">${statusBadge(r.lastCallStatus, true)}</td>
+            <td data-role="status-next">${statusBadge(r.nextCallStatus)}</td>
+            <td class="next-call-reason" data-role="next-reason">${escapeHtml(r.nextCallReason)}</td>
             <td data-role="ulb-remaining">${r.ulbRemaining !== null ? formatSimulationCredits(r.ulbRemaining) : '∞'}</td>
-            <td data-role="details">${escapeHtml(r.status === 'blocked' ? r.reason : r.source)}</td>
+            <td data-role="details">${escapeHtml(r.lastCallStatus === 'blocked' ? r.lastCallReason : r.lastCallSource)}</td>
         </tr>`;
     });
     html += '</tbody></table>';
@@ -1655,8 +1808,36 @@ function getUsageApplicationOrder() {
 }
 
 function applyUserUsageChange(userId, creditsValue) {
+    const before = computeSimulationResults();
+    state.lastCallOutcomes = Object.fromEntries(before.results.map(result => [
+        result.userId,
+        {
+            status: result.lastCallStatus,
+            reason: result.lastCallReason,
+            reasonData: result.lastCallReasonData,
+            usage: result.lastCallUsage,
+            creditsFromCC: result.lastCallCreditsFromCC,
+            creditsFromEntPool: result.lastCallCreditsFromEntPool,
+            creditsMetered: result.lastCallCreditsMetered,
+            meteredCost: result.lastCallMeteredCost
+        }
+    ]));
     setUserUsageValue(userId, creditsValue);
     recordUsageChange(userId);
+    const after = computeSimulationResults({ ignoreSavedLastCalls: true });
+    const changed = after.results.find(result => result.userId === userId);
+    if (changed) {
+        state.lastCallOutcomes[userId] = {
+            status: changed.lastCallStatus,
+            reason: changed.lastCallReason,
+            reasonData: changed.lastCallReasonData,
+            usage: changed.lastCallUsage,
+            creditsFromCC: changed.lastCallCreditsFromCC,
+            creditsFromEntPool: changed.lastCallCreditsFromEntPool,
+            creditsMetered: changed.lastCallCreditsMetered,
+            meteredCost: changed.lastCallMeteredCost
+        };
+    }
     saveState();
     runSimulation();
 }
@@ -1756,6 +1937,7 @@ function applyAllGlobalBudgetPercents() {
     // A global distribution replaces every user's consumption at once, so no
     // per-user change order applies until the user edits users individually again.
     clearUsageSequence();
+    state.lastCallOutcomes = {};
     saveState();
     runSimulation();
 }
@@ -1889,6 +2071,7 @@ function setSimulationUnit(unit) {
 function setStartingPoint() {
     state.usageBaseline = { ...state.usage };
     clearUsageSequence();
+    state.lastCallOutcomes = {};
     saveState();
     updateStartingPointStatus();
     runSimulation();
@@ -1917,6 +2100,7 @@ function resetUsage() {
     state.usageBaseline = {};
     state.globalBudgetPercents = {};
     clearUsageSequence();
+    state.lastCallOutcomes = {};
     saveState();
     renderGlobalBudgetSimulation();
 }

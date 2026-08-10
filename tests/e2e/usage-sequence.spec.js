@@ -36,12 +36,16 @@ test('transitions served to metered to blocked in browser edit order', async ({ 
 
     for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
         await simulator.expectStatus(userId, 'served', /Enterprise pool/);
+        await simulator.expectNextStatus(userId, 'metered');
     }
 
     await simulator.setUsage(THIERRY, 1960);
     await simulator.expectStatus(THIERRY, 'metered', /60 AI credits metered/);
     await simulator.expectStatus(MATTHIEU, 'served');
     await simulator.expectStatus(PHILIPPE, 'served');
+    for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
+        await simulator.expectNextStatus(userId, 'metered');
+    }
     expect(await simulator.gaugeValues('cc-budget-cc-rnd')).toMatchObject({
         used: '60 AI credits',
         percent: '60.0%'
@@ -51,6 +55,9 @@ test('transitions served to metered to blocked in browser edit order', async ({ 
     await simulator.expectStatus(THIERRY, 'metered', /60 AI credits metered/);
     await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
     await simulator.expectStatus(PHILIPPE, 'served');
+    for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
+        await simulator.expectNextStatus(userId, 'blocked', /CC budget exhausted/);
+    }
     expect(await simulator.gaugeValues('cc-budget-cc-rnd')).toEqual({
         used: '100 AI credits',
         total: '100 AI credits',
@@ -58,15 +65,18 @@ test('transitions served to metered to blocked in browser edit order', async ({ 
     });
 
     await simulator.setUsage(PHILIPPE, 1910);
+    await simulator.expectStatus(PHILIPPE, 'blocked', /CC budget exhausted/);
+    await simulator.expectStatus(THIERRY, 'metered', /60 AI credits metered/);
+    await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
     for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
-        await simulator.expectStatus(userId, 'blocked', /CC budget exhausted/);
+        await simulator.expectNextStatus(userId, 'blocked', /CC budget exhausted/);
     }
 
     const persisted = await simulator.persistedState();
     expect(persisted.usageSequence).toEqual([THIERRY, MATTHIEU, PHILIPPE]);
 });
 
-test('reverse edit order is recorded while final hard-stop propagation stays scope-wide', async ({ page }) => {
+test('reverse edit order changes last outcomes while next-call freeze stays scope-wide', async ({ page }) => {
     const simulator = new SimulatorPage(page);
     await simulator.load(orderedOverageState());
 
@@ -76,8 +86,11 @@ test('reverse edit order is recorded while final hard-stop propagation stays sco
 
     expect((await simulator.persistedState()).usageSequence)
         .toEqual([PHILIPPE, MATTHIEU, THIERRY]);
+    await simulator.expectStatus(PHILIPPE, 'metered', /60 AI credits metered/);
+    await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
+    await simulator.expectStatus(THIERRY, 'blocked', /CC budget exhausted/);
     for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
-        await simulator.expectStatus(userId, 'blocked', /CC budget exhausted/);
+        await simulator.expectNextStatus(userId, 'blocked', /CC budget exhausted/);
     }
 });
 
@@ -93,6 +106,8 @@ test('re-editing a user records the latest effective application position', asyn
         .toEqual([THIERRY, MATTHIEU, THIERRY]);
     await simulator.expectStatus(THIERRY, 'metered', /20 AI credits metered/);
     await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
+    await simulator.expectNextStatus(THIERRY, 'metered');
+    await simulator.expectNextStatus(MATTHIEU, 'metered');
 });
 
 test('global redistribution and a new starting point clear per-user edit order', async ({ page }) => {
@@ -129,6 +144,7 @@ test('reset usage clears values, baseline, percentages, and sequence', async ({ 
     for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
         expect(await simulator.usageValue(userId)).toBe(0);
         await simulator.expectStatus(userId, 'served', /No usage/);
+        await simulator.expectNextStatus(userId, 'served');
     }
 });
 
@@ -145,4 +161,7 @@ test('reload preserves baseline, edit order, and visible outcomes', async ({ pag
     await simulator.expectStatus(THIERRY, 'metered', /60 AI credits metered/);
     await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
     await simulator.expectStatus(PHILIPPE, 'served');
+    for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
+        await simulator.expectNextStatus(userId, 'blocked', /CC budget exhausted/);
+    }
 });

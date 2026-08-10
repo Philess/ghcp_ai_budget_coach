@@ -34,7 +34,15 @@ export class SimulatorPage {
     }
 
     async status(userId) {
-        return (await this.row(userId).locator('[data-role="status"]').innerText()).trim().toLowerCase();
+        return (await this.row(userId).locator('[data-role="status-last"] .badge').innerText()).trim().toLowerCase();
+    }
+
+    async nextStatus(userId) {
+        return (await this.row(userId).locator('[data-role="status-next"] .badge').innerText()).trim().toLowerCase();
+    }
+
+    async nextReason(userId) {
+        return (await this.row(userId).locator('[data-role="next-reason"]').innerText()).trim();
     }
 
     async details(userId) {
@@ -97,11 +105,20 @@ export class SimulatorPage {
     }
 
     async expectStatus(userId, status, detailsPattern) {
-        await expect(this.row(userId).locator('[data-role="status"]')).toHaveText(
+        await expect(this.row(userId).locator('[data-role="status-last"] .badge')).toHaveText(
             new RegExp(`^${status}$`, 'i')
         );
         if (detailsPattern) {
             await expect(this.row(userId).locator('[data-role="details"]')).toHaveText(detailsPattern);
+        }
+    }
+
+    async expectNextStatus(userId, status, reasonPattern) {
+        await expect(this.row(userId).locator('[data-role="status-next"] .badge')).toHaveText(
+            new RegExp(`^${status}$`, 'i')
+        );
+        if (reasonPattern) {
+            await expect(this.row(userId).locator('[data-role="next-reason"]')).toHaveText(reasonPattern);
         }
     }
 }

@@ -15,6 +15,7 @@ test('blocks after pool exhaustion when metered usage is disabled', async ({ pag
         meteredEnabled: false
     }));
     await simulator.expectStatus('user-alice', 'blocked', /metered usage not enabled/);
+    await simulator.expectNextStatus('user-alice', 'blocked', /metered usage not enabled/);
 });
 
 for (const scope of ['cc', 'org', 'enterprise']) {
@@ -42,6 +43,11 @@ for (const scope of ['cc', 'org', 'enterprise']) {
                 'user-alice',
                 boundary.status,
                 boundary.status === 'blocked' ? reason : new RegExp(`${boundary.overage} AI credits metered`)
+            );
+            await simulator.expectNextStatus(
+                'user-alice',
+                boundary.overage < 100 ? 'metered' : 'blocked',
+                boundary.overage < 100 ? undefined : reason
             );
         });
     }
@@ -85,6 +91,7 @@ test('smallest applicable scoped budget controls the result', async ({ page }) =
     }));
 
     await simulator.expectStatus('user-alice', 'blocked', /Org budget exhausted/);
+    await simulator.expectNextStatus('user-alice', 'blocked', /Org budget exhausted/);
 });
 
 test('zero-dollar cost-center hard stop blocks the first metered credit', async ({ page }) => {
@@ -94,6 +101,7 @@ test('zero-dollar cost-center hard stop blocks the first metered credit', async 
         ccBudget: 0
     }));
     await simulator.expectStatus('user-alice', 'blocked', /CC budget exhausted/);
+    await simulator.expectNextStatus('user-alice', 'blocked', /CC budget exhausted/);
 });
 
 for (const meteredCredits of [1, 100, 101]) {
@@ -117,18 +125,21 @@ for (const meteredCredits of [1, 100, 101]) {
     });
 }
 
-test('cost-center hard-stop exhaustion freezes pool-only members in that scope', async ({ page }) => {
+test('cost-center hard-stop exhaustion freezes next calls for all members in that scope', async ({ page }) => {
     const state = orderedOverageState();
     state.usage['user-matthieu'] = BUSINESS_CREDITS + 101;
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
 
+    await simulator.expectStatus('user-philippe', 'served');
+    await simulator.expectStatus('user-matthieu', 'blocked', /CC budget exhausted/);
+    await simulator.expectStatus('user-thierry', 'served');
     for (const user of state.users) {
-        await simulator.expectStatus(user.id, 'blocked', /CC budget exhausted/);
+        await simulator.expectNextStatus(user.id, 'blocked', /CC budget exhausted/);
     }
 });
 
-test('organization hard-stop exhaustion freezes all active organization members', async ({ page }) => {
+test('organization hard-stop exhaustion freezes next calls for all active members', async ({ page }) => {
     const ids = ['user-a', 'user-b'];
     const state = createState({
         enterprise: {
@@ -151,12 +162,14 @@ test('organization hard-stop exhaustion freezes all active organization members'
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
 
+    await simulator.expectStatus('user-a', 'served');
+    await simulator.expectStatus('user-b', 'blocked', /Org budget exhausted/);
     for (const id of ids) {
-        await simulator.expectStatus(id, 'blocked', /Org budget exhausted/);
+        await simulator.expectNextStatus(id, 'blocked', /Org budget exhausted/);
     }
 });
 
-test('enterprise hard-stop exhaustion leaves pool-only users served', async ({ page }) => {
+test('enterprise hard-stop exhaustion preserves pool-served history but blocks next calls', async ({ page }) => {
     const state = createState({
         enterprise: {
             businessSeats: 2,
@@ -182,6 +195,8 @@ test('enterprise hard-stop exhaustion leaves pool-only users served', async ({ p
 
     await simulator.expectStatus('user-pool', 'served', /Enterprise pool/);
     await simulator.expectStatus('user-overage', 'blocked', /Enterprise budget exhausted/);
+    await simulator.expectNextStatus('user-pool', 'blocked', /Enterprise budget exhausted/);
+    await simulator.expectNextStatus('user-overage', 'blocked', /Enterprise budget exhausted/);
 });
 
 test('universal ULB allows its exact boundary and blocks one credit above', async ({ page }) => {
@@ -192,9 +207,11 @@ test('universal ULB allows its exact boundary and blocks one credit above', asyn
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
     await simulator.expectStatus('user-alice', 'metered', /100 AI credits metered/);
+    await simulator.expectNextStatus('user-alice', 'blocked', /ULB exceeded.*Universal/);
 
     await simulator.setUsage('user-alice', 2001);
     await simulator.expectStatus('user-alice', 'blocked', /ULB exceeded.*Universal/);
+    await simulator.expectNextStatus('user-alice', 'blocked', /ULB exceeded.*Universal/);
 });
 
 test('individual ULB overrides cost-center and universal budgets', async ({ page }) => {

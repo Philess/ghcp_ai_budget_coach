@@ -111,10 +111,12 @@ flowchart LR
 | Scenario | What happens |
 |----------|-------------|
 | User hits ULB but cost center budget has room | **User is blocked.** ULB is a total cap across both phases. |
-| Enterprise budget exhausted but user's ULB has room | **User is blocked** (if hard stop is on). Lowest headroom wins. |
+| Enterprise budget exhausted but user's ULB has room | If pool credit remains, **Next Call** is served; otherwise it is blocked (if hard stop is on). |
 | Cost center pool exhausted mid-month | If overages allowed → falls through to enterprise pool/metered. If not → user blocked. |
 | Pool enabled mid-month | Not retroactive. Users share only what remains of their calculated pool from that point forward. |
 | User in no cost center | Draws from the full shared enterprise pool (no reservation). |
+| Usage exactly fills a shared hard-stop budget | The acting user's **Last Call** is metered; **Next Call** is blocked for the scope. Enterprise members with pool headroom can still be served. |
+| A later action attempts to exceed a shared hard-stop budget | The acting user's **Last Call** is blocked. Other members keep their actual Last Call, while **Next Call** is blocked for the scope. |
 
 ### Recommended Setup (3 Controls Together)
 
@@ -155,14 +157,22 @@ An interactive web-based tool to help administrators test and visualize budget c
 
 **[Open the Simulator →](https://philess.github.io/ghcp_ai_budget_coach/)**
 
+Each user has two simulation statuses. **Last Call** records the actual outcome
+of that user's latest simulated consumption and is not rewritten by another
+user's later action. **Next Call** projects one additional credit from the final
+shared pool and budget state. A cost-center or organization hard stop blocks
+Next Call for every member. An exhausted enterprise budget still permits calls
+served by remaining pool credit. An action that exceeds available headroom is
+blocked for both statuses; an action that exactly fills it remains metered.
+
 Features:
 - Configure enterprise settings (Business/Enterprise seat counts, derived AI credit pool, metered overage policy)
 - Create cost centers with AI credit pools and budget caps
 - Add sample users with user-level budget precedence (individual > cost center > universal)
 - Visualize pool partitions across cost centers
-- Simulate per-user credit consumption and see who gets blocked and why
+- Simulate per-user consumption with distinct actual **Last Call** and projected **Next Call** outcomes
 - Simulate aggregate pool/overage consumption
-- Share the cost center / enterprise pools concurrently across users, while drawing the overage (metered) budgets in the exact order the changes are made — so an exhausted pool + overage budget blocks every member competing for them
+- Share cost-center/enterprise pools concurrently while applying metered usage in action order; scope hard stops freeze every member's Next Call without rewriting earlier Last Calls
 - Save/load configurations (localStorage + JSON export/import)
 
 ### Running the tests
