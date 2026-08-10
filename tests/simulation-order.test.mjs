@@ -153,29 +153,32 @@ test('a historical blocked reason follows the selected display unit', () => {
     assertLastCall(result, 'blocked', /\$1\.00/);
 });
 
-test('re-editing a user records a new step and moves them to the most recent position', () => {
+test('re-editing a user updates their existing step without moving it', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 1960);
-    sim.call('applyUserUsageChange', MATTHIEU, 2000);
-    sim.call('applyUserUsageChange', THIERRY, 1960); // re-edit: a brand new step
+    sim.call('applyUserUsageChange', THIERRY, 1930);   // 30 metered
+    sim.call('applyUserUsageChange', MATTHIEU, 1960);  // 60 metered
+    sim.call('applyUserUsageChange', THIERRY, 1960);   // re-edit: same step, new value
 
-    // Every change is kept as a distinct step, in the order they were made.
-    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU, THIERRY]);
+    // One step per user, kept at the position of that user's first change.
+    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU]);
 
+    // Thierry still consumes first: 60 credits, leaving only 40 for Matthieu.
     const byId = resultsById(sim);
-    assertLastCall(byId[MATTHIEU], 'blocked', /CC budget exhausted/);
-    assertLastCall(byId[THIERRY], 'blocked', /CC budget exhausted/);
+    assert.equal(byId[THIERRY].creditsMetered, 60);
+    assert.equal(byId[MATTHIEU].creditsMetered, 40);
+    assertLastCall(byId[MATTHIEU], 'metered'); // history is never rewritten
     [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
         assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
     });
 });
 
-test('going 50 to 100 to 80 on one user records three distinct steps', () => {
+test('going 50 to 100 to 80 on one user keeps a single step', () => {
     const sim = setupAtStartingPoint();
     sim.call('applyUserUsageChange', THIERRY, 1950);
     sim.call('applyUserUsageChange', THIERRY, 2000);
     sim.call('applyUserUsageChange', THIERRY, 1980);
-    assert.deepEqual(sequenceOf(sim), [THIERRY, THIERRY, THIERRY]);
+    assert.deepEqual(sequenceOf(sim), [THIERRY]);
+    assert.equal(sim.getState().usage[THIERRY], 1980);
 });
 
 test('results are reported in user list order whatever the change order', () => {

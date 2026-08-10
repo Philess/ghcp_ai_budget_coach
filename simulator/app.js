@@ -69,7 +69,7 @@ function normalizeState(parsed) {
         users: Array.isArray(parsed.users) ? parsed.users : [],
         usage: parsed.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage) ? parsed.usage : {},
         usageBaseline: parsed.usageBaseline && typeof parsed.usageBaseline === 'object' && !Array.isArray(parsed.usageBaseline) ? parsed.usageBaseline : {},
-        usageSequence: Array.isArray(parsed.usageSequence) ? parsed.usageSequence.filter(id => typeof id === 'string') : [],
+        usageSequence: Array.isArray(parsed.usageSequence) ? [...new Set(parsed.usageSequence.filter(id => typeof id === 'string'))] : [],
         lastCallOutcomes: parsed.lastCallOutcomes && typeof parsed.lastCallOutcomes === 'object' && !Array.isArray(parsed.lastCallOutcomes) ? parsed.lastCallOutcomes : {},
         globalBudgetPercents: parsed.globalBudgetPercents && typeof parsed.globalBudgetPercents === 'object' && !Array.isArray(parsed.globalBudgetPercents) ? parsed.globalBudgetPercents : {}
     };
@@ -1797,12 +1797,12 @@ function setUserUsageValue(userId, value) {
     state.usage[userId] = Math.max(0, parseInt(value, 10) || 0);
 }
 
-// Every consumption change is recorded as its own step, in the exact order the
-// user made them — going 50 → 100 → 80 on one user records three steps. Because
-// only the latest value of a user is simulated, re-editing a user is treated as a
-// brand new change: it moves that user to the most recent position in the order.
+// The consumption sequence keeps one entry per user, in the order each user was
+// first changed. Re-editing a user only updates their value: going 50 → 100 → 80
+// on one user keeps their single, original position in the sequence.
 function recordUsageChange(userId) {
     if (!Array.isArray(state.usageSequence)) state.usageSequence = [];
+    if (state.usageSequence.includes(userId)) return;
     state.usageSequence.push(userId);
 }
 
@@ -1810,18 +1810,14 @@ function clearUsageSequence() {
     state.usageSequence = [];
 }
 
-// Users in the order their consumption must be applied. Each user is placed by
-// their most recent change (the last time they appear in the sequence), so the
-// earliest still-current change is applied first; users never edited come last,
-// in list order (covers imported/legacy states).
+// Users in the order their consumption must be applied: the order in which they
+// were first changed. Duplicate entries (from legacy/imported states) collapse to
+// the first occurrence; users never edited come last, in list order.
 function getUsageApplicationOrder() {
     const sequence = Array.isArray(state.usageSequence) ? state.usageSequence : [];
-    const lastIndex = new Map();
-    sequence.forEach((id, idx) => { lastIndex.set(id, idx); });
     const seen = new Set();
     const ordered = [];
-    sequence.forEach((id, idx) => {
-        if (lastIndex.get(id) !== idx) return; // keep only the most recent change
+    sequence.forEach(id => {
         const user = state.users.find(u => u.id === id);
         if (!user || seen.has(id)) return;
         seen.add(id);

@@ -8,14 +8,37 @@ import {
 import { SimulatorPage } from './pages/simulator-page.js';
 
 for (const scenario of [
-    { usage: BUSINESS_CREDITS - 1, status: 'served', detail: /Enterprise pool/ },
-    { usage: BUSINESS_CREDITS, status: 'served', detail: /Enterprise pool/ },
-    { usage: BUSINESS_CREDITS + 1, status: 'metered', detail: /1 AI credits metered/ }
+    {
+        usage: BUSINESS_CREDITS - 1,
+        status: 'served',
+        detail: /Enterprise pool/,
+        next: 'served',
+        pool: '1,899 AI credits'
+    },
+    {
+        usage: BUSINESS_CREDITS,
+        status: 'served',
+        detail: /Enterprise pool/,
+        next: 'metered',
+        pool: '1,900 AI credits'
+    },
+    {
+        usage: BUSINESS_CREDITS + 1,
+        status: 'metered',
+        detail: /1 AI credits metered/,
+        next: 'metered',
+        pool: '1,900 AI credits'
+    }
 ]) {
     test(`routes unassigned usage at ${scenario.usage} credits`, async ({ page }) => {
         const simulator = new SimulatorPage(page);
         await simulator.load(singleUserState({ usage: scenario.usage }));
         await simulator.expectStatus('user-alice', scenario.status, scenario.detail);
+        await simulator.expectNextStatus('user-alice', scenario.next);
+        expect(await simulator.gaugeValues('enterprise-pool')).toMatchObject({
+            used: scenario.pool,
+            total: '1,900 AI credits'
+        });
     });
 }
 
@@ -24,6 +47,7 @@ test('serves a cost-center member from its reserved pool', async ({ page }) => {
     await simulator.load(singleUserState({ usage: 1000, ccPoolEnabled: true }));
 
     await simulator.expectStatus('user-alice', 'served', /CC pool/);
+    await simulator.expectNextStatus('user-alice', 'served');
     expect(await simulator.costCenter('user-alice')).toBe('Engineering');
     expect(await simulator.gaugeValues('cc-pool-cc-engineering')).toEqual({
         used: '1,000 AI credits',
@@ -39,6 +63,7 @@ test('falls through from an exhausted cost-center pool to available enterprise p
     await simulator.load(state);
 
     await simulator.expectStatus('user-alice', 'served', /CC pool.*Ent\. pool/);
+    await simulator.expectNextStatus('user-alice', 'served');
     expect(await simulator.gaugeValues('cc-pool-cc-engineering')).toMatchObject({
         used: '1,900 AI credits',
         percent: '100.0%'
@@ -64,6 +89,11 @@ test('blocks at an exhausted cost-center pool when overages are disabled', async
         'blocked',
         /CC pool exhausted & overages not allowed/
     );
+    await simulator.expectNextStatus(
+        'user-alice',
+        'blocked',
+        /CC pool exhausted & overages not allowed/
+    );
     expect(await simulator.gaugeValues('enterprise-pool')).toMatchObject({
         used: '0 AI credits',
         total: '1,900 AI credits'
@@ -83,6 +113,7 @@ test('shares a residual cost-center pool concurrently across competing members',
 
     for (const user of state.users) {
         await simulator.expectStatus(user.id, 'blocked', /CC budget exhausted/);
+        await simulator.expectNextStatus(user.id, 'blocked', /CC budget exhausted/);
     }
     expect(await simulator.gaugeValues('cc-pool-cc-rnd')).toEqual({
         used: '5,700 AI credits',
@@ -114,6 +145,7 @@ test('shares residual enterprise capacity concurrently across unreserved users',
 
     for (const id of ids) {
         await simulator.expectStatus(id, 'blocked', /Enterprise budget exhausted/);
+        await simulator.expectNextStatus(id, 'blocked', /Enterprise budget exhausted/);
     }
     expect(await simulator.gaugeValues('enterprise-pool')).toEqual({
         used: '5,700 AI credits',

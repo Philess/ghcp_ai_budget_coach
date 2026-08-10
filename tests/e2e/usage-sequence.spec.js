@@ -94,20 +94,34 @@ test('reverse edit order changes last outcomes while next-call freeze stays scop
     }
 });
 
-test('re-editing a user records the latest effective application position', async ({ page }) => {
+test('re-editing a user updates the existing step without moving it', async ({ page }) => {
     const simulator = new SimulatorPage(page);
     await simulator.load(orderedOverageState());
 
-    await simulator.setUsage(THIERRY, 1930);
-    await simulator.setUsage(MATTHIEU, 1940);
+    await simulator.setUsage(THIERRY, 1910);
+    await simulator.setUsage(MATTHIEU, 1980);
     await simulator.setUsage(THIERRY, 1920);
 
     expect((await simulator.persistedState()).usageSequence)
-        .toEqual([THIERRY, MATTHIEU, THIERRY]);
+        .toEqual([THIERRY, MATTHIEU]);
     await simulator.expectStatus(THIERRY, 'metered', /20 AI credits metered/);
-    await simulator.expectStatus(MATTHIEU, 'metered', /40 AI credits metered/);
-    await simulator.expectNextStatus(THIERRY, 'metered');
-    await simulator.expectNextStatus(MATTHIEU, 'metered');
+    await simulator.expectStatus(MATTHIEU, 'metered', /80 AI credits metered/);
+    await simulator.expectNextStatus(THIERRY, 'blocked', /CC budget exhausted/);
+
+    // Thierry keeps his first position, so his new value is still applied before
+    // Matthieu's and takes 50 of the 100-credit budget.
+    await simulator.setUsage(THIERRY, 1950);
+    expect((await simulator.persistedState()).usageSequence)
+        .toEqual([THIERRY, MATTHIEU]);
+    expect(await simulator.gaugeValues('cc-budget-cc-rnd')).toEqual({
+        used: '100 AI credits',
+        total: '100 AI credits',
+        percent: '100.0%'
+    });
+    await simulator.expectStatus(THIERRY, 'metered', /50 AI credits metered/);
+    for (const userId of [PHILIPPE, MATTHIEU, THIERRY]) {
+        await simulator.expectNextStatus(userId, 'blocked', /CC budget exhausted/);
+    }
 });
 
 test('global redistribution and a new starting point clear per-user edit order', async ({ page }) => {

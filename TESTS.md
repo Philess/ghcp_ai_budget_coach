@@ -31,8 +31,9 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
 - Included pools are shared concurrently. Both the starting point and the
   post-baseline draws divide the available capacity fairly between competing
   users rather than consuming it in user-list order.
-- Post-baseline metered usage is evaluated in the order in which user values
-  were last changed.
+- Post-baseline metered usage is evaluated in the order in which users were
+  first changed. Re-editing a user updates that user's existing sequence entry
+  and never moves it.
 - **Last Call** is the actual result of a user's latest simulated consumption.
   A later action by another user never retroactively rewrites it.
 - **Next Call** projects one additional credit from the final shared pool and
@@ -141,7 +142,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | SEQ-03 | Change Matthieu from 1,900 to 1,940 | Thierry and Matthieu have `metered` Last Call; Philippe stays `served`; budget is exactly $1.00 |
 | SEQ-04 | Change Philippe from 1,900 to 1,910 | Philippe is Last Call `blocked` / Next Call `blocked`; Thierry and Matthieu are Last Call `metered` / Next Call `blocked`; all show the CC-budget Next Call reason |
 | SEQ-05 | Repeat the changes in reverse order | Last Call follows action order: the action that exceeds the cap is blocked on both statuses, prior successful actions retain their outcomes; final blocked Next Call for the scope is order-independent |
-| SEQ-06 | Re-edit an earlier user | Its latest edit becomes its effective application position and persists |
+| SEQ-06 | Re-edit an earlier user | The existing sequence entry is updated in place: the user keeps its original application position and the new value is applied there |
 | SEQ-07 | Apply a new global distribution | Usage is atomically replaced and per-user edit order clears |
 | SEQ-08 | Set a new starting point | Baseline becomes current usage and edit order clears |
 | SEQ-09 | Reset usage | Usage, baseline, global percentages, and edit order clear |
@@ -213,8 +214,11 @@ local-storage state is shared between tests.
 
 - Every README flowchart branch and “Key Interactions & Gotchas” row maps to a
   scenario above.
-- Every outcome assertion includes both Last Call and Next Call plus the
-  relevant source/reason and accounting; statuses alone are insufficient.
+- Budget, pool, and ordering outcome scenarios assert the Last Call status with
+  its source/reason detail, the Next Call projection, and the pool or budget
+  accounting the scenario's rule depends on; statuses alone are insufficient
+  there. Configuration, dashboard, and lifecycle scenarios only assert the
+  outcomes their rule is about.
 - Multi-step browser tests demonstrate successful metered Last Calls, a blocked
   failing Last Call, and blocked Next Call for the final hard-stopped scope from
   a saved starting point.
