@@ -122,7 +122,12 @@ for (const meteredCredits of [1, 100, 101]) {
         expect(await simulator.gaugeValues('enterprise-budget')).toMatchObject({
             used: `${meteredCredits} AI credits`
         });
-    });
+
+        await simulator.switchUnit('dollars');
+        const dollars = (meteredCredits / 100).toFixed(2);
+        await simulator.expectStatus('user-alice', 'metered', new RegExp(`\\$${dollars} metered`));
+        expect(await simulator.summary('metered-total')).toBe(`$${dollars}`);
+        expect(await simulator.gaugeValues('enterprise-budget')).toMatchObject({ used: `$${dollars}` });
 }
 
 test('cost-center hard-stop exhaustion freezes next calls for all members in that scope', async ({ page }) => {
