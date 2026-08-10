@@ -166,7 +166,10 @@ test('re-editing a user updates their existing step without moving it', () => {
     const byId = resultsById(sim);
     assert.equal(byId[THIERRY].creditsMetered, 60);
     assert.equal(byId[MATTHIEU].creditsMetered, 40);
-    assertLastCall(byId[MATTHIEU], 'metered'); // history is never rewritten
+    // Matthieu's Last Call keeps the 60 credits he actually got when he acted;
+    // the re-edit only changes the current shared state, never his history.
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assert.equal(byId[MATTHIEU].lastCallCreditsMetered, 60);
     [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
         assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
     });
