@@ -39,6 +39,17 @@ test('summary and gauges agree with served, metered, and blocked rows', async ({
     await simulator.expectStatus('user-served', 'served', /CC pool/);
     await simulator.expectStatus('user-metered', 'metered', /200 AI credits metered/);
     await simulator.expectStatus('user-blocked', 'blocked', /ULB exceeded/);
+    await expect(page.locator('#simulationResults thead th')).toHaveText([
+        'User',
+        'Cost Center',
+        'Consumption (AI credits)',
+        'Last Call',
+        'Last Call Details',
+        'Next Call',
+        'Next Call Reason'
+    ]);
+    await expect(page.getByRole('columnheader', { name: 'ULB Remaining' })).toHaveCount(0);
+    expect(await simulator.ulbTotal('user-served')).toBe('/∞');
     expect(await simulator.summary('served')).toBe('1');
     expect(await simulator.summary('metered')).toBe('1');
     expect(await simulator.summary('blocked')).toBe('1');
@@ -57,17 +68,22 @@ test('summary and gauges agree with served, metered, and blocked rows', async ({
 
 test('switching display units preserves usage and status', async ({ page }) => {
     const simulator = new SimulatorPage(page);
-    await simulator.load(orderedOverageState());
+    const state = orderedOverageState();
+    state.costCenters[0].ulb = 2000;
+    await simulator.load(state);
     await simulator.setUsage('user-thierry', 1960);
+    expect(await simulator.ulbTotal('user-thierry')).toBe('/2,000');
 
     await simulator.switchUnit('dollars');
     expect(await simulator.usageValue('user-thierry')).toBe(19.6);
+    expect(await simulator.ulbTotal('user-thierry')).toBe('/20.00');
     await simulator.expectStatus('user-thierry', 'metered', /\$0\.60 metered/);
     expect(await simulator.summary('metered-total')).toBe('$0.60');
     expect((await simulator.persistedState()).usage['user-thierry']).toBe(1960);
 
     await simulator.switchUnit('credits');
     expect(await simulator.usageValue('user-thierry')).toBe(1960);
+    expect(await simulator.ulbTotal('user-thierry')).toBe('/2,000');
     await simulator.expectStatus('user-thierry', 'metered', /60 AI credits metered/);
 });
 

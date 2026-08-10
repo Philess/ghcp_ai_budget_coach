@@ -46,7 +46,11 @@ export class SimulatorPage {
     }
 
     async details(userId) {
-        return (await this.row(userId).locator('[data-role="details"]').innerText()).trim();
+        return (await this.row(userId).locator('[data-role="last-details"]').innerText()).trim();
+    }
+
+    async ulbTotal(userId) {
+        return (await this.row(userId).locator('[data-role="ulb-total"]').innerText()).trim();
     }
 
     async usageValue(userId) {
@@ -109,7 +113,7 @@ export class SimulatorPage {
             new RegExp(`^${status}$`, 'i')
         );
         if (detailsPattern) {
-            await expect(this.row(userId).locator('[data-role="details"]')).toHaveText(detailsPattern);
+            await expect(this.row(userId).locator('[data-role="last-details"]')).toHaveText(detailsPattern);
         }
     }
 

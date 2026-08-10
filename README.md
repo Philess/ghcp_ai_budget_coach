@@ -165,6 +165,10 @@ Next Call for every member. An exhausted enterprise budget still permits calls
 served by remaining pool credit. An action that exceeds available headroom is
 blocked for both statuses; an action that exactly fills it remains metered.
 
+In the result table, **Last Call Details** sits beside **Last Call**. The
+consumption control shows the effective total ULB inline as `/total` in the
+selected unit, or `/∞` when the user has no applicable ULB.
+
 Features:
 - Configure enterprise settings (Business/Enterprise seat counts, derived AI credit pool, metered overage policy)
 - Create cost centers with AI credit pools and budget caps

@@ -36,6 +36,9 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   A later action by another user never retroactively rewrites it.
 - **Next Call** projects one additional credit from the final shared pool and
   budget state.
+- The results table groups **Last Call Details** immediately after **Last Call**.
+  Consumption shows the effective total ULB inline as `/total` in the selected
+  unit, or `/∞` when no ULB applies; it does not duplicate remaining headroom.
 - Exhausting a hard-stop cost-center or organization budget blocks Next Call
   for every active user in that scope. The action that exceeds the cap is
   blocked on both Last Call and Next Call.
@@ -149,8 +152,9 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 |---|---|---|
 | UI-01 | Mix served, metered, and blocked Last Calls with blocked Next Calls | Summary counts each status column correctly and total metered usage equals actual metered Last Calls |
 | UI-02 | Consume pool and scoped budgets | Gauges show correct used, total, percentage, and threshold color |
-| UI-03 | Switch credits to dollars and back | Underlying usage/status is unchanged and values convert exactly |
+| UI-03 | Switch credits to dollars and back | Underlying usage/status is unchanged; usage, Last Call details, and finite inline ULB totals convert exactly while `/∞` remains unchanged |
 | UI-04 | Filter users by name | Only row visibility changes; usage and order do not |
+| UI-05 | Inspect the result table layout | Columns appear as Consumption, Last Call, Last Call Details, Next Call, and Next Call Reason; no standalone ULB Remaining column exists |
 | LIFE-01 | Import a deterministic configuration with optional fields omitted | State is normalized, rendered, and persisted after reload |
 | LIFE-02 | Cancel and then confirm reset | Cancel preserves state; confirm restores defaults and empty dashboard |
 | LIFE-03 | Load the page | `styles.css` and `app.js` load successfully with no browser errors |

@@ -208,6 +208,7 @@ test('universal ULB allows its exact boundary and blocks one credit above', asyn
     await simulator.load(state);
     await simulator.expectStatus('user-alice', 'metered', /100 AI credits metered/);
     await simulator.expectNextStatus('user-alice', 'blocked', /ULB exceeded.*Universal/);
+    expect(await simulator.ulbTotal('user-alice')).toBe('/2,000');
 
     await simulator.setUsage('user-alice', 2001);
     await simulator.expectStatus('user-alice', 'blocked', /ULB exceeded.*Universal/);
@@ -223,6 +224,7 @@ test('individual ULB overrides cost-center and universal budgets', async ({ page
         individualULB: 1300
     }));
     await simulator.expectStatus('user-alice', 'blocked', /ULB exceeded.*Individual/);
+    expect(await simulator.ulbTotal('user-alice')).toBe('/1,300');
 });
 
 test('cost-center ULB overrides universal for resolved team membership', async ({ page }) => {
@@ -234,8 +236,9 @@ test('cost-center ULB overrides universal for resolved team membership', async (
     await simulator.load(state);
 
     await simulator.expectStatus('user-team', 'served', /CC pool/);
-    await expect(simulator.row('user-team').locator('[data-role="ulb-remaining"]'))
-        .toHaveText('25 AI credits');
+    expect(await simulator.ulbTotal('user-team')).toBe('/100');
+    await expect(simulator.row('user-team').locator('[data-role="ulb-total"]'))
+        .toHaveAttribute('title', /CC: Team CC/);
 });
 
 test('ULB blocks during included-pool phase and across a saved baseline', async ({ page }) => {

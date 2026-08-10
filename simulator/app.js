@@ -1578,14 +1578,14 @@ function renderSimulationResults(results, poolState) {
         <th>Cost Center</th>
         <th>Consumption (${escapeHtml(getSimulationUnitLabel())})</th>
         <th>Last Call</th>
+        <th>Last Call Details</th>
         <th>Next Call</th>
         <th>Next Call Reason</th>
-        <th>ULB Remaining</th>
-        <th>Details</th>
     </tr></thead><tbody>`;
     results.forEach(r => {
         const user = state.users.find(u => u.id === r.userId);
         const cc = user ? getUserCC(user) : null;
+        const effectiveULB = user ? getEffectiveULB(user) : { value: null, source: 'Unlimited' };
         const userMax = user ? getUserSimulationMax(user) : 0;
         const maxCredits = Math.max(userMax, r.usage);
         const rowClass = r.lastCallStatus === 'blocked' ? 'result-blocked' : r.lastCallStatus === 'metered' ? 'result-metered' : '';
@@ -1606,13 +1606,15 @@ function renderSimulationResults(results, poolState) {
                     <input type="number" min="0" max="${creditsToSimulationValue(maxCredits)}" step="${simulationUsageStep()}" value="${creditsToSimulationValue(r.usage)}"
                         data-role="number"
                         onchange="applyUserUsageChange('${escapeInlineArg(r.userId)}', simulationValueToCredits(this.value))">
+                    <span class="sim-ulb-total" data-role="ulb-total"
+                        title="Effective total ULB: ${escapeHtml(effectiveULB.source)}"
+                        aria-label="Effective total ULB: ${escapeHtml(effectiveULB.source)}">/${escapeHtml(formatSimulationLimitValue(effectiveULB.value))}</span>
                 </div>
             </td>
             <td data-role="status-last">${statusBadge(r.lastCallStatus, true)}</td>
+            <td data-role="last-details">${escapeHtml(r.lastCallStatus === 'blocked' ? r.lastCallReason : r.lastCallSource)}</td>
             <td data-role="status-next">${statusBadge(r.nextCallStatus)}</td>
             <td class="next-call-reason" data-role="next-reason">${escapeHtml(r.nextCallReason)}</td>
-            <td data-role="ulb-remaining">${r.ulbRemaining !== null ? formatSimulationCredits(r.ulbRemaining) : '∞'}</td>
-            <td data-role="details">${escapeHtml(r.lastCallStatus === 'blocked' ? r.lastCallReason : r.lastCallSource)}</td>
         </tr>`;
     });
     html += '</tbody></table>';
@@ -1763,6 +1765,13 @@ function formatSimulationBudget(amount) {
     return isSimulationDollarMode()
         ? `$${amount.toFixed(2)}`
         : `${fmt(meteredCreditsFromBudget(amount))} AI credits`;
+}
+
+function formatSimulationLimitValue(credits) {
+    if (credits === null || credits === undefined) return '∞';
+    return isSimulationDollarMode()
+        ? creditsToSimulationValue(credits).toFixed(2)
+        : fmt(Math.round(credits));
 }
 
 function setUserUsageValue(userId, value) {
