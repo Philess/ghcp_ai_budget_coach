@@ -60,7 +60,7 @@ flowchart TD
 flowchart TB
     subgraph ENT["🏢 Enterprise"]
         direction TB
-        ENT_POOL["Shared AI Credit Pool<br/>(all licenses contribute)<br/>Business: 3,000/license/mo<br/>Enterprise: 7,000/license/mo"]
+        ENT_POOL["Shared AI Credit Pool<br/>(all licenses contribute)<br/>Business: 1,900/license/mo<br/>Enterprise: 3,900/license/mo"]
         ENT_BUDGET["Enterprise Budget<br/>(caps total metered charges)"]
 
         subgraph CC_A["Cost Center A (Engineering)"]
@@ -134,7 +134,7 @@ sequenceDiagram
     Note over Team,CC: Membership stays in sync automatically
 
     Admin->>API: 3. Enable AI Credit Pool on Cost Center
-    API->>CC: Pool = licenses × 3,000 (Biz) or 7,000 (Ent)
+    API->>CC: Pool = licenses × 1,900 (Biz) or 3,900 (Ent)
     Note over CC: Calculated automatically, no custom amount
 
     Admin->>API: 4. Set User-Level Budget on Cost Center
@@ -167,8 +167,27 @@ Features:
 
 ### Running the tests
 
-The simulation engine is covered by unit tests that run on Node.js (no dependencies):
+The complete strategy and scenario matrix are documented in
+**[TESTS.md](TESTS.md)**.
+
+Run the calculation/unit tests:
 
 ```bash
 npm test
 ```
+
+Run the Playwright end-to-end tests in headless Chromium:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+Run both suites:
+
+```bash
+npm run test:all
+```
+
+For interactive browser troubleshooting, use `npm run test:e2e:headed` or
+`npm run test:e2e:debug`.
