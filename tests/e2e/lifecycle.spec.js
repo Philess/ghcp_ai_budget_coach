@@ -80,6 +80,49 @@ test('confirms before replacing existing configuration with sample data', async 
     await expect(simulator.row('user-philippe')).toHaveCount(0);
 });
 
+for (const scenario of [
+    {
+        name: 'request failure',
+        alert: /Request failed with status 500/,
+        route: route => route.fulfill({ status: 500, body: 'Server error' })
+    },
+    {
+        name: 'malformed JSON',
+        alert: /JSON/,
+        route: route => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: '{'
+        })
+    }
+]) {
+    test(`preserves existing configuration when sample load has ${scenario.name}`, async ({ page }) => {
+        const simulator = new SimulatorPage(page);
+        await simulator.load(orderedOverageState());
+        const before = await simulator.persistedState();
+        const sampleButton = page.locator('header').getByRole('button', { name: /Load sample data/ });
+        await page.route('**/budget-simulator-sample.json', scenario.route);
+
+        const alertPromise = new Promise(resolve => {
+            page.on('dialog', async dialog => {
+                if (dialog.type() === 'confirm') {
+                    await dialog.accept();
+                    return;
+                }
+                const message = dialog.message();
+                await dialog.accept();
+                resolve(message);
+            });
+        });
+
+        await sampleButton.click();
+        await expect(await alertPromise).toMatch(scenario.alert);
+        await expect(simulator.row('user-philippe')).toBeVisible();
+        await expect(simulator.row('user_1783340586171')).toHaveCount(0);
+        expect(await simulator.persistedState()).toEqual(before);
+    });
+}
+
 test('canceling reset preserves state and confirming reset restores defaults', async ({ page }) => {
     const simulator = new SimulatorPage(page);
     await simulator.load(orderedOverageState());
