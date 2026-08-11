@@ -193,19 +193,36 @@ function exportConfig() {
     URL.revokeObjectURL(url);
 }
 
+function applyConfiguration(configuration) {
+    state = normalizeState(configuration);
+    saveState();
+    renderAll();
+}
+
 function importConfig(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            state = normalizeState(JSON.parse(e.target.result));
-            saveState();
-            renderAll();
+            applyConfiguration(JSON.parse(e.target.result));
         } catch (err) { alert('Invalid JSON file: ' + err.message); }
     };
+    reader.onerror = () => alert('Unable to read the selected configuration file.');
     reader.readAsText(file);
     event.target.value = '';
+}
+
+async function loadSampleConfig() {
+    if (hasConfigurationChanges() && !confirm('Replace the current configuration with sample data?')) return;
+
+    try {
+        const response = await fetch('budget-simulator-sample.json');
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        applyConfiguration(await response.json());
+    } catch (err) {
+        alert('Unable to load sample data: ' + err.message);
+    }
 }
 
 function resetAll() {
@@ -2061,6 +2078,26 @@ function renderAll() {
 function hasAnyData() {
     return state.users.length > 0 || state.costCenters.length > 0 ||
            state.orgs.length > 0 || state.teams.length > 0;
+}
+
+function hasConfigurationChanges() {
+    return !configurationEquals(state, defaultState());
+}
+
+function configurationEquals(a, b) {
+    if (Object.is(a, b)) return true;
+    if (typeof a !== typeof b || a === null || b === null) return false;
+    if (typeof a !== 'object') return false;
+    if (Array.isArray(a) || Array.isArray(b)) {
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+        return a.every((value, index) => configurationEquals(value, b[index]));
+    }
+
+    const aKeys = Object.keys(a).sort();
+    const bKeys = Object.keys(b).sort();
+    if (aKeys.length !== bKeys.length) return false;
+    if (aKeys.some((key, index) => key !== bKeys[index])) return false;
+    return aKeys.every(key => configurationEquals(a[key], b[key]));
 }
 
 function renderDashboardState() {

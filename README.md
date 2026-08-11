@@ -177,7 +177,7 @@ Features:
 - Simulate per-user consumption with distinct actual **Last Call** and projected **Next Call** outcomes
 - Simulate aggregate pool/overage consumption
 - Consume cost-center/enterprise pools and metered usage in FIFO order; scope hard stops freeze every member's Next Call without rewriting earlier Last Calls
-- Save/load configurations (localStorage + JSON export/import)
+- Save/load configurations (localStorage + JSON export/import) or start instantly with bundled sample data
 
 ### Running the tests
 

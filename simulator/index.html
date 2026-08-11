@@ -11,6 +11,7 @@
         <h1>🤖 AI Credit Budget Simulator</h1>
         <div class="actions">
             <button id="wizardOpenBtn" onclick="openWizard()" class="btn-primary">🧙 Setup Wizard</button>
+            <button onclick="loadSampleConfig()">🧪 Load sample data</button>
             <button onclick="exportConfig()">📥 Export</button>
             <button onclick="document.getElementById('importFile').click()">📤 Import</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
@@ -279,9 +280,10 @@
             <div id="dashboardEmpty" class="empty-state-dashboard" style="display:none">
                 <div class="empty-icon">🤖</div>
                 <h2>No simulation data yet</h2>
-                <p>Create your first simulation by following the guided setup wizard, or load an existing configuration from a file.</p>
+                <p>Create your first simulation with the guided setup wizard, load the sample data, or import an existing configuration from a file.</p>
                 <div class="cta-buttons">
                     <button class="btn-cta btn-cta-primary" onclick="openWizardAtStep(0)">🧙 Start a new simulation</button>
+                    <button class="btn-cta btn-cta-secondary" onclick="loadSampleConfig()">🧪 Load sample data</button>
                     <button class="btn-cta btn-cta-secondary" onclick="document.getElementById('importFile').click()">📤 Import data from file</button>
                 </div>
             </div>

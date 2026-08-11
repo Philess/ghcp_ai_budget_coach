@@ -1,0 +1,549 @@
+{
+  "enterprise": {
+    "businessSeats": 22,
+    "enterpriseSeats": 1,
+    "meteredEnabled": true,
+    "enterpriseBudget": 3000,
+    "enterpriseHardStop": true,
+    "universalULB": 6000,
+    "autoBusinessSeats": true,
+    "autoEnterpriseSeats": true,
+    "autoSeats": true
+  },
+  "teams": [
+    {
+      "id": "team_1783347522542",
+      "name": "CopilotOnlyTeam"
+    }
+  ],
+  "orgs": [
+    {
+      "id": "org_1783347539114",
+      "name": "ECommerce",
+      "budget": null,
+      "budgetHardStop": true
+    }
+  ],
+  "costCenters": [
+    {
+      "id": "cc_1783340547965",
+      "name": "RND",
+      "team": "RND",
+      "poolEnabled": true,
+      "overagesAllowed": true,
+      "budget": 100,
+      "budgetHardStop": true,
+      "ulb": 15000,
+      "teamIds": [
+        "team_1783347522542"
+      ],
+      "teamId": "team_1783347522542",
+      "orgIds": []
+    },
+    {
+      "id": "cc_1783347696931",
+      "name": "ECommerce_CC",
+      "teamId": null,
+      "poolEnabled": true,
+      "overagesAllowed": true,
+      "budget": null,
+      "budgetHardStop": true,
+      "ulb": 10000,
+      "orgIds": [
+        "org_1783347539114"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "user_1783340586171",
+      "name": "Philippe",
+      "costCenterId": "cc_1783340547965",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783340601169",
+      "name": "Matthieu",
+      "costCenterId": "cc_1783340547965",
+      "individualULB": 30000
+    },
+    {
+      "id": "user_1783347757952",
+      "name": "Thierry",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "enterprise",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786777",
+      "name": "ai_squad_-1",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786778",
+      "name": "ai_squad_-2",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786779",
+      "name": "ai_squad_-3",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786780",
+      "name": "ai_squad_-4",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786781",
+      "name": "ai_squad_-5",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786782",
+      "name": "ai_squad_-6",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786783",
+      "name": "ai_squad_-7",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786784",
+      "name": "ai_squad_-8",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786785",
+      "name": "ai_squad_-9",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786786",
+      "name": "ai_squad_-10",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304767",
+      "name": "ghcponly-1",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304768",
+      "name": "ghcponly-2",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304769",
+      "name": "ghcponly-3",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304770",
+      "name": "ghcponly-4",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304771",
+      "name": "ghcponly-5",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304772",
+      "name": "ghcponly-6",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304773",
+      "name": "ghcponly-7",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304774",
+      "name": "ghcponly-8",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304775",
+      "name": "ghcponly-9",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304776",
+      "name": "ghcponly-10",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    }
+  ],
+  "usage": {
+    "user_1783340586171": 0,
+    "user_1783340601169": 0,
+    "user_1783347757952": 0,
+    "user_1783370786777": 4928,
+    "user_1783370786778": 0,
+    "user_1783370786779": 1900,
+    "user_1783370786780": 0,
+    "user_1783370786781": 1900,
+    "user_1783370786782": 0,
+    "user_1783370786783": 1900,
+    "user_1783370786784": 0,
+    "user_1783370786785": 1900,
+    "user_1783370786786": 0,
+    "user_1783586304767": 0,
+    "user_1783586304768": 0,
+    "user_1783586304769": 0,
+    "user_1783586304770": 0,
+    "user_1783586304771": 0,
+    "user_1783586304772": 0,
+    "user_1783586304773": 0,
+    "user_1783586304774": 0,
+    "user_1783586304775": 0,
+    "user_1783586304776": 0
+  },
+  "usageBaseline": {
+    "user_1783340586171": 0,
+    "user_1783340601169": 0,
+    "user_1783347757952": 0,
+    "user_1783370786777": 1900,
+    "user_1783370786778": 0,
+    "user_1783370786779": 1900,
+    "user_1783370786780": 0,
+    "user_1783370786781": 1900,
+    "user_1783370786782": 0,
+    "user_1783370786783": 1900,
+    "user_1783370786784": 0,
+    "user_1783370786785": 1900,
+    "user_1783370786786": 0,
+    "user_1783586304767": 0,
+    "user_1783586304768": 0,
+    "user_1783586304769": 0,
+    "user_1783586304770": 0,
+    "user_1783586304771": 0,
+    "user_1783586304772": 0,
+    "user_1783586304773": 0,
+    "user_1783586304774": 0,
+    "user_1783586304775": 0,
+    "user_1783586304776": 0
+  },
+  "usageSequence": [
+    "user_1783370786777"
+  ],
+  "lastCallOutcomes": {
+    "user_1783340586171": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783340601169": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783347757952": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786777": {
+      "status": "metered",
+      "reason": "",
+      "reasonData": null,
+      "usage": 4928,
+      "creditsFromCC": 1900,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 3028,
+      "meteredCost": 30.28
+    },
+    "user_1783370786778": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786779": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 1900,
+      "creditsFromCC": 1900,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786780": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786781": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 1900,
+      "creditsFromCC": 1900,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786782": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786783": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 1900,
+      "creditsFromCC": 1900,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786784": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786785": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 1900,
+      "creditsFromCC": 1900,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783370786786": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304767": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304768": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304769": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304770": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304771": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304772": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304773": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304774": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304775": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    },
+    "user_1783586304776": {
+      "status": "served",
+      "reason": "",
+      "reasonData": null,
+      "usage": 0,
+      "creditsFromCC": 0,
+      "creditsFromEntPool": 0,
+      "creditsMetered": 0,
+      "meteredCost": 0
+    }
+  },
+  "simulationUnit": "dollars",
+  "globalBudgetPercents": {
+    "ccPool_cc_1783347696931": 100
+  }
+}
