@@ -1,18 +1,12 @@
-// Loads the simulator script embedded in simulator/index.html into a sandboxed
-// context with a minimal DOM stub, so the simulation engine can be unit tested.
+// Loads the simulator application into a sandboxed context with a minimal DOM
+// stub, so the simulation engine can be unit tested.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const simulatorPath = join(here, '..', 'simulator', 'index.html');
-
-function extractScript(html) {
-    const match = html.match(/<script>([\s\S]*)<\/script>/);
-    if (!match) throw new Error('No inline script found in simulator/index.html');
-    return match[1];
-}
+const simulatorPath = join(here, '..', 'simulator', 'app.js');
 
 function createElement() {
     return {
@@ -76,7 +70,7 @@ export function loadSimulator() {
     sandbox.globalThis = sandbox;
 
     const context = vm.createContext(sandbox);
-    vm.runInContext(extractScript(readFileSync(simulatorPath, 'utf8')), context);
+    vm.runInContext(readFileSync(simulatorPath, 'utf8'), context);
 
     // `state` is a top-level `let`, so it lives in the context's lexical scope and
     // is only reachable by evaluating code inside that same context.

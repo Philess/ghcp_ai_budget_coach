@@ -1,0 +1,90 @@
+name: Simulator Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Create test report directory
+        run: mkdir -p test-reports
+
+      - name: Run unit tests
+        run: >-
+          node --test
+          --test-reporter=spec
+          --test-reporter-destination=stdout
+          --test-reporter=junit
+          --test-reporter-destination=test-reports/unit-junit.xml
+          "tests/*.test.mjs"
+
+      - name: Normalize unit test report
+        if: ${{ !cancelled() && hashFiles('test-reports/unit-junit.xml') != '' }}
+        run: node tests/reporting/normalize-node-junit.mjs test-reports/unit-junit.xml
+
+      - name: Run Playwright tests
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e
+
+      - name: Publish test results
+        if: >-
+          ${{
+            !cancelled() &&
+            hashFiles('test-reports/*-junit.xml') != '' &&
+            (
+              github.event_name != 'pull_request' ||
+              github.event.pull_request.head.repo.full_name == github.repository
+            )
+          }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: test-reports/*-junit.xml
+          check_name: Simulator Test Results
+          comment_title: Simulator Test Results
+          comment_mode: always
+
+      - name: Upload test report
+        if: ${{ !cancelled() && hashFiles('test-reports/*-junit.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-test-report
+          path: |
+            test-reports/*-junit.xml
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

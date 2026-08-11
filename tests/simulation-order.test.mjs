@@ -8,7 +8,7 @@ const PHILIPPE = 'u-philippe';
 const MATTHIEU = 'u-matthieu';
 const THIERRY = 'u-thierry';
 
-// 3 business seats → 9,000 pool credits; the RND cost center has a $1 overage
+// 3 business seats → 5,700 pool credits; the RND cost center has a $1 overage
 // budget (100 metered credits) with a hard stop and no reserved pool.
 function scenarioState() {
     return {
@@ -45,13 +45,13 @@ function scenarioState() {
     };
 }
 
-// Every user starts at 3,000 credits, which exactly drains the enterprise pool,
+// Every user starts at 1,900 credits, which exactly drains the enterprise pool,
 // so any further consumption goes to the RND overage budget.
 function setupAtStartingPoint() {
     const sim = loadSimulator();
     sim.setState(scenarioState());
     const state = sim.getState();
-    state.users.forEach(u => { state.usage[u.id] = 3000; });
+    state.users.forEach(u => { state.usage[u.id] = 1900; });
     sim.call('setStartingPoint');
     return sim;
 }
@@ -67,74 +67,127 @@ function resultsById(sim) {
     return Object.fromEntries(results.map(r => [r.userId, r]));
 }
 
-test('the starting point is consumed concurrently by every user', () => {
+function assertLastCall(result, status, reason) {
+    assert.equal(result.lastCallStatus, status);
+    if (reason) assert.match(result.lastCallReason, reason);
+}
+
+function assertNextCall(result, status, reason) {
+    assert.equal(result.nextCallStatus, status);
+    if (reason) assert.match(result.nextCallReason, reason);
+}
+
+test('the starting point consumes the shared pool in user order', () => {
     const sim = setupAtStartingPoint();
     const byId = resultsById(sim);
     [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
-        assert.equal(byId[id].status, 'served');
-        assert.equal(byId[id].creditsFromEntPool, 3000);
+        assertLastCall(byId[id], 'served');
+        assertNextCall(byId[id], 'metered');
+        assert.equal(byId[id].creditsFromEntPool, 1900);
         assert.equal(byId[id].creditsMetered, 0);
     });
 });
 
-test('changes are applied in the order they were made, not in user list order', () => {
+test('SEQ-04 preserves successful calls before the cost-center freeze', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);   // 60 metered → $0.60
-    sim.call('applyUserUsageChange', MATTHIEU, 3040);  // 40 metered → $1.00 (budget full)
-    sim.call('applyUserUsageChange', PHILIPPE, 3010);  // nothing left → all blocked
+    sim.call('applyUserUsageChange', THIERRY, 1960);   // 60 metered → $0.60
+    sim.call('applyUserUsageChange', MATTHIEU, 1940);  // 40 metered → $1.00 (budget full)
+    sim.call('applyUserUsageChange', PHILIPPE, 1910);  // nothing left → all blocked
 
-    // When the CC budget is exhausted, ALL users in that CC are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].status, 'blocked');
-    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
-    assert.equal(byId[MATTHIEU].status, 'blocked');
-    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
-    assert.equal(byId[PHILIPPE].status, 'blocked');
-    assert.match(byId[PHILIPPE].reason, /CC budget exhausted/);
+    assertLastCall(byId[THIERRY], 'metered');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertLastCall(byId[PHILIPPE], 'blocked', /CC budget exhausted/);
+    [THIERRY, MATTHIEU, PHILIPPE].forEach(id => {
+        assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
+    });
 });
 
-test('the reverse change order blocks all users when budget exhausted', () => {
+test('reverse ordering preserves historical outcomes and the same next-call freeze', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', PHILIPPE, 3060);
-    sim.call('applyUserUsageChange', MATTHIEU, 3040);
-    sim.call('applyUserUsageChange', THIERRY, 3010);
+    sim.call('applyUserUsageChange', PHILIPPE, 1960);
+    sim.call('applyUserUsageChange', MATTHIEU, 1940);
+    sim.call('applyUserUsageChange', THIERRY, 1910);
 
-    // When the CC budget is exhausted, ALL users in that CC are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[PHILIPPE].status, 'blocked');
-    assert.equal(byId[MATTHIEU].status, 'blocked');
-    assert.equal(byId[THIERRY].status, 'blocked');
+    assertLastCall(byId[PHILIPPE], 'metered');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertLastCall(byId[THIERRY], 'blocked', /CC budget exhausted/);
+    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
+        assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
+    });
 });
 
-test('re-editing a user records a new step and moves them to the most recent position', () => {
-    const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);
-    sim.call('applyUserUsageChange', MATTHIEU, 3100);
-    sim.call('applyUserUsageChange', THIERRY, 3060); // re-edit: a brand new step
+test('a later user action does not rewrite another user last-call outcome or breakdown', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.costCenters = [];
+    state.users = [state.users[0], state.users[1]];
+    sim.setState(state);
 
-    // Every change is kept as a distinct step, in the order they were made.
-    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU, THIERRY]);
+    sim.call('applyUserUsageChange', PHILIPPE, 2000);
+    let byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'metered');
+    assert.equal(byId[PHILIPPE].lastCallCreditsFromEntPool, 1900);
+    assert.equal(byId[PHILIPPE].lastCallCreditsMetered, 100);
 
-    // Matthieu exhausts the budget, so all users in the CC are blocked
-    const byId = resultsById(sim);
-    assert.equal(byId[MATTHIEU].status, 'blocked');
-    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
-    assert.equal(byId[THIERRY].status, 'blocked');
-    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
+    sim.call('applyUserUsageChange', MATTHIEU, 2000);
+    byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'metered');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assert.equal(byId[PHILIPPE].lastCallCreditsFromEntPool, 1900);
+    assert.equal(byId[PHILIPPE].lastCallCreditsMetered, 100);
+    assert.equal(byId[MATTHIEU].lastCallCreditsFromEntPool, 0);
+    assert.equal(byId[MATTHIEU].lastCallCreditsMetered, 2000);
 });
 
-test('going 50 to 100 to 80 on one user records three distinct steps', () => {
+test('a historical blocked reason follows the selected display unit', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3050);
-    sim.call('applyUserUsageChange', THIERRY, 3100);
-    sim.call('applyUserUsageChange', THIERRY, 3080);
-    assert.deepEqual(sequenceOf(sim), [THIERRY, THIERRY, THIERRY]);
+    sim.call('applyUserUsageChange', THIERRY, 2001);
+    let result = resultsById(sim)[THIERRY];
+    assertLastCall(result, 'blocked', /100 AI credits/);
+
+    sim.getState().simulationUnit = 'dollars';
+    result = resultsById(sim)[THIERRY];
+    assertLastCall(result, 'blocked', /\$1\.00/);
+});
+
+test('re-editing a user updates their existing step without moving it', () => {
+    const sim = setupAtStartingPoint();
+    sim.call('applyUserUsageChange', THIERRY, 1930);   // 30 metered
+    sim.call('applyUserUsageChange', MATTHIEU, 1960);  // 60 metered
+    sim.call('applyUserUsageChange', THIERRY, 1960);   // re-edit: same step, new value
+
+    // One step per user, kept at the position of that user's first change.
+    assert.deepEqual(sequenceOf(sim), [THIERRY, MATTHIEU]);
+
+    // Thierry still consumes first: 60 credits, leaving only 40 for Matthieu.
+    const byId = resultsById(sim);
+    assert.equal(byId[THIERRY].creditsMetered, 60);
+    assert.equal(byId[MATTHIEU].creditsMetered, 40);
+    // Matthieu's Last Call keeps the 60 credits he actually got when he acted;
+    // the re-edit only changes the current shared state, never his history.
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assert.equal(byId[MATTHIEU].lastCallCreditsMetered, 60);
+    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
+        assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
+    });
+});
+
+test('going 50 to 100 to 80 on one user keeps a single step', () => {
+    const sim = setupAtStartingPoint();
+    sim.call('applyUserUsageChange', THIERRY, 1950);
+    sim.call('applyUserUsageChange', THIERRY, 2000);
+    sim.call('applyUserUsageChange', THIERRY, 1980);
+    assert.deepEqual(sequenceOf(sim), [THIERRY]);
+    assert.equal(sim.getState().usage[THIERRY], 1980);
 });
 
 test('results are reported in user list order whatever the change order', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3010);
-    sim.call('applyUserUsageChange', PHILIPPE, 3010);
+    sim.call('applyUserUsageChange', THIERRY, 1910);
+    sim.call('applyUserUsageChange', PHILIPPE, 1910);
 
     const { results } = sim.call('computeSimulationResults');
     assert.deepEqual([...results].map(r => r.userId), [PHILIPPE, MATTHIEU, THIERRY]);
@@ -144,19 +197,19 @@ test('users that were never edited are applied after the recorded sequence', () 
     const sim = setupAtStartingPoint();
     const state = sim.getState();
     // Simulate usage restored from an import: above baseline but never recorded.
-    state.usage[PHILIPPE] = 3060;
-    sim.call('applyUserUsageChange', THIERRY, 3060);
+    state.usage[PHILIPPE] = 1960;
+    sim.call('applyUserUsageChange', THIERRY, 1960);
 
     assert.deepEqual(sequenceOf(sim), [THIERRY]);
-    // Both users consume metered credits, exhausting the budget, so both are blocked
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].status, 'blocked');
-    assert.equal(byId[PHILIPPE].status, 'blocked');
+    assertLastCall(byId[THIERRY], 'metered');
+    assertNextCall(byId[THIERRY], 'blocked', /CC budget exhausted/);
+    assertNextCall(byId[PHILIPPE], 'blocked', /CC budget exhausted/);
 });
 
 test('setting a new starting point clears the change sequence', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);
+    sim.call('applyUserUsageChange', THIERRY, 1960);
     assert.deepEqual(sequenceOf(sim), [THIERRY]);
 
     sim.call('setStartingPoint');
@@ -165,14 +218,14 @@ test('setting a new starting point clears the change sequence', () => {
 
 test('a global usage distribution clears the change sequence', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);
+    sim.call('applyUserUsageChange', THIERRY, 1960);
     sim.call('applyAllGlobalBudgetPercents');
     assert.deepEqual(sequenceOf(sim), []);
 });
 
 test('resetting usage clears the change sequence', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);
+    sim.call('applyUserUsageChange', THIERRY, 1960);
     sim.call('resetUsage');
     const state = sim.getState();
     assert.deepEqual([...state.usageSequence], []);
@@ -182,8 +235,8 @@ test('resetting usage clears the change sequence', () => {
 
 test('deleting a user removes them from the change sequence', () => {
     const sim = setupAtStartingPoint();
-    sim.call('applyUserUsageChange', THIERRY, 3060);
-    sim.call('applyUserUsageChange', MATTHIEU, 3010);
+    sim.call('applyUserUsageChange', THIERRY, 1960);
+    sim.call('applyUserUsageChange', MATTHIEU, 1910);
     sim.call('deleteUser', THIERRY);
 
     const state = sim.getState();
@@ -196,8 +249,8 @@ test('a stale sequence entry for an unknown user is ignored', () => {
     const sim = setupAtStartingPoint();
     const state = sim.getState();
     state.usageSequence = ['u-gone', THIERRY];
-    sim.call('applyUserUsageChange', THIERRY, 3060);
-    sim.call('applyUserUsageChange', MATTHIEU, 3050);
+    sim.call('applyUserUsageChange', THIERRY, 1960);
+    sim.call('applyUserUsageChange', MATTHIEU, 1950);
 
     const byId = resultsById(sim);
     assert.equal(byId[THIERRY].creditsMetered, 60);
@@ -217,45 +270,187 @@ test('user-level budgets still block regardless of the change order', () => {
     const sim = setupAtStartingPoint();
     const state = sim.getState();
     state.users.find(u => u.id === MATTHIEU).individualULB = 30;
-    sim.call('applyUserUsageChange', MATTHIEU, 3040);
+    sim.call('applyUserUsageChange', MATTHIEU, 1940);
 
     const byId = resultsById(sim);
-    assert.equal(byId[MATTHIEU].status, 'blocked');
-    assert.match(byId[MATTHIEU].reason, /ULB exceeded/);
+    assertLastCall(byId[MATTHIEU], 'blocked', /ULB exceeded/);
+    assertNextCall(byId[MATTHIEU], 'blocked', /ULB exceeded/);
 });
 
-test('exhausting the cost center budget blocks members still served from the pool', () => {
+test('cost-center propagation keeps historical outcomes and freezes only the next call', () => {
     const sim = setupAtStartingPoint();
-    // Philippe never changes: his 3,000 credits are fully served from the pool with
-    // zero overage. Matthieu alone drives the RND overage budget over its $1 cap.
-    sim.call('applyUserUsageChange', MATTHIEU, 3200); // wants 200 overage, budget only covers 100
+    sim.call('applyUserUsageChange', MATTHIEU, 2000); // exactly consumes the $1 budget
 
     const byId = resultsById(sim);
-    // The cost center is over budget, so the whole cost center is frozen — even
-    // Philippe and Thierry, who only ever touched the free pool, are blocked.
-    assert.equal(byId[MATTHIEU].status, 'blocked');
-    assert.match(byId[MATTHIEU].reason, /CC budget exhausted/);
-    assert.equal(byId[PHILIPPE].status, 'blocked');
-    assert.match(byId[PHILIPPE].reason, /CC budget exhausted/);
-    assert.equal(byId[THIERRY].status, 'blocked');
-    assert.match(byId[THIERRY].reason, /CC budget exhausted/);
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertLastCall(byId[PHILIPPE], 'served');
+    assertLastCall(byId[THIERRY], 'served');
+    [MATTHIEU, PHILIPPE, THIERRY].forEach(id => {
+        assertNextCall(byId[id], 'blocked', /CC budget exhausted/);
+    });
 });
 
 test('the cost center stays served when overage fits inside the budget', () => {
     const sim = setupAtStartingPoint();
     // Combined overage of 30 + 40 = 70 credits fits inside the 100-credit ($1) budget,
     // so nobody is shut down and unchanged members remain served from the pool.
-    sim.call('applyUserUsageChange', THIERRY, 3030);
-    sim.call('applyUserUsageChange', MATTHIEU, 3040);
+    sim.call('applyUserUsageChange', THIERRY, 1930);
+    sim.call('applyUserUsageChange', MATTHIEU, 1940);
 
     const byId = resultsById(sim);
-    assert.equal(byId[THIERRY].status, 'metered');
-    assert.equal(byId[MATTHIEU].status, 'metered');
-    assert.equal(byId[PHILIPPE].status, 'served');
+    assertLastCall(byId[THIERRY], 'metered');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertLastCall(byId[PHILIPPE], 'served');
+    [THIERRY, MATTHIEU, PHILIPPE].forEach(id => assertNextCall(byId[id], 'metered'));
 });
 
-// The reserved cost center pool is a shared resource: it is 3 business seats × 3,000
-// = 9,000 credits and it has no overage budget, so once it is exhausted every member
+test('next call is served while an applicable pool credit remains', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.costCenters = [];
+    state.users = [state.users[0]];
+    state.usage = { [PHILIPPE]: 1899 };
+    sim.setState(state);
+
+    const result = resultsById(sim)[PHILIPPE];
+    assertLastCall(result, 'served');
+    assertNextCall(result, 'served');
+});
+
+test('next call is metered when pools are empty and budgets have headroom', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.costCenters = [];
+    state.users = [state.users[0]];
+    state.usage = { [PHILIPPE]: 1900 };
+    sim.setState(state);
+
+    const result = resultsById(sim)[PHILIPPE];
+    assertLastCall(result, 'served');
+    assertNextCall(result, 'metered');
+});
+
+test('an exhausted ULB blocks the next call even when budgets have room', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.costCenters = [];
+    state.users = [{ ...state.users[0], individualULB: 100 }];
+    state.usage = { [PHILIPPE]: 100 };
+    sim.setState(state);
+
+    const result = resultsById(sim)[PHILIPPE];
+    assertLastCall(result, 'served');
+    assertNextCall(result, 'blocked', /ULB exceeded/);
+});
+
+test('an organization freeze affects only members of that organization', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.costCenters = [];
+    state.orgs = [{
+        id: 'org-acme',
+        name: 'Acme',
+        budget: 1,
+        budgetHardStop: true
+    }];
+    state.users[0].orgId = 'org-acme';
+    state.users[1].orgId = 'org-acme';
+    state.usage = {
+        [PHILIPPE]: 1900,
+        [MATTHIEU]: 1900,
+        [THIERRY]: 1900
+    };
+    sim.setState(state);
+    sim.call('setStartingPoint');
+    sim.call('applyUserUsageChange', MATTHIEU, 2000);
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'served');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertLastCall(byId[THIERRY], 'served');
+    [PHILIPPE, MATTHIEU].forEach(id => {
+        assertNextCall(byId[id], 'blocked', /Org budget exhausted/);
+    });
+    assertNextCall(byId[THIERRY], 'metered');
+});
+
+test('a tighter organization stop does not exhaust broader budgets', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.enterprise.enterpriseBudget = 2;
+    state.costCenters = [{
+        id: 'cc-rnd',
+        name: 'RND',
+        poolEnabled: false,
+        overagesAllowed: true,
+        budget: 2,
+        budgetHardStop: true,
+        ulb: null,
+        userIds: [PHILIPPE, MATTHIEU]
+    }];
+    state.orgs = [{
+        id: 'org-acme',
+        name: 'Acme',
+        budget: 1,
+        budgetHardStop: true
+    }];
+    state.users = [
+        { ...state.users[0], orgId: 'org-acme' },
+        state.users[1]
+    ];
+    state.usage = { [PHILIPPE]: 1900, [MATTHIEU]: 0 };
+    sim.setState(state);
+    sim.call('setStartingPoint');
+    sim.call('applyUserUsageChange', PHILIPPE, 2200);
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'blocked', /Org budget exhausted/);
+    assertNextCall(byId[PHILIPPE], 'blocked', /Org budget exhausted/);
+    assertNextCall(byId[MATTHIEU], 'metered');
+    const { poolState } = sim.call('computeSimulationResults');
+    assert.equal(poolState.orgMetered['org-acme'], 1);
+    assert.equal(poolState.ccMetered['cc-rnd'], 1);
+    assert.equal(poolState.enterpriseMetered, 1);
+});
+
+test('enterprise exhaustion projects pool headroom as served and paid overage as blocked', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 2;
+    state.enterprise.enterpriseBudget = 1;
+    state.costCenters = [{
+        id: 'cc-reserved',
+        name: 'Reserved',
+        poolEnabled: true,
+        overagesAllowed: true,
+        budget: null,
+        budgetHardStop: true,
+        ulb: null,
+        userIds: [PHILIPPE]
+    }];
+    state.users = [
+        state.users.find(user => user.id === PHILIPPE),
+        state.users.find(user => user.id === MATTHIEU)
+    ];
+    state.usage = {
+        [PHILIPPE]: 1000,
+        [MATTHIEU]: 2000
+    };
+    sim.setState(state);
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'served');
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertNextCall(byId[PHILIPPE], 'served');
+    assertNextCall(byId[MATTHIEU], 'blocked', /Enterprise budget exhausted/);
+});
+
+// The reserved cost center pool is a shared resource: it is 3 business seats × 1,900
+// = 5,700 credits and it has no overage budget, so once it is exhausted every member
 // competing for it is blocked — not just the members processed last.
 function sharedPoolState() {
     return {
@@ -279,25 +474,123 @@ function sharedPoolState() {
     };
 }
 
-test('an exhausted cost center pool blocks every member, whatever the change order', () => {
+test('pool exhaustion preserves earlier calls and blocks every next call', () => {
     const sim = loadSimulator();
     sim.setState(sharedPoolState());
     const state = sim.getState();
-    // Baseline uses 8,700 of the 9,000 pool, leaving 300 credits residual.
-    state.users.forEach(u => { state.usage[u.id] = 2900; });
+    // Baseline uses 5,400 of the 5,700 pool, leaving 300 credits residual.
+    state.users.forEach(u => { state.usage[u.id] = 1800; });
     sim.call('setStartingPoint');
 
     // Each user asks for 200 more (600 total) but only 300 pool credits remain and
     // there is no overage budget, so the group is over-subscribed.
-    sim.call('applyUserUsageChange', THIERRY, 3100);
-    sim.call('applyUserUsageChange', MATTHIEU, 3100);
-    sim.call('applyUserUsageChange', PHILIPPE, 3100);
+    sim.call('applyUserUsageChange', THIERRY, 2000);
+    sim.call('applyUserUsageChange', MATTHIEU, 2000);
+    sim.call('applyUserUsageChange', PHILIPPE, 2000);
 
     const byId = resultsById(sim);
-    // The 300 residual credits are shared concurrently (100 each), so nobody is fully
-    // served and, with no overage budget, all three are blocked.
-    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
-        assert.equal(byId[id].status, 'blocked', `${id} should be blocked`);
-        assert.equal(byId[id].creditsFromCC, 3000, `${id} keeps its fair 100-credit pool share above baseline`);
+    // Thierry's earlier request fit at the time it was made. Later actions do not
+    // rewrite that outcome, while the final exhausted pool leaves every next call blocked.
+    assertLastCall(byId[THIERRY], 'served');
+    assertLastCall(byId[MATTHIEU], 'blocked');
+    assertLastCall(byId[PHILIPPE], 'blocked');
+    assert.equal(byId[THIERRY].creditsFromCC, 2000);
+    assert.equal(byId[MATTHIEU].creditsFromCC, 1900);
+    assert.equal(byId[PHILIPPE].creditsFromCC, 1800);
+    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => assertNextCall(byId[id], 'blocked'));
+});
+
+test('off-promotion seat entitlements provide 1,900 Business and 3,900 Enterprise credits', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.enterprise.enterpriseSeats = 1;
+    sim.setState(state);
+
+    assert.equal(sim.call('totalPool'), 5800);
+    assert.equal(sim.call('userCreditsPerSeat', { license: 'business' }), 1900);
+    assert.equal(sim.call('userCreditsPerSeat', { license: 'enterprise' }), 3900);
+});
+
+test('cost-center ULB applies to members resolved through an enterprise team', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;
+    state.teams = [{ id: 'team-platform', name: 'Platform' }];
+    state.costCenters = [{
+        id: 'cc-platform',
+        name: 'Platform CC',
+        teamIds: ['team-platform'],
+        orgIds: [],
+        userIds: [],
+        poolEnabled: false,
+        overagesAllowed: true,
+        budget: null,
+        budgetHardStop: true,
+        ulb: 100
+    }];
+    state.users = [{
+        id: PHILIPPE,
+        name: 'Philippe',
+        license: 'business',
+        teamId: 'team-platform',
+        individualULB: null
+    }];
+    state.usage = { [PHILIPPE]: 101 };
+    sim.setState(state);
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'blocked', /ULB exceeded.*CC: Platform CC/);
+    assertNextCall(byId[PHILIPPE], 'blocked', /ULB exceeded.*CC: Platform CC/);
+});
+
+// The starting point consumes shared pools in user-list order.
+function baselineFifoState(userOrder) {
+    const state = scenarioState();
+    state.enterprise.businessSeats = 1;   // 1,900 pool credits for two users
+    state.enterprise.enterpriseBudget = null;
+    state.enterprise.enterpriseHardStop = false;
+    state.costCenters = [];
+    state.users = userOrder.map(id => ({
+        id,
+        name: id,
+        license: 'business',
+        individualULB: null
+    }));
+    return state;
+}
+
+test('an over-subscribed starting point follows user-list order', () => {
+    [[PHILIPPE, MATTHIEU], [MATTHIEU, PHILIPPE]].forEach(order => {
+        const sim = loadSimulator();
+        sim.setState(baselineFifoState(order));
+        const state = sim.getState();
+        state.users.forEach(u => { state.usage[u.id] = 1900; });
+        sim.call('setStartingPoint');
+
+        const byId = resultsById(sim);
+        assert.equal(byId[order[0]].creditsFromEntPool, 1900);
+        assert.equal(byId[order[0]].creditsMetered, 0);
+        assertLastCall(byId[order[0]], 'served');
+        assert.equal(byId[order[1]].creditsFromEntPool, 0);
+        assert.equal(byId[order[1]].creditsMetered, 1900);
+        assertLastCall(byId[order[1]], 'served');
+        assert.equal(byId[order[1]].lastCallCreditsMetered, 1900);
     });
+});
+
+test('an over-subscribed starting point blocks the later user when metering is off', () => {
+    const state = baselineFifoState([PHILIPPE, MATTHIEU]);
+    state.enterprise.meteredEnabled = false;
+    const sim = loadSimulator();
+    sim.setState(state);
+    const simState = sim.getState();
+    simState.users.forEach(u => { simState.usage[u.id] = 1900; });
+    sim.call('setStartingPoint');
+
+    const byId = resultsById(sim);
+    assert.equal(byId[PHILIPPE].creditsFromEntPool, 1900);
+    assertLastCall(byId[PHILIPPE], 'served');
+    assert.equal(byId[MATTHIEU].creditsFromEntPool, 0);
+    assertLastCall(byId[MATTHIEU], 'blocked', /metered usage not enabled/);
 });
