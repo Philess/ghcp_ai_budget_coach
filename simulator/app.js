@@ -214,7 +214,7 @@ function importConfig(event) {
 }
 
 async function loadSampleConfig() {
-    if (hasAnyData() && !confirm('Replace the current configuration with sample data?')) return;
+    if (hasConfigurationChanges() && !confirm('Replace the current configuration with sample data?')) return;
 
     try {
         const response = await fetch('budget-simulator-sample.json');
@@ -2078,6 +2078,25 @@ function renderAll() {
 function hasAnyData() {
     return state.users.length > 0 || state.costCenters.length > 0 ||
            state.orgs.length > 0 || state.teams.length > 0;
+}
+
+function hasConfigurationChanges() {
+    return !configurationEquals(state, defaultState());
+}
+
+function configurationEquals(a, b) {
+    if (Object.is(a, b)) return true;
+    if (typeof a !== typeof b || a === null || b === null) return false;
+    if (typeof a !== 'object') return false;
+    if (Array.isArray(a) || Array.isArray(b)) {
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+        return a.every((value, index) => configurationEquals(value, b[index]));
+    }
+
+    const aKeys = Object.keys(a).sort();
+    const bKeys = Object.keys(b).sort();
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key, index) => key === bKeys[index] && configurationEquals(a[key], b[key]));
 }
 
 function renderDashboardState() {
