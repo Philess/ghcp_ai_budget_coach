@@ -1920,6 +1920,28 @@ function getUserCC(user) {
     return null;
 }
 
+function getMeteredBudgetLabels(user) {
+    const labels = [];
+    const cc = getUserCC(user);
+    if (cc && cc.budget !== null && cc.budget !== undefined) {
+        labels.push(`${cc.name} Cost Center Overage Budget`);
+    }
+    const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+    if (org && org.budget !== null && org.budget !== undefined) {
+        labels.push(`${org.name} Organization Overage Budget`);
+    }
+    if (state.enterprise.enterpriseBudget !== null && state.enterprise.enterpriseBudget !== undefined) {
+        labels.push('Enterprise Overage Budget');
+    }
+    return labels;
+}
+
+function formatMeteredBudgetContext(labels) {
+    return labels.length > 0
+        ? ` via ${labels.join(' + ')}`
+        : ' without a configured overage budget';
+}
+
 function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCaps = null) {
     const baseCC = baselineResult ? baselineResult.creditsFromCC : 0;
     const baseEnt = baselineResult ? baselineResult.creditsFromEntPool : 0;
@@ -1938,7 +1960,8 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         ulbRemaining: null,
         creditsFromCC: baseCC,
         creditsFromEntPool: baseEnt,
-        creditsMetered: baseMetered
+        creditsMetered: baseMetered,
+        meteredBudgetLabels: baselineResult?.meteredBudgetLabels || []
     };
 
     if (userUsage === 0) {
@@ -2033,6 +2056,7 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         const deltaCost = remaining * 0.01;
         result.creditsMetered += remaining;
         result.meteredCost += deltaCost;
+        result.meteredBudgetLabels = getMeteredBudgetLabels(user);
         if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + deltaCost;
         if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + deltaCost;
         poolState.enterpriseMetered += deltaCost;
@@ -2048,11 +2072,17 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
     return result;
 }
 
-function formatConsumedSources(outcome) {
+function formatConsumedSources(outcome, user) {
+    const meteredLabels = Array.isArray(outcome.meteredBudgetLabels)
+        ? outcome.meteredBudgetLabels
+        : getMeteredBudgetLabels(user);
     const sources = [
         { amount: outcome.creditsFromCC, label: 'CC pool' },
         { amount: outcome.creditsFromEntPool, label: 'Enterprise pool' },
-        { amount: outcome.creditsMetered, label: 'metered' }
+        {
+            amount: outcome.creditsMetered,
+            label: `metered${formatMeteredBudgetContext(meteredLabels)}`
+        }
     ];
     const consumed = sources
         .filter(source => Number(source.amount) > 0)
@@ -2060,9 +2090,9 @@ function formatConsumedSources(outcome) {
     return consumed.length > 0 ? consumed.join(' + ') : 'No credits consumed';
 }
 
-function formatCallSource(outcome) {
+function formatCallSource(outcome, user) {
     if ((outcome.usage || 0) === 0) return 'No usage';
-    return formatConsumedSources(outcome);
+    return formatConsumedSources(outcome, user);
 }
 
 function callReasonData(user, result) {
@@ -2244,7 +2274,10 @@ function computeSimulationResults(options = {}) {
                 reason: `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`
             };
         }
-        return { status: 'metered', reason: 'Metered usage available' };
+        return {
+            status: 'metered',
+            reason: `Metered usage available${formatMeteredBudgetContext(getMeteredBudgetLabels(user))}`
+        };
     };
 
     Object.values(resultsByUser).forEach(r => {
@@ -2272,14 +2305,18 @@ function computeSimulationResults(options = {}) {
             ? saved.creditsMetered : r.creditsMetered;
         r.lastCallMeteredCost = saved && Number.isFinite(saved.meteredCost)
             ? saved.meteredCost : r.meteredCost;
+        r.lastCallMeteredBudgetLabels = saved && Array.isArray(saved.meteredBudgetLabels)
+            ? saved.meteredBudgetLabels : r.meteredBudgetLabels;
+        const resultUser = state.users.find(u => u.id === r.userId);
         r.lastCallSource = formatCallSource({
             status: r.lastCallStatus,
             usage: r.lastCallUsage,
             creditsFromCC: r.lastCallCreditsFromCC,
             creditsFromEntPool: r.lastCallCreditsFromEntPool,
-            creditsMetered: r.lastCallCreditsMetered
-        });
-        const next = projectNextCall(state.users.find(u => u.id === r.userId));
+            creditsMetered: r.lastCallCreditsMetered,
+            meteredBudgetLabels: r.lastCallMeteredBudgetLabels
+        }, resultUser);
+        const next = projectNextCall(resultUser);
         r.nextCallStatus = next.status;
         r.nextCallReason = next.reason;
         // Compatibility for consumers that still read the former single-status fields.
@@ -2573,7 +2610,8 @@ function applyUserUsageChange(userId, creditsValue) {
             creditsFromCC: result.lastCallCreditsFromCC,
             creditsFromEntPool: result.lastCallCreditsFromEntPool,
             creditsMetered: result.lastCallCreditsMetered,
-            meteredCost: result.lastCallMeteredCost
+            meteredCost: result.lastCallMeteredCost,
+            meteredBudgetLabels: result.lastCallMeteredBudgetLabels
         }
     ]));
     setUserUsageValue(userId, creditsValue);
@@ -2589,7 +2627,8 @@ function applyUserUsageChange(userId, creditsValue) {
             creditsFromCC: changed.lastCallCreditsFromCC,
             creditsFromEntPool: changed.lastCallCreditsFromEntPool,
             creditsMetered: changed.lastCallCreditsMetered,
-            meteredCost: changed.lastCallMeteredCost
+            meteredCost: changed.lastCallMeteredCost,
+            meteredBudgetLabels: changed.lastCallMeteredBudgetLabels
         };
     }
     saveState();

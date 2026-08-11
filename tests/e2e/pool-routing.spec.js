@@ -63,9 +63,36 @@ test('last-call details omit funding sources that consumed nothing', async ({ pa
     await simulator.expectStatus(
         'user-alice',
         'metered',
-        /^1,900 AI credits CC pool \+ 100 AI credits metered$/
+        /^1,900 AI credits CC pool \+ 100 AI credits metered via Enterprise Overage Budget$/
     );
     expect(await simulator.details('user-alice')).not.toContain('Enterprise pool');
+    await simulator.expectNextStatus(
+        'user-alice',
+        'metered',
+        /^Metered usage available via Enterprise Overage Budget$/
+    );
+});
+
+test('metered details name every applicable overage budget', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.load(singleUserState({
+        usage: 2000,
+        ccPoolEnabled: true,
+        ccBudget: 100,
+        orgBudget: 50
+    }));
+    await simulator.switchUnit('dollars');
+
+    await simulator.expectStatus(
+        'user-alice',
+        'metered',
+        /^\$19\.00 CC pool \+ \$1\.00 metered via Engineering Cost Center Overage Budget \+ Acme Organization Overage Budget \+ Enterprise Overage Budget$/
+    );
+    await simulator.expectNextStatus(
+        'user-alice',
+        'metered',
+        /^Metered usage available via Engineering Cost Center Overage Budget \+ Acme Organization Overage Budget \+ Enterprise Overage Budget$/
+    );
 });
 
 test('falls through from an exhausted cost-center pool to available enterprise pool', async ({ page }) => {
