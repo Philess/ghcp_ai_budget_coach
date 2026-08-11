@@ -1208,109 +1208,6 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
     return result;
 }
 
-// Fair-share ("water-filling") split of a shared pool of `capacity` integer
-// credits across demanders. Everyone gets an equal share; whoever needs less than
-// their share frees the excess for the others, until the capacity is used up or
-// every demand is met. Returns a { id: allocatedCredits } map. This models a shared
-// pool consumed concurrently over the month, so the result never depends on the
-// order users are processed in.
-function shareCapacity(demands, capacity) {
-    const alloc = {};
-    demands.forEach(d => { alloc[d.id] = 0; });
-    let remaining = Math.max(0, Math.floor(capacity));
-    let active = demands
-        .map(d => ({ id: d.id, need: Math.max(0, Math.floor(d.need)) }))
-        .filter(d => d.need > 0);
-
-    while (remaining > 0 && active.length > 0) {
-        const share = Math.floor(remaining / active.length);
-        if (share === 0) break; // leftover smaller than the number of demanders
-        const still = [];
-        active.forEach(d => {
-            const give = Math.min(d.need, share);
-            alloc[d.id] += give;
-            d.need -= give;
-            remaining -= give;
-            if (d.need > 0) still.push(d);
-        });
-        active = still;
-    }
-
-    // Hand out any indivisible remainder one credit at a time to the neediest.
-    active.sort((a, b) => b.need - a.need);
-    let i = 0;
-    while (remaining > 0 && active.some(d => d.need > 0)) {
-        const d = active[i % active.length];
-        if (d.need > 0) { alloc[d.id] += 1; d.need -= 1; remaining -= 1; }
-        i++;
-    }
-    return alloc;
-}
-
-// Credits a user wants to draw in the baseline phase ("starting point"), or 0 when
-// they have no baseline or the baseline alone already exceeds their ULB.
-function baselineDemand(user, baseline) {
-    const usage = state.usage[user.id] || 0;
-    const base = Math.min(baseline[user.id] || 0, usage);
-    if (base <= 0) return 0;
-    const ulb = getEffectiveULB(user);
-    if (ulb.value !== null && base > ulb.value) return 0;
-    return base;
-}
-
-// Credits a user still wants to draw in phase 2 (above the baseline already
-// consumed), or 0 when they consume nothing or are already blocked by their ULB.
-function phase2Demand(user, baselineResult) {
-    const usage = state.usage[user.id] || 0;
-    if (usage === 0) return 0;
-    const ulb = getEffectiveULB(user);
-    if (ulb.value !== null && usage > ulb.value) return 0;
-    const baselineDrawn = baselineResult
-        ? baselineResult.creditsFromCC + baselineResult.creditsFromEntPool + baselineResult.creditsMetered
-        : 0;
-    return Math.max(0, usage - baselineDrawn);
-}
-
-// Fair-share caps for every user's pool draw in one phase. The cost center pool and
-// the enterprise pool are shared resources, so they are split concurrently across all
-// demanders rather than being handed out first-come-first-served. Overage/metered
-// budgets are NOT capped here — those stay ordered by when the change was made.
-function computePoolCaps(poolState, demand) {
-    const caps = {};
-    state.users.forEach(u => { caps[u.id] = { cc: 0, ent: 0 }; });
-
-    // Cost center pools: split each pool across its own members.
-    state.costCenters.forEach(cc => {
-        if (!cc.poolEnabled) return;
-        const members = state.users.filter(u => {
-            const userCC = getUserCC(u);
-            return userCC && userCC.id === cc.id && demand[u.id] > 0;
-        });
-        const alloc = shareCapacity(
-            members.map(u => ({ id: u.id, need: demand[u.id] })),
-            poolState.ccPools[cc.id] || 0
-        );
-        members.forEach(u => { caps[u.id].cc = alloc[u.id] || 0; });
-    });
-
-    // Enterprise pool: split across users who reach it — those with no cost center
-    // pool, plus cost-center-pool users whose overage falls through when allowed.
-    const entDemanders = state.users
-        .map(u => {
-            const cc = getUserCC(u);
-            if (cc && cc.poolEnabled) {
-                if (!cc.overagesAllowed) return null; // blocked before the enterprise pool
-                return { id: u.id, need: Math.max(0, demand[u.id] - caps[u.id].cc) };
-            }
-            return { id: u.id, need: demand[u.id] };
-        })
-        .filter(d => d && d.need > 0);
-    const entAlloc = shareCapacity(entDemanders, poolState.enterprisePool);
-    entDemanders.forEach(d => { caps[d.id].ent = entAlloc[d.id] || 0; });
-
-    return caps;
-}
-
 function formatCallSource(outcome) {
     if ((outcome.usage || 0) === 0) return 'No usage';
     if (outcome.status === 'metered') {
@@ -1376,37 +1273,24 @@ function computeSimulationResults(options = {}) {
     const poolState = initPoolState();
     const baseline = state.usageBaseline || {};
 
-    // Phase 1 — Starting point: every user consumes their saved baseline together,
-    // depleting the shared pools/budgets concurrently so no user is starved by list
-    // order. The shared pools are split with the same fair-share caps used in phase 2.
-    // Only the pool state mutation is kept; the breakdown feeds phase 2.
-    const baselineDemands = {};
-    state.users.forEach(user => { baselineDemands[user.id] = baselineDemand(user, baseline); });
-    const baselineCaps = computePoolCaps(poolState, baselineDemands);
+    // Phase 1 — Starting point: saved baseline usage consumes shared pools in user
+    // list order. Only the pool state mutation is kept; the breakdown feeds phase 2.
     const baselineResults = {};
     state.users.forEach(user => {
         const total = state.usage[user.id] || 0;
         const base = Math.min(baseline[user.id] || 0, total);
         baselineResults[user.id] = base > 0
-            ? evaluateUser(user, base, poolState, null, baselineCaps[user.id])
+            ? evaluateUser(user, base, poolState)
             : null;
     });
 
-    // Phase 2 — Applied changes. The reserved/enterprise pool is a shared resource,
-    // so it is split concurrently across everyone (fair-share caps): once a cost
-    // center's pool and overage budget are exhausted, every member competing for
-    // them is blocked, not just the users processed last. Only the overage/metered
-    // budgets are drawn in the order the changes were made, revealing who keeps the
-    // scarce budget when there is still some room.
-    const phase2Demands = {};
-    state.users.forEach(user => {
-        phase2Demands[user.id] = phase2Demand(user, baselineResults[user.id]);
-    });
-    const poolCaps = computePoolCaps(poolState, phase2Demands);
+    // Phase 2 — Applied changes. Shared pools and overage/metered budgets are drawn
+    // in FIFO usage order: first by the user's first edit, then by user list order for
+    // usage restored without an edit sequence.
     const resultsByUser = {};
     getUsageApplicationOrder().forEach(user => {
         resultsByUser[user.id] = evaluateUser(
-            user, state.usage[user.id] || 0, poolState, baselineResults[user.id], poolCaps[user.id]);
+            user, state.usage[user.id] || 0, poolState, baselineResults[user.id]);
     });
 
     // Phase 3 — Collect final hard-stop state (order-independent). A budget with a

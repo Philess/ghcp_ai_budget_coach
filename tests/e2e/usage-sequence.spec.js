@@ -6,7 +6,7 @@ const PHILIPPE = 'user-philippe';
 const MATTHIEU = 'user-matthieu';
 const THIERRY = 'user-thierry';
 
-test('sets a concurrently consumed global baseline', async ({ page }) => {
+test('sets a FIFO-consumed global baseline', async ({ page }) => {
     const state = orderedOverageState();
     state.usage = {};
     state.usageBaseline = {};

@@ -100,7 +100,7 @@ test('blocks at an exhausted cost-center pool when overages are disabled', async
     });
 });
 
-test('shares a residual cost-center pool concurrently across competing members', async ({ page }) => {
+test('consumes a residual cost-center pool in FIFO order', async ({ page }) => {
     const state = orderedOverageState();
     state.costCenters[0].poolEnabled = true;
     state.costCenters[0].budget = 0;
@@ -111,8 +111,11 @@ test('shares a residual cost-center pool concurrently across competing members',
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
 
+    await simulator.expectStatus('user-philippe', 'served', /CC pool/);
+    for (const userId of ['user-matthieu', 'user-thierry']) {
+        await simulator.expectStatus(userId, 'blocked', /CC budget exhausted/);
+    }
     for (const user of state.users) {
-        await simulator.expectStatus(user.id, 'blocked', /CC budget exhausted/);
         await simulator.expectNextStatus(user.id, 'blocked', /CC budget exhausted/);
     }
     expect(await simulator.gaugeValues('cc-pool-cc-rnd')).toEqual({
@@ -122,7 +125,7 @@ test('shares a residual cost-center pool concurrently across competing members',
     });
 });
 
-test('shares residual enterprise capacity concurrently across unreserved users', async ({ page }) => {
+test('consumes residual enterprise capacity in FIFO order', async ({ page }) => {
     const ids = ['user-a', 'user-b', 'user-c'];
     const state = createState({
         enterprise: {
@@ -143,8 +146,11 @@ test('shares residual enterprise capacity concurrently across unreserved users',
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
 
-    for (const id of ids) {
+    await simulator.expectStatus('user-a', 'served', /Enterprise pool/);
+    for (const id of ['user-b', 'user-c']) {
         await simulator.expectStatus(id, 'blocked', /Enterprise budget exhausted/);
+    }
+    for (const id of ids) {
         await simulator.expectNextStatus(id, 'blocked', /Enterprise budget exhausted/);
     }
     expect(await simulator.gaugeValues('enterprise-pool')).toEqual({

@@ -77,7 +77,7 @@ function assertNextCall(result, status, reason) {
     if (reason) assert.match(result.nextCallReason, reason);
 }
 
-test('the starting point is consumed concurrently by every user', () => {
+test('the starting point consumes the shared pool in user order', () => {
     const sim = setupAtStartingPoint();
     const byId = resultsById(sim);
     [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
@@ -138,8 +138,8 @@ test('a later user action does not rewrite another user last-call outcome or bre
     assertLastCall(byId[MATTHIEU], 'metered');
     assert.equal(byId[PHILIPPE].lastCallCreditsFromEntPool, 1900);
     assert.equal(byId[PHILIPPE].lastCallCreditsMetered, 100);
-    assert.equal(byId[MATTHIEU].lastCallCreditsFromEntPool, 950);
-    assert.equal(byId[MATTHIEU].lastCallCreditsMetered, 1050);
+    assert.equal(byId[MATTHIEU].lastCallCreditsFromEntPool, 0);
+    assert.equal(byId[MATTHIEU].lastCallCreditsMetered, 2000);
 });
 
 test('a historical blocked reason follows the selected display unit', () => {
@@ -490,14 +490,14 @@ test('pool exhaustion preserves earlier calls and blocks every next call', () =>
 
     const byId = resultsById(sim);
     // Thierry's earlier request fit at the time it was made. Later actions do not
-    // rewrite that outcome, while the final fair share leaves every next call blocked.
+    // rewrite that outcome, while the final exhausted pool leaves every next call blocked.
     assertLastCall(byId[THIERRY], 'served');
     assertLastCall(byId[MATTHIEU], 'blocked');
     assertLastCall(byId[PHILIPPE], 'blocked');
-    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => {
-        assertNextCall(byId[id], 'blocked');
-        assert.equal(byId[id].creditsFromCC, 1900, `${id} keeps its fair 100-credit pool share above baseline`);
-    });
+    assert.equal(byId[THIERRY].creditsFromCC, 2000);
+    assert.equal(byId[MATTHIEU].creditsFromCC, 1900);
+    assert.equal(byId[PHILIPPE].creditsFromCC, 1800);
+    [PHILIPPE, MATTHIEU, THIERRY].forEach(id => assertNextCall(byId[id], 'blocked'));
 });
 
 test('off-promotion seat entitlements provide 1,900 Business and 3,900 Enterprise credits', () => {
@@ -544,9 +544,8 @@ test('cost-center ULB applies to members resolved through an enterprise team', (
     assertNextCall(byId[PHILIPPE], 'blocked', /ULB exceeded.*CC: Platform CC/);
 });
 
-// The starting point is consumed by everyone at once, so an over-subscribed pool is
-// split fairly instead of being handed entirely to the first user in the list.
-function baselineSharingState(userOrder) {
+// The starting point consumes shared pools in user-list order.
+function baselineFifoState(userOrder) {
     const state = scenarioState();
     state.enterprise.businessSeats = 1;   // 1,900 pool credits for two users
     state.enterprise.enterpriseBudget = null;
@@ -561,24 +560,27 @@ function baselineSharingState(userOrder) {
     return state;
 }
 
-test('an over-subscribed starting point is shared fairly whatever the user order', () => {
+test('an over-subscribed starting point follows user-list order', () => {
     [[PHILIPPE, MATTHIEU], [MATTHIEU, PHILIPPE]].forEach(order => {
         const sim = loadSimulator();
-        sim.setState(baselineSharingState(order));
+        sim.setState(baselineFifoState(order));
         const state = sim.getState();
         state.users.forEach(u => { state.usage[u.id] = 1900; });
         sim.call('setStartingPoint');
 
         const byId = resultsById(sim);
-        order.forEach(id => {
-            assert.equal(byId[id].creditsFromEntPool, 950, `${id} gets half of the pool`);
-            assert.equal(byId[id].creditsMetered, 950, `${id} meters the other half`);
-        });
+        assert.equal(byId[order[0]].creditsFromEntPool, 1900);
+        assert.equal(byId[order[0]].creditsMetered, 0);
+        assertLastCall(byId[order[0]], 'served');
+        assert.equal(byId[order[1]].creditsFromEntPool, 0);
+        assert.equal(byId[order[1]].creditsMetered, 1900);
+        assertLastCall(byId[order[1]], 'served');
+        assert.equal(byId[order[1]].lastCallCreditsMetered, 1900);
     });
 });
 
-test('an over-subscribed starting point blocks nobody in particular when metering is off', () => {
-    const state = baselineSharingState([PHILIPPE, MATTHIEU]);
+test('an over-subscribed starting point blocks the later user when metering is off', () => {
+    const state = baselineFifoState([PHILIPPE, MATTHIEU]);
     state.enterprise.meteredEnabled = false;
     const sim = loadSimulator();
     sim.setState(state);
@@ -587,8 +589,8 @@ test('an over-subscribed starting point blocks nobody in particular when meterin
     sim.call('setStartingPoint');
 
     const byId = resultsById(sim);
-    [PHILIPPE, MATTHIEU].forEach(id => {
-        assert.equal(byId[id].creditsFromEntPool, 950);
-        assertLastCall(byId[id], 'blocked', /metered usage not enabled/);
-    });
+    assert.equal(byId[PHILIPPE].creditsFromEntPool, 1900);
+    assertLastCall(byId[PHILIPPE], 'served');
+    assert.equal(byId[MATTHIEU].creditsFromEntPool, 0);
+    assertLastCall(byId[MATTHIEU], 'blocked', /metered usage not enabled/);
 });

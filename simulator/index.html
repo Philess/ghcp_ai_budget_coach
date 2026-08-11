@@ -289,10 +289,10 @@
             <div id="dashboardContent">
                 <div class="sim-workflow-note">
                     <strong>💡 How this simulation works</strong>
-                    <p>Budgets are consumed by everyone concurrently, day after day — not fully by the first users in the list. To model this realistically:</p>
+                    <p>Budgets are common pools consumed in FIFO order: earlier consumption can use the available included credits before later users start consuming.</p>
                     <ol>
-                        <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline is consumed by all users together.</li>
-                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. Every change is re-simulated for everyone: the shared cost center and enterprise pools are split concurrently across all users, while the overage (metered) budgets are drawn in the exact order you make the changes — so once a pool and its overage budget are both exhausted, every member competing for them is blocked.</li>
+                        <li><strong>Set a starting point:</strong> use the Global Usage Distribution below to give every user their day-to-day consumption, then click <em>Set as Starting Point</em>. This baseline consumes shared pools in user-list order.</li>
+                        <li><strong>Adjust user by user:</strong> from that saved point, change individual users' consumption in the Simulation Results table. Every change is re-simulated for everyone: shared cost center and enterprise pools, then overage (metered) budgets, are drawn in the exact order you make the changes — so earlier users can consume the remaining pool before later users meter or block.</li>
                     </ol>
                 </div>
                 <div class="card">

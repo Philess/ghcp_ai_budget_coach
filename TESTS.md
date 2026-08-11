@@ -28,12 +28,12 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   of its resolved members.
 - Users without a reserved cost-center pool draw from the unreserved
   enterprise pool.
-- Included pools are shared concurrently. Both the starting point and the
-  post-baseline draws divide the available capacity fairly between competing
-  users rather than consuming it in user-list order.
-- Post-baseline metered usage is evaluated in the order in which users were
-  first changed. Re-editing a user updates that user's existing sequence entry
-  and never moves it.
+- Included pools are common shared pools. The starting point consumes them in
+  user-list order; post-baseline draws consume them in the order users were
+  first changed, then user-list order for restored usage without an edit
+  sequence.
+- Metered usage follows the same FIFO order. Re-editing a user updates that
+  user's existing sequence entry and never moves it.
 - **Last Call** is the actual result of a user's latest simulated consumption.
   A later action by another user never retroactively rewrites it.
 - **Next Call** projects one additional credit from the final shared pool and
@@ -54,7 +54,7 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
 
 | Layer | Responsibility |
 |---|---|
-| Node unit tests | Calculation details, fair sharing, ordering, two-status projections, state normalization, and boundary behavior without a browser |
+| Node unit tests | Calculation details, FIFO ordering, two-status projections, state normalization, and boundary behavior without a browser |
 | Playwright E2E tests | Configuration workflows, browser persistence, rendered Last Call/Next Call statuses, reasons/accounting, and multi-step transitions |
 
 One E2E scenario creates a representative enterprise through the real UI.
@@ -96,8 +96,8 @@ Every fixture defines `usage`, `usageBaseline`, `usageSequence`,
 | POOL-02 | Cost-center member consumes below reserved-pool capacity | `served`; source is cost-center pool; enterprise pool is unchanged |
 | POOL-03 | Exhaust CC pool with overages allowed while enterprise pool has room | `served`; source shows CC and enterprise pools |
 | POOL-04 | Exhaust CC pool with overages disabled | `blocked` before enterprise or metered capacity; reason identifies the CC pool |
-| POOL-05 | Several CC members compete for a residual reserved pool | Residual credits are fairly shared independently of list/edit order |
-| POOL-06 | Several unreserved users compete for residual enterprise capacity | Residual credits are fairly shared; the first row cannot consume all of it |
+| POOL-05 | Several CC members compete for a residual reserved pool | Residual credits are consumed FIFO; later members block once the shared pool and hard-stop budget are exhausted |
+| POOL-06 | Several unreserved users compete for residual enterprise capacity | Residual credits are consumed FIFO; later users block once the enterprise pool and hard-stop budget are exhausted |
 | POOL-07 | Keep CC reservations while an unassigned user consumes | The unassigned user cannot consume reserved credits |
 | POOL-08 | Consume one below, exactly at, and one above pool capacity | Below/at are `served`; above follows the next configured branch |
 
@@ -137,7 +137,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 
 | ID | Step | Expected transition |
 |---|---|---|
-| SEQ-01 | Distribute baseline usage and click **Set as Starting Point** | All three users are `served`; baseline is consumed concurrently; edit order is empty |
+| SEQ-01 | Distribute baseline usage and click **Set as Starting Point** | All three users are `served`; baseline consumes the enterprise pool in user-list order; edit order is empty |
 | SEQ-02 | Change Thierry from 1,900 to 1,960 | Thierry's Last Call is `metered`; others' Last Call stays `served`; CC budget usage is $0.60 |
 | SEQ-03 | Change Matthieu from 1,900 to 1,940 | Thierry and Matthieu have `metered` Last Call; Philippe stays `served`; budget is exactly $1.00 |
 | SEQ-04 | Change Philippe from 1,900 to 1,910 | Philippe is Last Call `blocked` / Next Call `blocked`; Thierry and Matthieu are Last Call `metered` / Next Call `blocked`; all show the CC-budget Next Call reason |
@@ -175,7 +175,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | Individual ULB overrides CC, which overrides universal | ULB-01 through ULB-03 |
 | Pool reservations follow membership and license count | CFG-02, CFG-04, CFG-06 |
 | User outside a cost center uses unreserved pool | CFG-05, POOL-07 |
-| Baseline and pools are concurrent; metered edits are ordered | POOL-05, POOL-06, SEQ-01 through SEQ-10 |
+| Baseline, included pools, and metered usage follow FIFO order | POOL-05, POOL-06, SEQ-01 through SEQ-10 |
 | Last Call is historical; Next Call projects final shared state | MTR-03 through MTR-05, MTR-09, MTR-10, SEQ-02 through SEQ-05, UI-01 |
 | Scope hard stops freeze Next Call without rewriting earlier Last Calls | MTR-03 through MTR-05, SEQ-04, SEQ-05 |
 
