@@ -1,0 +1,317 @@
+{
+  "enterprise": {
+    "businessSeats": 22,
+    "enterpriseSeats": 1,
+    "meteredEnabled": true,
+    "enterpriseBudget": 3000,
+    "enterpriseHardStop": true,
+    "universalULB": 6000,
+    "autoBusinessSeats": true,
+    "autoEnterpriseSeats": true,
+    "autoSeats": true
+  },
+  "teams": [
+    {
+      "id": "team_1783347522542",
+      "name": "CopilotOnlyTeam"
+    }
+  ],
+  "orgs": [
+    {
+      "id": "org_1783347539114",
+      "name": "ECommerce",
+      "budget": null,
+      "budgetHardStop": true
+    }
+  ],
+  "costCenters": [
+    {
+      "id": "cc_1783340547965",
+      "name": "RND",
+      "team": "RND",
+      "poolEnabled": true,
+      "overagesAllowed": true,
+      "budget": 100,
+      "budgetHardStop": true,
+      "ulb": 15000,
+      "teamIds": [
+        "team_1783347522542"
+      ],
+      "teamId": "team_1783347522542",
+      "orgIds": []
+    },
+    {
+      "id": "cc_1783347696931",
+      "name": "ECommerce_CC",
+      "teamId": null,
+      "poolEnabled": true,
+      "overagesAllowed": true,
+      "budget": null,
+      "budgetHardStop": true,
+      "ulb": 10000,
+      "orgIds": [
+        "org_1783347539114"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "user_1783340586171",
+      "name": "Philippe",
+      "costCenterId": "cc_1783340547965",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783340601169",
+      "name": "Matthieu",
+      "costCenterId": "cc_1783340547965",
+      "individualULB": 30000
+    },
+    {
+      "id": "user_1783347757952",
+      "name": "Thierry",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "enterprise",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786777",
+      "name": "ai_squad_-1",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786778",
+      "name": "ai_squad_-2",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786779",
+      "name": "ai_squad_-3",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": null,
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786780",
+      "name": "ai_squad_-4",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786781",
+      "name": "ai_squad_-5",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786782",
+      "name": "ai_squad_-6",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786783",
+      "name": "ai_squad_-7",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786784",
+      "name": "ai_squad_-8",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786785",
+      "name": "ai_squad_-9",
+      "costCenterId": null,
+      "orgId": "org_1783347539114",
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783370786786",
+      "name": "ai_squad_-10",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304767",
+      "name": "ghcponly-1",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304768",
+      "name": "ghcponly-2",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304769",
+      "name": "ghcponly-3",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304770",
+      "name": "ghcponly-4",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304771",
+      "name": "ghcponly-5",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304772",
+      "name": "ghcponly-6",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304773",
+      "name": "ghcponly-7",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304774",
+      "name": "ghcponly-8",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304775",
+      "name": "ghcponly-9",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    },
+    {
+      "id": "user_1783586304776",
+      "name": "ghcponly-10",
+      "costCenterId": null,
+      "orgId": null,
+      "teamId": "team_1783347522542",
+      "license": "business",
+      "individualULB": null
+    }
+  ],
+  "usage": {
+    "user_1783340586171": 3232,
+    "user_1783340601169": 3232,
+    "user_1783347757952": 3232,
+    "user_1783370786777": 720,
+    "user_1783370786778": 3232,
+    "user_1783370786779": 720,
+    "user_1783370786780": 3232,
+    "user_1783370786781": 3232,
+    "user_1783370786782": 3232,
+    "user_1783370786783": 3232,
+    "user_1783370786784": 3232,
+    "user_1783370786785": 3232,
+    "user_1783370786786": 3232,
+    "user_1783586304767": 3232,
+    "user_1783586304768": 3232,
+    "user_1783586304769": 3232,
+    "user_1783586304770": 3232,
+    "user_1783586304771": 3232,
+    "user_1783586304772": 3232,
+    "user_1783586304773": 3232,
+    "user_1783586304774": 3232,
+    "user_1783586304775": 3232,
+    "user_1783586304776": 3232
+  },
+  "usageBaseline": {
+    "user_1783340586171": 3232,
+    "user_1783340601169": 3232,
+    "user_1783347757952": 3232,
+    "user_1783370786777": 720,
+    "user_1783370786778": 3232,
+    "user_1783370786779": 720,
+    "user_1783370786780": 3232,
+    "user_1783370786781": 3232,
+    "user_1783370786782": 3232,
+    "user_1783370786783": 3232,
+    "user_1783370786784": 3232,
+    "user_1783370786785": 3232,
+    "user_1783370786786": 3232,
+    "user_1783586304767": 3232,
+    "user_1783586304768": 3232,
+    "user_1783586304769": 3232,
+    "user_1783586304770": 3232,
+    "user_1783586304771": 3232,
+    "user_1783586304772": 3232,
+    "user_1783586304773": 3232,
+    "user_1783586304774": 3232,
+    "user_1783586304775": 3232,
+    "user_1783586304776": 3232
+  },
+  "usageSequence": [],
+  "simulationUnit": "dollars",
+  "globalBudgetPercents": {
+    "ccPool_cc_1783340547965": 100,
+    "ccOverage_cc_1783340547965": 9,
+    "ccPool_cc_1783347696931": 24
+  }
+}

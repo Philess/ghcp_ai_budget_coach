@@ -193,19 +193,36 @@ function exportConfig() {
     URL.revokeObjectURL(url);
 }
 
+function applyConfiguration(configuration) {
+    state = normalizeState(configuration);
+    saveState();
+    renderAll();
+}
+
 function importConfig(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            state = normalizeState(JSON.parse(e.target.result));
-            saveState();
-            renderAll();
+            applyConfiguration(JSON.parse(e.target.result));
         } catch (err) { alert('Invalid JSON file: ' + err.message); }
     };
+    reader.onerror = () => alert('Unable to read the selected configuration file.');
     reader.readAsText(file);
     event.target.value = '';
+}
+
+async function loadSampleConfig() {
+    if (hasAnyData() && !confirm('Replace the current configuration with sample data?')) return;
+
+    try {
+        const response = await fetch('budget-simulator-sample.json');
+        if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+        applyConfiguration(await response.json());
+    } catch (err) {
+        alert('Unable to load sample data: ' + err.message);
+    }
 }
 
 function resetAll() {

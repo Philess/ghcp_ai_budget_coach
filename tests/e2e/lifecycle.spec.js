@@ -43,6 +43,43 @@ test('imports, normalizes, renders, and persists a configuration', async ({ page
     await expect(simulator.row('user-imported')).toBeVisible();
 });
 
+test('loads and persists the bundled sample configuration', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.loadEmpty();
+
+    await page.locator('#dashboardEmpty').getByRole('button', { name: /Load sample data/ }).click();
+    await expect(simulator.row('user_1783340586171')).toContainText('Philippe');
+    await expect(page.locator('#dashboardContent')).toBeVisible();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    const state = await simulator.persistedState();
+    expect(state.users).toHaveLength(23);
+    expect(state.costCenters).toHaveLength(2);
+    expect(state.enterprise).toMatchObject({
+        businessSeats: 22,
+        enterpriseSeats: 1,
+        enterpriseBudget: 3000
+    });
+    await expect(simulator.row('user_1783340586171')).toBeVisible();
+});
+
+test('confirms before replacing existing configuration with sample data', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.load(orderedOverageState());
+    const sampleButton = page.locator('header').getByRole('button', { name: /Load sample data/ });
+
+    page.once('dialog', dialog => dialog.dismiss());
+    await sampleButton.click();
+    await expect(simulator.row('user-philippe')).toBeVisible();
+    expect((await simulator.persistedState()).users[0].id).toBe('user-philippe');
+
+    page.once('dialog', dialog => dialog.accept());
+    await sampleButton.click();
+    await expect(simulator.row('user_1783340586171')).toContainText('Philippe');
+    await expect(simulator.row('user-philippe')).toHaveCount(0);
+});
+
 test('canceling reset preserves state and confirming reset restores defaults', async ({ page }) => {
     const simulator = new SimulatorPage(page);
     await simulator.load(orderedOverageState());
