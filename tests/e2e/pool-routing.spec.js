@@ -46,7 +46,7 @@ test('serves a cost-center member from its reserved pool', async ({ page }) => {
     const simulator = new SimulatorPage(page);
     await simulator.load(singleUserState({ usage: 1000, ccPoolEnabled: true }));
 
-    await simulator.expectStatus('user-alice', 'served', /CC pool/);
+    await simulator.expectStatus('user-alice', 'served', /^1,000 AI credits CC pool$/);
     await simulator.expectNextStatus('user-alice', 'served');
     expect(await simulator.costCenter('user-alice')).toBe('Engineering');
     expect(await simulator.gaugeValues('cc-pool-cc-engineering')).toEqual({
@@ -56,13 +56,25 @@ test('serves a cost-center member from its reserved pool', async ({ page }) => {
     });
 });
 
+test('last-call details omit funding sources that consumed nothing', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.load(singleUserState({ usage: 2000, ccPoolEnabled: true }));
+
+    await simulator.expectStatus(
+        'user-alice',
+        'metered',
+        /^1,900 AI credits CC pool \+ 100 AI credits metered$/
+    );
+    expect(await simulator.details('user-alice')).not.toContain('Enterprise pool');
+});
+
 test('falls through from an exhausted cost-center pool to available enterprise pool', async ({ page }) => {
     const state = singleUserState({ usage: 2000, ccPoolEnabled: true });
     state.enterprise.businessSeats = 2;
     const simulator = new SimulatorPage(page);
     await simulator.load(state);
 
-    await simulator.expectStatus('user-alice', 'served', /CC pool.*Ent\. pool/);
+    await simulator.expectStatus('user-alice', 'served', /CC pool.*Enterprise pool/);
     await simulator.expectNextStatus('user-alice', 'served');
     expect(await simulator.gaugeValues('cc-pool-cc-engineering')).toMatchObject({
         used: '1,900 AI credits',

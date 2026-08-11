@@ -21,6 +21,7 @@
     <nav id="mainNav">
         <button class="active" data-panel="simulate">📊 Dashboard</button>
         <button data-panel="pool">🏊 Pool View</button>
+        <button data-panel="orgmap">🗺️ Org Map</button>
         <button data-panel="enterprise">⚙️ Settings</button>
     </nav>
 
@@ -271,6 +272,37 @@
                 <p class="help-text" style="margin-bottom: 12px">Shows how the enterprise shared pool is partitioned across cost centers with AI credit pools enabled.</p>
                 <div id="poolVisualization"></div>
             </div>
+        </div>
+
+        <!-- ═══════════════ ORGANIZATION MAP TAB ═══════════════ -->
+        <div id="panel-orgmap" class="panel">
+            <section class="card orgmap-intro-card" aria-labelledby="orgMapTitle">
+                <div class="orgmap-intro">
+                    <h2 id="orgMapTitle">🗺️ Organization Map</h2>
+                    <p class="help-text orgmap-description">Explore how enterprise entities, people, and budget controls connect. Use the map to understand ownership and trace where AI credit budgets apply.</p>
+                </div>
+                <div class="orgmap-legend" aria-label="Organization map legend">
+                    <div class="orgmap-legend-group">
+                        <h3 class="orgmap-legend-title">Entity colors</h3>
+                        <ul class="orgmap-legend-list">
+                            <li class="orgmap-legend-item"><span class="orgmap-entity-swatch orgmap-entity-enterprise" aria-hidden="true"></span><span>Enterprise</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-entity-swatch orgmap-entity-cost-center" aria-hidden="true"></span><span>Cost center</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-entity-swatch orgmap-entity-organization" aria-hidden="true"></span><span>Organization</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-entity-swatch orgmap-entity-team" aria-hidden="true"></span><span>Team</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-entity-swatch orgmap-entity-user" aria-hidden="true"></span><span>User</span></li>
+                        </ul>
+                    </div>
+                    <div class="orgmap-legend-group">
+                        <h3 class="orgmap-legend-title">Budget badges</h3>
+                        <ul class="orgmap-legend-list">
+                            <li class="orgmap-legend-item"><span class="orgmap-budget-badge orgmap-budget-ulb" aria-hidden="true">ULB</span><span>User-level budget</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-budget-badge orgmap-budget-overage" aria-hidden="true">Overage</span><span>Metered overage budget</span></li>
+                            <li class="orgmap-legend-item"><span class="orgmap-budget-badge orgmap-budget-pool" aria-hidden="true">Pool</span><span>Pool reservation</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            <div id="orgMapCanvas" class="orgmap-canvas" role="region" aria-label="Organization map visualization" aria-live="polite"></div>
         </div>
 
         <!-- ═══════════════ SIMULATION DASHBOARD ═══════════════ -->
