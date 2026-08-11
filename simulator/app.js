@@ -2096,7 +2096,8 @@ function configurationEquals(a, b) {
     const aKeys = Object.keys(a).sort();
     const bKeys = Object.keys(b).sort();
     if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((key, index) => key === bKeys[index] && configurationEquals(a[key], b[key]));
+    if (aKeys.some((key, index) => key !== bKeys[index])) return false;
+    return aKeys.every(key => configurationEquals(a[key], b[key]));
 }
 
 function renderDashboardState() {
