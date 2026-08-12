@@ -484,6 +484,360 @@ function getCCPoolSize(cc) {
     return getAssignedCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
 }
 
+function orgMapIdList(primaryId, ids) {
+    const requested = new Set([
+        primaryId,
+        ...(Array.isArray(ids) ? ids : [])
+    ].filter(id => id !== null && id !== undefined && id !== ''));
+    return requested;
+}
+
+function orgMapMemberships(user, items, singularField, pluralField) {
+    const requested = orgMapIdList(user[singularField], user[pluralField]);
+    return items
+        .filter(item => requested.has(item.id))
+        .map(item => ({ id: item.id, name: item.name }));
+}
+
+function orgMapGroup(type, item = null) {
+    return {
+        type,
+        id: item ? item.id : 'direct',
+        name: item ? item.name : 'Direct users',
+        users: [],
+        usage: 0
+    };
+}
+
+function buildOrgMapModel() {
+    const users = Array.isArray(state.users) ? state.users : [];
+    const teams = Array.isArray(state.teams) ? state.teams : [];
+    const orgs = Array.isArray(state.orgs) ? state.orgs : [];
+    const costCenters = Array.isArray(state.costCenters) ? state.costCenters : [];
+    const usage = state.usage && typeof state.usage === 'object' ? state.usage : {};
+    const usageBaseline = state.usageBaseline && typeof state.usageBaseline === 'object' ? state.usageBaseline : {};
+    const lastCallOutcomes = state.lastCallOutcomes && typeof state.lastCallOutcomes === 'object'
+        ? state.lastCallOutcomes
+        : {};
+
+    const effectiveCCByUser = new Map(users.map(user => [user, getUserCC(user)]));
+    const assignedTeamCC = new Map();
+    const assignedOrgCC = new Map();
+
+    costCenters.forEach(cc => {
+        const teamIds = orgMapIdList(cc.teamId, cc.teamIds);
+        teams.forEach(team => {
+            if (teamIds.has(team.id) && !assignedTeamCC.has(team.id)) assignedTeamCC.set(team.id, cc.id);
+        });
+        const orgIds = orgMapIdList(null, cc.orgIds);
+        orgs.forEach(org => {
+            if (orgIds.has(org.id) && !assignedOrgCC.has(org.id)) assignedOrgCC.set(org.id, cc.id);
+        });
+    });
+
+    const destinations = [
+        ...costCenters.map(cc => ({ id: cc.id, source: cc, isUnassigned: false })),
+        { id: null, source: null, isUnassigned: true }
+    ];
+
+    const costCenterNodes = destinations.map(destination => {
+        const destinationUsers = users.filter(user => (effectiveCCByUser.get(user)?.id || null) === destination.id);
+        const destinationUserSet = new Set(destinationUsers);
+        const teamGroups = teams
+            .filter(team => (assignedTeamCC.get(team.id) || null) === destination.id ||
+                destinationUsers.some(user => orgMapIdList(user.teamId, user.teamIds).has(team.id)))
+            .map(team => orgMapGroup('team', team));
+        const organizationGroups = orgs
+            .filter(org => (assignedOrgCC.get(org.id) || null) === destination.id ||
+                destinationUsers.some(user => orgMapIdList(user.orgId, user.orgIds).has(org.id)))
+            .map(org => orgMapGroup('organization', org));
+        const directGroup = orgMapGroup('direct');
+        const groups = [...teamGroups, ...organizationGroups, directGroup];
+        const teamGroupById = new Map(teamGroups.map(group => [group.id, group]));
+        const orgGroupById = new Map(organizationGroups.map(group => [group.id, group]));
+
+        users.forEach(user => {
+            if (!destinationUserSet.has(user)) return;
+
+            const userTeams = orgMapMemberships(user, teams, 'teamId', 'teamIds');
+            const userOrganizations = orgMapMemberships(user, orgs, 'orgId', 'orgIds');
+            const group = (userTeams.length > 0 && teamGroupById.get(userTeams[0].id)) ||
+                (userOrganizations.length > 0 && orgGroupById.get(userOrganizations[0].id)) ||
+                directGroup;
+            const userUsage = Number(usage[user.id]) || 0;
+            const userNode = {
+                ...user,
+                teamIds: userTeams.map(team => team.id),
+                orgIds: userOrganizations.map(org => org.id),
+                memberships: {
+                    teams: userTeams,
+                    organizations: userOrganizations
+                },
+                groupedBy: { type: group.type, id: group.id },
+                effectiveCostCenterId: destination.id,
+                creditsPerSeat: userCreditsPerSeat(user),
+                usage: userUsage,
+                usageBaseline: Number(usageBaseline[user.id]) || 0,
+                lastCallOutcome: lastCallOutcomes[user.id]
+                    ? { ...lastCallOutcomes[user.id] }
+                    : null
+            };
+            group.users.push(userNode);
+            const aggregateGroups = [
+                ...userTeams.map(team => teamGroupById.get(team.id)).filter(Boolean),
+                ...userOrganizations.map(org => orgGroupById.get(org.id)).filter(Boolean)
+            ];
+            (aggregateGroups.length > 0 ? aggregateGroups : [directGroup]).forEach(aggregateGroup => {
+                if (!Array.isArray(aggregateGroup.aggregateUsers)) aggregateGroup.aggregateUsers = [];
+                aggregateGroup.aggregateUsers.push(userNode);
+                aggregateGroup.usage += userUsage;
+            });
+        });
+
+        const source = destination.source;
+        const assignedMembers = source ? getAssignedCCMembers(source) : destinationUsers;
+        groups.forEach(group => {
+            if (!Array.isArray(group.aggregateUsers)) group.aggregateUsers = [...group.users];
+            group.memberCount = group.aggregateUsers.length;
+        });
+        const nodeUsage = destinationUsers.reduce((sum, user) => sum + (Number(usage[user.id]) || 0), 0);
+        return {
+            ...(source ? {
+                ...source,
+                teamIds: [...orgMapIdList(source.teamId, source.teamIds)],
+                orgIds: [...orgMapIdList(null, source.orgIds)],
+                userIds: [...orgMapIdList(null, source.userIds)]
+            } : {
+                id: 'unassigned',
+                name: 'Unassigned',
+                poolEnabled: false,
+                overagesAllowed: true,
+                budget: null,
+                budgetHardStop: true,
+                ulb: null
+            }),
+            type: 'cost-center',
+            isUnassigned: destination.isUnassigned,
+            memberCount: assignedMembers.length,
+            poolSize: source ? getCCPoolSize(source) : 0,
+            usage: nodeUsage,
+            groups
+        };
+    });
+
+    const visibleCostCenters = costCenterNodes.filter(node =>
+        !node.isUnassigned ||
+        node.memberCount > 0 ||
+        node.groups.some(group => group.type !== 'direct')
+    );
+    const enterpriseUsage = users.reduce((sum, user) => sum + (Number(usage[user.id]) || 0), 0);
+    const enterprise = state.enterprise && typeof state.enterprise === 'object' ? state.enterprise : {};
+
+    return {
+        ...enterprise,
+        type: 'enterprise',
+        id: 'enterprise',
+        name: enterprise.name || 'Enterprise',
+        businessSeats: Number(enterprise.businessSeats) || 0,
+        enterpriseSeats: Number(enterprise.enterpriseSeats) || 0,
+        totalSeats: totalSeats(),
+        totalPool: totalPool(),
+        usage: enterpriseUsage,
+        userCount: users.length,
+        costCenters: visibleCostCenters
+    };
+}
+
+function orgMapHasBudget(value) {
+    return value !== null && value !== undefined && Number.isFinite(Number(value));
+}
+
+function orgMapBudgetId(kind, sourceLevel, sourceId, targetLevel, targetId) {
+    return ['orgmap-budget', kind, sourceLevel, sourceId, 'for', targetLevel, targetId]
+        .map(part => encodeURIComponent(String(part)))
+        .join(':');
+}
+
+function orgMapBudgetDescriptor(kind, source, target, options) {
+    return {
+        id: orgMapBudgetId(kind, source.level, source.id, target.level, target.id),
+        kind,
+        level: source.level,
+        amount: Number(options.amount),
+        amountUnit: options.amountUnit,
+        hardStop: Boolean(options.hardStop),
+        effective: false,
+        shadowedBy: null,
+        inherited: source.level !== target.level || source.id !== (target.sourceId || target.id),
+        rule: '',
+        title: options.title,
+        sourceName: source.name,
+        reason: options.reason
+    };
+}
+
+function orgMapFinalizeBudgetChain(descriptors) {
+    if (descriptors.length === 0) return descriptors;
+    const effective = descriptors[descriptors.length - 1];
+    return descriptors.map(descriptor => {
+        const isEffective = descriptor.id === effective.id;
+        const rule = isEffective
+            ? descriptor.reason
+            : `${descriptor.title} does not apply here because ${effective.title} has higher precedence.`;
+        const { reason, ...result } = descriptor;
+        return {
+            ...result,
+            effective: isEffective,
+            shadowedBy: isEffective ? null : effective.id,
+            rule
+        };
+    });
+}
+
+function orgMapFinalizeConcurrentBudgets(descriptors) {
+    return descriptors.map(descriptor => {
+        const { reason, ...result } = descriptor;
+        return {
+            ...result,
+            effective: true,
+            shadowedBy: null,
+            rule: reason
+        };
+    });
+}
+
+function collectOrgMapBudgets(node, context = {}) {
+    if (!node || typeof node !== 'object') return [];
+
+    const enterprise = context.enterprise || (node.type === 'enterprise' ? node : state.enterprise) || {};
+    const nodeIsCostCenter = node.type === 'cost-center';
+    const nodeIsGroup = node.type === 'organization' || node.type === 'team' || node.type === 'direct';
+    const nodeIsUser = !nodeIsCostCenter && !nodeIsGroup && node.type !== 'enterprise';
+    const targetLevel = node.type === 'cost-center'
+        ? 'cost-center'
+        : (node.type === 'organization' ? 'organization' : (node.type === 'team' ? 'team' : (node.type === 'enterprise' ? 'enterprise' : (node.type === 'direct' ? 'group' : 'user'))));
+    const requestedCostCenterId = nodeIsCostCenter
+        ? node.id
+        : (node.effectiveCostCenterId || context.costCenter?.id);
+    const costCenter = nodeIsCostCenter
+        ? node
+        : (context.costCenter && context.costCenter.id === requestedCostCenterId
+            ? context.costCenter
+            : state.costCenters.find(cc => cc.id === requestedCostCenterId));
+    const organization = node.type === 'organization'
+        ? state.orgs.find(org => org.id === node.id)
+        : (nodeIsUser
+            ? (node.orgId
+                ? state.orgs.find(org => org.id === node.orgId)
+                : (context.organization || context.org || null))
+            : null);
+    const targetSourceId = node.id || targetLevel;
+    const target = {
+        level: targetLevel,
+        sourceId: targetSourceId,
+        id: nodeIsGroup
+            ? `${costCenter?.id || 'unassigned'}:${targetSourceId}`
+            : targetSourceId
+    };
+
+    const ulbs = [];
+    if (orgMapHasBudget(enterprise.universalULB)) {
+        ulbs.push(orgMapBudgetDescriptor('ulb',
+            { level: 'enterprise', id: enterprise.id || 'enterprise', name: enterprise.name || 'Enterprise' },
+            target, {
+                amount: enterprise.universalULB,
+                amountUnit: 'credits',
+                hardStop: true,
+                title: 'Universal ULB',
+                reason: 'Applies because no cost-center or individual ULB with higher precedence is configured for this scope.'
+            }));
+    }
+    if (costCenter && !costCenter.isUnassigned && orgMapHasBudget(costCenter.ulb)) {
+        ulbs.push(orgMapBudgetDescriptor('ulb',
+            { level: 'cost-center', id: costCenter.id, name: costCenter.name },
+            target, {
+                amount: costCenter.ulb,
+                amountUnit: 'credits',
+                hardStop: true,
+                title: `${costCenter.name} ULB`,
+                reason: 'Applies because the effective cost center has a ULB and no individual ULB overrides it.'
+            }));
+    }
+    if (nodeIsUser && orgMapHasBudget(node.individualULB)) {
+        ulbs.push(orgMapBudgetDescriptor('ulb',
+            { level: 'user', id: node.id, name: node.name },
+            target, {
+                amount: node.individualULB,
+                amountUnit: 'credits',
+                hardStop: true,
+                title: `${node.name} individual ULB`,
+                reason: 'Applies because an individual ULB has the highest precedence.'
+            }));
+    }
+
+    const overages = [];
+    if (orgMapHasBudget(enterprise.enterpriseBudget)) {
+        overages.push(orgMapBudgetDescriptor('overage',
+            { level: 'enterprise', id: enterprise.id || 'enterprise', name: enterprise.name || 'Enterprise' },
+            target, {
+                amount: enterprise.enterpriseBudget,
+                amountUnit: 'dollars',
+                hardStop: enterprise.enterpriseHardStop,
+                title: 'Enterprise overage budget',
+                reason: 'Applies concurrently to all enterprise metered usage. Organization and cost-center budgets can also limit the same usage.'
+            }));
+    }
+    if (organization && orgMapHasBudget(organization.budget)) {
+        overages.push(orgMapBudgetDescriptor('overage',
+            { level: 'organization', id: organization.id, name: organization.name },
+            target, {
+                amount: organization.budget,
+                amountUnit: 'dollars',
+                hardStop: organization.budgetHardStop,
+                title: `${organization.name} overage budget`,
+                reason: 'Applies concurrently to metered usage from this organization, alongside any cost-center and enterprise budgets.'
+            }));
+    }
+    if (costCenter && !costCenter.isUnassigned && orgMapHasBudget(costCenter.budget)) {
+        overages.push(orgMapBudgetDescriptor('overage',
+            { level: 'cost-center', id: costCenter.id, name: costCenter.name },
+            target, {
+                amount: costCenter.budget,
+                amountUnit: 'dollars',
+                hardStop: costCenter.budgetHardStop,
+                title: `${costCenter.name} overage budget`,
+                reason: 'Applies concurrently to metered usage from this cost center, alongside any organization and enterprise budgets.'
+            }));
+    }
+
+    const pools = [];
+    if (costCenter && !costCenter.isUnassigned && costCenter.poolEnabled) {
+        const pool = orgMapBudgetDescriptor('pool',
+            { level: 'cost-center', id: costCenter.id, name: costCenter.name },
+            target, {
+                amount: orgMapHasBudget(costCenter.poolSize) ? costCenter.poolSize : getCCPoolSize(costCenter),
+                amountUnit: 'credits',
+                hardStop: costCenter.overagesAllowed === false,
+                title: `${costCenter.name} reserved pool`,
+                reason: ''
+            });
+        const { reason, ...poolDescriptor } = pool;
+        pools.push({
+            ...poolDescriptor,
+            effective: true,
+            rule: costCenter.overagesAllowed === false
+                ? 'Members draw from this reserved pool first; when it is exhausted, overages are not allowed and usage is blocked.'
+                : 'Members draw from this reserved pool first, then may continue through enterprise pool and metered routing.'
+        });
+    }
+
+    return [
+        ...orgMapFinalizeBudgetChain(ulbs),
+        ...orgMapFinalizeConcurrentBudgets(overages),
+        ...pools
+    ];
+}
+
 function renderCCTeamDropdown() {
     const sel = document.getElementById('ccTeam');
     sel.innerHTML = state.teams.map(t => optionHtml(t.id, t.name)).join('');
@@ -1055,6 +1409,516 @@ function renderPoolView() {
     container.innerHTML = barHtml + legendHtml + detailsHtml;
 }
 
+function orgMapUsageNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function emptyOrgMapUsageTotals(capacity = {}) {
+    return {
+        creditsRequested: 0,
+        creditsConsumed: 0,
+        creditsBlocked: 0,
+        poolCredits: 0,
+        meteredCredits: 0,
+        meteredCost: 0,
+        capacity: { ...capacity }
+    };
+}
+
+function addOrgMapUsageResult(totals, result) {
+    if (!totals || !result || typeof result !== 'object') return;
+    const requested = orgMapUsageNumber(result.usage);
+    const ccCredits = orgMapUsageNumber(result.creditsFromCC);
+    const enterpriseCredits = orgMapUsageNumber(result.creditsFromEntPool);
+    const meteredCredits = orgMapUsageNumber(result.creditsMetered);
+    const consumed = Math.min(requested, ccCredits + enterpriseCredits + meteredCredits);
+
+    totals.creditsRequested += requested;
+    totals.creditsConsumed += consumed;
+    totals.creditsBlocked += Math.max(0, requested - consumed);
+    totals.poolCredits += ccCredits + enterpriseCredits;
+    totals.meteredCredits += meteredCredits;
+    totals.meteredCost += orgMapUsageNumber(result.meteredCost);
+}
+
+function buildOrgMapUsage(model) {
+    const usage = {
+        enterprise: emptyOrgMapUsageTotals(),
+        costCenters: {},
+        groups: {},
+        users: {},
+        budgets: { enterprise: null, costCenters: {}, organizations: {} },
+        poolState: null
+    };
+
+    const users = Array.isArray(state.users) ? state.users : [];
+        const mapModel = model && typeof model === 'object' ? model : null;
+        const costCenters = Array.isArray(mapModel?.costCenters) ? mapModel.costCenters : [];
+        const initialPool = initPoolState();
+
+        usage.enterprise = emptyOrgMapUsageTotals({
+            seats: orgMapUsageNumber(mapModel?.totalSeats),
+            poolCredits: orgMapUsageNumber(mapModel?.totalPool),
+            enterprisePoolCredits: orgMapUsageNumber(initialPool?.enterprisePool)
+        });
+
+        costCenters.forEach(cc => {
+            const ccKey = `cost-center:${String(cc.id)}`;
+            usage.costCenters[ccKey] = emptyOrgMapUsageTotals({
+                seats: orgMapUsageNumber(cc.memberCount),
+                poolCredits: orgMapUsageNumber(cc.poolSize),
+                ulbCredits: cc.ulb === null || cc.ulb === undefined ? null : orgMapUsageNumber(cc.ulb),
+                overageBudget: cc.budget === null || cc.budget === undefined
+                    ? null : orgMapUsageNumber(cc.budget)
+            });
+            (Array.isArray(cc.groups) ? cc.groups : []).forEach(group => {
+                const groupKey = `${ccKey}/${group.type}:${String(group.id)}`;
+                const aggregateUsers = Array.isArray(group.aggregateUsers) ? group.aggregateUsers : group.users;
+                const orgBudget = group.type === 'organization'
+                    ? (Array.isArray(state.orgs) ? state.orgs : []).find(org => org.id === group.id)?.budget
+                    : null;
+                usage.groups[groupKey] = emptyOrgMapUsageTotals({
+                    users: Array.isArray(aggregateUsers) ? aggregateUsers.length : 0,
+                    overageBudget: orgBudget === null || orgBudget === undefined
+                        ? null : orgMapUsageNumber(orgBudget)
+                });
+            });
+        });
+
+        users.forEach(user => {
+            const ulb = getEffectiveULB(user);
+            usage.users[`user:${String(user.id)}`] = {
+                ...emptyOrgMapUsageTotals({
+                    ulbCredits: ulb && ulb.value !== null ? orgMapUsageNumber(ulb.value) : null
+                }),
+                ulb: {
+                    limit: ulb && ulb.value !== null ? orgMapUsageNumber(ulb.value) : null,
+                    source: ulb?.source || null,
+                    consumed: 0
+                }
+            };
+        });
+
+        if (users.length === 0) return usage;
+
+        const simulation = computeSimulationResults({ ignoreSavedLastCalls: true });
+        const results = Array.isArray(simulation?.results) ? simulation.results : [];
+        const resultsByUser = new Map(results.filter(Boolean).map(result => [result.userId, result]));
+
+        costCenters.forEach(cc => {
+            const ccKey = `cost-center:${String(cc.id)}`;
+            const ccTotals = usage.costCenters[ccKey];
+            (Array.isArray(cc.groups) ? cc.groups : []).forEach(group => {
+                const groupTotals = usage.groups[`${ccKey}/${group.type}:${String(group.id)}`];
+                (Array.isArray(group.aggregateUsers) ? group.aggregateUsers : (Array.isArray(group.users) ? group.users : [])).forEach(user => {
+                    const result = resultsByUser.get(user.id);
+                    addOrgMapUsageResult(groupTotals, result);
+                });
+                (Array.isArray(group.users) ? group.users : []).forEach(user => {
+                    const result = resultsByUser.get(user.id);
+                    addOrgMapUsageResult(ccTotals, result);
+                });
+            });
+        });
+
+        results.forEach(result => {
+            addOrgMapUsageResult(usage.enterprise, result);
+            const userTotals = usage.users[`user:${String(result?.userId)}`];
+            addOrgMapUsageResult(userTotals, result);
+            if (userTotals) userTotals.ulb.consumed = userTotals.creditsConsumed;
+        });
+
+        const finalPool = simulation?.poolState || {};
+        usage.poolState = {
+            enterpriseRemaining: orgMapUsageNumber(finalPool.enterprisePool),
+            costCenterRemaining: { ...(finalPool.ccPools || {}) }
+        };
+        const enterprise = state.enterprise && typeof state.enterprise === 'object' ? state.enterprise : {};
+        usage.budgets.enterprise = {
+            limit: enterprise.enterpriseBudget === null || enterprise.enterpriseBudget === undefined
+                ? null : orgMapUsageNumber(enterprise.enterpriseBudget),
+            consumed: orgMapUsageNumber(finalPool.enterpriseMetered),
+            hardStop: enterprise.enterpriseHardStop === true
+        };
+        (Array.isArray(state.costCenters) ? state.costCenters : []).forEach(cc => {
+            usage.budgets.costCenters[`cost-center:${String(cc.id)}`] = {
+                limit: cc.budget === null || cc.budget === undefined ? null : orgMapUsageNumber(cc.budget),
+                consumed: orgMapUsageNumber(finalPool.ccMetered?.[cc.id]),
+                hardStop: cc.budgetHardStop === true
+            };
+        });
+        (Array.isArray(state.orgs) ? state.orgs : []).forEach(org => {
+            usage.budgets.organizations[`organization:${String(org.id)}`] = {
+                limit: org.budget === null || org.budget === undefined ? null : orgMapUsageNumber(org.budget),
+                consumed: orgMapUsageNumber(finalPool.orgMetered?.[org.id]),
+                hardStop: org.budgetHardStop === true
+            };
+        });
+    return usage;
+}
+
+const ORG_MAP_USER_COLLAPSE_THRESHOLD = 8;
+const orgMapExpandedUserGroups = new Set();
+
+function orgMapUsageForNode(usage, node, context = {}) {
+    if (node.type === 'enterprise') return usage.enterprise;
+    if (node.type === 'cost-center') return usage.costCenters[`cost-center:${String(node.id)}`];
+    if (node.type === 'team' || node.type === 'organization' || node.type === 'direct') {
+        return usage.groups[`cost-center:${String(context.costCenter.id)}/${node.type}:${String(node.id)}`];
+    }
+    return usage.users[`user:${String(node.id)}`];
+}
+
+function orgMapBudgetAmount(budget) {
+    if (budget.kind === 'ulb') return formatBudgetWithCreditReferenceFromCredits(budget.amount);
+    if (budget.kind === 'overage') return `$${Math.max(0, budget.amount).toFixed(2)}`;
+    return `${fmt(Math.round(Math.max(0, budget.amount)))} credits`;
+}
+
+let orgMapBudgetInfoReturnFocus = null;
+let orgMapBudgetInfoInertElements = [];
+
+function findOrgMapBudgetDescriptor(budgetId, model) {
+    const candidates = [{ node: model, context: { enterprise: model } }];
+    model.costCenters.forEach(costCenter => {
+        const costCenterContext = { enterprise: model, costCenter };
+        candidates.push({ node: costCenter, context: costCenterContext });
+        costCenter.groups.forEach(group => {
+            const groupContext = {
+                ...costCenterContext,
+                organization: group.type === 'organization' ? group : null
+            };
+            candidates.push({ node: group, context: groupContext });
+            group.users.forEach(user => candidates.push({ node: user, context: groupContext }));
+        });
+    });
+
+    for (const candidate of candidates) {
+        const budgets = collectOrgMapBudgets(candidate.node, candidate.context);
+        const descriptor = budgets.find(budget => budget.id === budgetId);
+        if (descriptor) {
+            return {
+                ...candidate,
+                descriptor,
+                shadowedBy: descriptor.shadowedBy
+                    ? budgets.find(budget => budget.id === descriptor.shadowedBy) || null
+                    : null
+            };
+        }
+    }
+    return null;
+}
+
+function orgMapBudgetSourceId(descriptor) {
+    const parts = String(descriptor.id).split(':');
+    return parts.length > 3 ? decodeURIComponent(parts[3]) : null;
+}
+
+function orgMapBudgetLiveUsage(match, usage) {
+    const { descriptor, node, context } = match;
+    const sourceId = orgMapBudgetSourceId(descriptor);
+    let consumed = 0;
+    let remaining = null;
+    let perUserOnly = false;
+
+    if (descriptor.kind === 'overage') {
+        let budgetUsage = null;
+        if (descriptor.level === 'enterprise') budgetUsage = usage.budgets.enterprise;
+        else if (descriptor.level === 'cost-center') {
+            budgetUsage = usage.budgets.costCenters[`cost-center:${sourceId}`];
+        } else if (descriptor.level === 'organization') {
+            budgetUsage = usage.budgets.organizations[`organization:${sourceId}`];
+        }
+        consumed = orgMapUsageNumber(budgetUsage?.consumed);
+    } else if (descriptor.kind === 'pool') {
+        const poolRemaining = usage.poolState?.costCenterRemaining?.[sourceId];
+        if (Number.isFinite(Number(poolRemaining))) {
+            remaining = orgMapUsageNumber(poolRemaining);
+            consumed = Math.max(0, descriptor.amount - remaining);
+        }
+    } else {
+        const nodeIsUser = node.type !== 'enterprise' &&
+            node.type !== 'cost-center' &&
+            node.type !== 'organization' &&
+            node.type !== 'team' &&
+            node.type !== 'direct';
+        if (nodeIsUser) {
+            consumed = orgMapUsageNumber(usage.users[`user:${String(node.id)}`]?.ulb?.consumed);
+        } else {
+            perUserOnly = true;
+            consumed = null;
+        }
+    }
+
+    if (!perUserOnly && remaining === null) remaining = Math.max(0, descriptor.amount - consumed);
+    const percentage = !perUserOnly && descriptor.amount > 0 ? (consumed / descriptor.amount) * 100 : null;
+    return { consumed, remaining, percentage, perUserOnly };
+}
+
+function closeOrgMapBudgetInfo() {
+    const overlay = document.getElementById('orgMapBudgetInfoOverlay');
+    if (!overlay) return;
+    overlay.remove();
+    orgMapBudgetInfoInertElements.forEach(({ element, wasInert }) => {
+        if (element.isConnected) element.inert = wasInert;
+    });
+    orgMapBudgetInfoInertElements = [];
+    if (orgMapBudgetInfoReturnFocus?.isConnected) orgMapBudgetInfoReturnFocus.focus();
+    orgMapBudgetInfoReturnFocus = null;
+}
+
+function showOrgMapBudgetInfo(budgetId) {
+    const model = buildOrgMapModel();
+    const match = findOrgMapBudgetDescriptor(budgetId, model);
+    if (!match) {
+        console.warn(`Org Map budget descriptor not found: ${String(budgetId)}`);
+        return;
+    }
+
+    const usage = buildOrgMapUsage(model);
+    const { descriptor, shadowedBy } = match;
+    const live = orgMapBudgetLiveUsage(match, usage);
+    const configuredAmount = descriptor.amountUnit === 'dollars'
+        ? formatBudgetWithCreditReferenceFromDollars(descriptor.amount)
+        : formatBudgetWithCreditReferenceFromCredits(descriptor.amount);
+    const formatLiveAmount = descriptor.amountUnit === 'dollars'
+        ? value => value === null ? 'Per-user limit — inspect individual users' : `$${value.toFixed(2)}`
+        : value => value === null ? 'Per-user limit — inspect individual users' : `${fmt(Math.round(value))} AI credits`;
+    const kindLabels = { ulb: 'User-level budget (ULB)', overage: 'Overage budget', pool: 'Reserved pool' };
+    const status = descriptor.effective
+        ? (descriptor.inherited ? 'Effective and inherited' : 'Effective at this scope')
+        : `Shadowed${shadowedBy ? ` by ${shadowedBy.title}` : ' by a higher-precedence budget'}${descriptor.inherited ? ' (inherited)' : ''}`;
+    const enforcement = descriptor.hardStop
+        ? 'Hard stop — usage is blocked when the available budget is exhausted.'
+        : 'Soft behavior — usage may continue through available fallback or metered routing.';
+
+    closeOrgMapBudgetInfo();
+    orgMapBudgetInfoReturnFocus = document.activeElement;
+    const overlay = document.createElement('div');
+    overlay.id = 'orgMapBudgetInfoOverlay';
+    overlay.className = 'orgmap-budget-dialog-backdrop';
+    overlay.innerHTML = `<section class="orgmap-budget-dialog" role="dialog" aria-modal="true" aria-labelledby="orgMapBudgetInfoTitle">
+        <header class="orgmap-budget-dialog-header">
+            <h2 id="orgMapBudgetInfoTitle" class="orgmap-budget-dialog-title">${escapeHtml(descriptor.title)}</h2>
+            <button type="button" class="orgmap-budget-dialog-close" aria-label="Close budget details" onclick="closeOrgMapBudgetInfo()">×</button>
+        </header>
+        <div class="orgmap-budget-dialog-body">
+            <dl style="display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0 0 20px">
+                <dt>Budget type</dt><dd>${escapeHtml(kindLabels[descriptor.kind] || descriptor.kind)}</dd>
+                <dt>Source</dt><dd>${escapeHtml(`${descriptor.level}: ${descriptor.sourceName}`)}</dd>
+                <dt>Configured amount</dt><dd>${escapeHtml(configuredAmount)}</dd>
+                <dt>Status</dt><dd>${escapeHtml(status)}</dd>
+                <dt>Enforcement</dt><dd>${escapeHtml(enforcement)}</dd>
+                <dt>Consumed</dt><dd>${escapeHtml(formatLiveAmount(live.consumed))}</dd>
+                <dt>Remaining</dt><dd>${escapeHtml(formatLiveAmount(live.remaining))}</dd>
+                <dt>Used</dt><dd>${escapeHtml(live.percentage === null ? 'Calculated per user' : `${live.percentage.toFixed(1)}%`)}</dd>
+            </dl>
+            <h3 style="margin-bottom:6px">Why it applies</h3>
+            <p>${escapeHtml(descriptor.rule)}</p>
+        </div>
+    </section>`;
+    document.body.appendChild(overlay);
+    orgMapBudgetInfoInertElements = [...document.body.children]
+        .filter(element => element !== overlay)
+        .map(element => ({ element, wasInert: element.inert }));
+    orgMapBudgetInfoInertElements.forEach(({ element }) => { element.inert = true; });
+    overlay.querySelector('.orgmap-budget-dialog-close').focus();
+}
+
+document.addEventListener('click', event => {
+    if (event.target === document.getElementById('orgMapBudgetInfoOverlay')) closeOrgMapBudgetInfo();
+});
+
+document.addEventListener('keydown', event => {
+    const overlay = document.getElementById('orgMapBudgetInfoOverlay');
+    if (event.key === 'Escape' && overlay) {
+        closeOrgMapBudgetInfo();
+    } else if (event.key === 'Tab' && overlay) {
+        const focusable = [...overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+            .filter(element => !element.disabled && element.getAttribute('aria-hidden') !== 'true');
+        if (focusable.length === 0) {
+            event.preventDefault();
+            overlay.querySelector('[role="dialog"]')?.focus();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if ((event.shiftKey && document.activeElement === first) ||
+            (!event.shiftKey && document.activeElement === last)) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
+        }
+    }
+});
+
+function renderOrgMapBudgetBadge(budget) {
+    const classes = [
+        'orgmap-budget-badge',
+        `orgmap-budget-${budget.kind}`,
+        budget.effective ? 'orgmap-budget-effective' : 'orgmap-budget-shadowed',
+        budget.inherited ? 'orgmap-budget-inherited' : ''
+    ].filter(Boolean).join(' ');
+    const status = budget.effective ? 'effective' : 'shadowed';
+    const inherited = budget.inherited ? ', inherited' : '';
+    const label = `${budget.title}: ${orgMapBudgetAmount(budget)}, ${status}${inherited}`;
+    return `<span class="${classes}" data-budget-kind="${escapeHtml(budget.kind)}" data-budget-id="${escapeHtml(budget.id)}">
+        <span class="orgmap-budget-label">${escapeHtml(budget.kind.toUpperCase())}</span>
+        <span class="orgmap-budget-amount">${escapeHtml(orgMapBudgetAmount(budget))}</span>
+        <button type="button" class="orgmap-budget-info" aria-label="${escapeHtml(`Budget details for ${label}`)}" title="${escapeHtml(budget.rule)}" onclick="if(typeof showOrgMapBudgetInfo==='function')showOrgMapBudgetInfo('${escapeInlineArg(budget.id)}')">i</button>
+    </span>`;
+}
+
+function renderOrgMapBudgets(node, context) {
+    const budgets = collectOrgMapBudgets(node, context);
+    if (budgets.length === 0) return '';
+    return `<div class="orgmap-budgets" aria-label="Budgets">${budgets.map(renderOrgMapBudgetBadge).join('')}</div>`;
+}
+
+function orgMapUsageCapacity(node, totals, budgets) {
+    const nodeIsUser = node.type !== 'enterprise' &&
+        node.type !== 'cost-center' &&
+        node.type !== 'organization' &&
+        node.type !== 'team' &&
+        node.type !== 'direct';
+    if (nodeIsUser) {
+        const effectiveULB = budgets.find(budget => budget.effective && budget.kind === 'ulb');
+        if (effectiveULB) return effectiveULB.amount;
+    }
+    const effectivePool = budgets.find(budget => budget.effective && budget.kind === 'pool');
+    if (effectivePool) return effectivePool.amount;
+    if (node.type === 'enterprise') return node.totalPool;
+    if (totals?.capacity?.poolCredits) return totals.capacity.poolCredits;
+    return node.creditsPerSeat || 0;
+}
+
+function renderOrgMapUsageBar(node, usage, context) {
+    const totals = orgMapUsageForNode(usage, node, context) || emptyOrgMapUsageTotals();
+    const budgets = collectOrgMapBudgets(node, context);
+    const capacity = orgMapUsageCapacity(node, totals, budgets);
+    const consumed = orgMapUsageNumber(totals.creditsConsumed);
+    const requested = orgMapUsageNumber(totals.creditsRequested);
+    const percent = capacity > 0 ? (consumed / capacity) * 100 : 0;
+    const width = Math.min(100, Math.max(0, percent));
+    const label = capacity > 0
+        ? `${fmt(Math.round(consumed))} of ${fmt(Math.round(capacity))} credits consumed (${percent.toFixed(1)}%)`
+        : consumed > 0
+            ? `${fmt(Math.round(consumed))} credits consumed (no fixed pool or ULB capacity)`
+            : `${fmt(Math.round(requested))} credits requested; no applicable capacity`;
+    const progressMaximum = Math.max(1, Math.round(capacity), Math.round(consumed));
+    return `<div class="orgmap-usage" aria-label="${escapeHtml(label)}">
+        <div class="orgmap-usage-track" role="progressbar" aria-label="Credit usage" aria-valuemin="0" aria-valuemax="${escapeHtml(progressMaximum)}" aria-valuenow="${escapeHtml(Math.round(consumed))}">
+            <span class="orgmap-usage-fill" style="width:${width.toFixed(1)}%"></span>
+        </div>
+        <span class="orgmap-usage-label">${escapeHtml(label)}</span>
+    </div>`;
+}
+
+function renderOrgMapMembershipTags(user) {
+    const tags = [];
+    (user.memberships?.teams || []).forEach(team => {
+        if (user.groupedBy.type !== 'team' || team.id !== user.groupedBy.id) {
+            tags.push({ type: 'team', id: team.id, name: team.name });
+        }
+    });
+    (user.memberships?.organizations || []).forEach(org => {
+        if (user.groupedBy.type !== 'organization' || org.id !== user.groupedBy.id) {
+            tags.push({ type: 'organization', id: org.id, name: org.name });
+        }
+    });
+    if (tags.length === 0) return '';
+    return `<div class="orgmap-memberships" aria-label="Alternate memberships">${tags.map(tag =>
+        `<span class="orgmap-membership-tag orgmap-membership-${tag.type}" data-orgmap-type="${tag.type}" data-orgmap-id="${escapeHtml(tag.id)}">${escapeHtml(tag.name)}</span>`
+    ).join('')}</div>`;
+}
+
+function renderOrgMapUser(user, model, costCenter, group, usage) {
+    const context = { enterprise: model, costCenter, organization: group.type === 'organization' ? group : null };
+    return `<article class="orgmap-user-chip" data-orgmap-type="user" data-orgmap-id="${escapeHtml(user.id)}" aria-label="${escapeHtml(`User ${user.name}`)}">
+        <div class="orgmap-user-heading">
+            <strong class="orgmap-user-name">${escapeHtml(user.name)}</strong>
+            <span class="orgmap-user-license">${escapeHtml(user.license || 'business')}</span>
+        </div>
+        ${renderOrgMapMembershipTags(user)}
+        ${renderOrgMapBudgets(user, context)}
+        ${renderOrgMapUsageBar(user, usage, context)}
+    </article>`;
+}
+
+function orgMapGroupKey(costCenter, group) {
+    return `cost-center:${String(costCenter.id)}/${group.type}:${String(group.id)}`;
+}
+
+function renderOrgMapGroup(group, model, costCenter, usage) {
+    const key = orgMapGroupKey(costCenter, group);
+    const users = Array.isArray(group.users) ? group.users : [];
+    const memberCount = Number.isFinite(Number(group.memberCount)) ? Number(group.memberCount) : users.length;
+    const collapsible = users.length > ORG_MAP_USER_COLLAPSE_THRESHOLD;
+    const expanded = orgMapExpandedUserGroups.has(key);
+    const visibleUsers = collapsible && !expanded ? users.slice(0, ORG_MAP_USER_COLLAPSE_THRESHOLD) : users;
+    const context = { enterprise: model, costCenter, organization: group.type === 'organization' ? group : null };
+    const hiddenCount = users.length - visibleUsers.length;
+    const toggle = collapsible
+        ? `<button type="button" class="orgmap-users-toggle" aria-expanded="${expanded}" onclick="toggleOrgMapUsers('${escapeInlineArg(key)}')">${expanded ? 'Show fewer users' : `Show ${hiddenCount} more users`}</button>`
+        : '';
+    return `<section class="orgmap-group-box orgmap-group-${group.type}" data-orgmap-type="${escapeHtml(group.type)}" data-orgmap-id="${escapeHtml(group.id)}" aria-label="${escapeHtml(`${group.name}, ${memberCount} users`)}">
+        <header class="orgmap-group-header">
+            <h4 class="orgmap-group-title">${escapeHtml(group.name)}</h4>
+            <span class="orgmap-user-count">${escapeHtml(memberCount)} user${memberCount === 1 ? '' : 's'}</span>
+        </header>
+        ${renderOrgMapBudgets(group, context)}
+        ${renderOrgMapUsageBar(group, usage, context)}
+        <div class="orgmap-users">${visibleUsers.length > 0
+            ? visibleUsers.map(user => renderOrgMapUser(user, model, costCenter, group, usage)).join('')
+            : '<p class="orgmap-group-empty">No users in this group.</p>'}</div>
+        ${toggle}
+    </section>`;
+}
+
+function renderOrgMapCostCenter(costCenter, model, usage) {
+    const context = { enterprise: model, costCenter };
+    const groups = (costCenter.groups || []).filter(group => group.type !== 'direct' || group.users.length > 0);
+    return `<section class="orgmap-cost-center-box${costCenter.isUnassigned ? ' orgmap-cost-center-unassigned' : ''}" data-orgmap-type="cost-center" data-orgmap-id="${escapeHtml(costCenter.id)}" aria-label="${escapeHtml(`Cost center ${costCenter.name}`)}">
+        <header class="orgmap-cost-center-header">
+            <h3 class="orgmap-cost-center-title">${escapeHtml(costCenter.name)}</h3>
+            <span class="orgmap-user-count">${escapeHtml(costCenter.memberCount)} member${costCenter.memberCount === 1 ? '' : 's'}</span>
+        </header>
+        ${renderOrgMapBudgets(costCenter, context)}
+        ${renderOrgMapUsageBar(costCenter, usage, context)}
+        <div class="orgmap-groups">${groups.length > 0
+            ? groups.map(group => renderOrgMapGroup(group, model, costCenter, usage)).join('')
+            : '<p class="orgmap-cost-center-empty">No teams, organizations, or direct users.</p>'}</div>
+    </section>`;
+}
+
+function toggleOrgMapUsers(key) {
+    if (orgMapExpandedUserGroups.has(key)) orgMapExpandedUserGroups.delete(key);
+    else orgMapExpandedUserGroups.add(key);
+    renderOrgMap();
+}
+
+function renderOrgMap() {
+    const canvas = document.getElementById('orgMapCanvas');
+    if (!canvas) return;
+    const model = buildOrgMapModel();
+    const usage = buildOrgMapUsage(model);
+    const hasMapContent = model.costCenters.length > 0;
+    if (!hasMapContent) {
+        canvas.innerHTML = '<div class="orgmap-empty-state" data-orgmap-type="empty" role="status"><h3>No organization data yet</h3><p>Add cost centers, teams, organizations, or users to build the map.</p></div>';
+        return;
+    }
+    canvas.innerHTML = `<section class="orgmap-enterprise-box" data-orgmap-type="enterprise" data-orgmap-id="${escapeHtml(model.id)}" aria-label="${escapeHtml(`Enterprise ${model.name}`)}">
+        <header class="orgmap-enterprise-header">
+            <h2 class="orgmap-enterprise-title">${escapeHtml(model.name)}</h2>
+            <span class="orgmap-user-count">${escapeHtml(model.userCount)} user${model.userCount === 1 ? '' : 's'}</span>
+        </header>
+        ${renderOrgMapBudgets(model, { enterprise: model })}
+        ${renderOrgMapUsageBar(model, usage, { enterprise: model })}
+        <div class="orgmap-cost-centers">${model.costCenters.map(costCenter =>
+            renderOrgMapCostCenter(costCenter, model, usage)).join('')}</div>
+    </section>`;
+}
+
 // ─── Simulation Engine ───────────────────────────────────────────────────────
 function initPoolState() {
     const pool = totalPool();
@@ -1091,6 +1955,28 @@ function getUserCC(user) {
     return null;
 }
 
+function getMeteredBudgetLabels(user) {
+    const labels = [];
+    const cc = getUserCC(user);
+    if (cc && cc.budget !== null && cc.budget !== undefined) {
+        labels.push(`${cc.name} Cost Center Overage Budget`);
+    }
+    const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+    if (org && org.budget !== null && org.budget !== undefined) {
+        labels.push(`${org.name} Organization Overage Budget`);
+    }
+    if (state.enterprise.enterpriseBudget !== null && state.enterprise.enterpriseBudget !== undefined) {
+        labels.push('Enterprise Overage Budget');
+    }
+    return labels;
+}
+
+function formatMeteredBudgetContext(labels) {
+    return labels.length > 0
+        ? ` via ${labels.join(' + ')}`
+        : ' without a configured overage budget';
+}
+
 function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCaps = null) {
     const baseCC = baselineResult ? baselineResult.creditsFromCC : 0;
     const baseEnt = baselineResult ? baselineResult.creditsFromEntPool : 0;
@@ -1109,7 +1995,8 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         ulbRemaining: null,
         creditsFromCC: baseCC,
         creditsFromEntPool: baseEnt,
-        creditsMetered: baseMetered
+        creditsMetered: baseMetered,
+        meteredBudgetLabels: baselineResult?.meteredBudgetLabels || []
     };
 
     if (userUsage === 0) {
@@ -1204,36 +2091,43 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         const deltaCost = remaining * 0.01;
         result.creditsMetered += remaining;
         result.meteredCost += deltaCost;
+        result.meteredBudgetLabels = getMeteredBudgetLabels(user);
         if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + deltaCost;
         if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + deltaCost;
         poolState.enterpriseMetered += deltaCost;
 
         result.status = hardStopReason ? 'blocked' : 'metered';
         result.reason = hardStopReason;
-        result.source = `${formatSimulationCredits(result.creditsFromCC)} CC pool + ${formatSimulationCredits(result.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(result.creditsMetered)} metered`;
+        result.source = formatConsumedSources(result);
         return result;
     }
 
     result.status = 'served';
-    if (result.creditsFromCC > 0 && result.creditsFromEntPool > 0) {
-        result.source = `CC pool (${formatSimulationCredits(result.creditsFromCC)}) + Ent. pool (${formatSimulationCredits(result.creditsFromEntPool)})`;
-    } else if (result.creditsFromCC > 0) {
-        result.source = 'CC pool';
-    } else {
-        result.source = 'Enterprise pool';
-    }
+    result.source = formatConsumedSources(result);
     return result;
 }
 
-function formatCallSource(outcome) {
+function formatConsumedSources(outcome, user) {
+    const meteredLabels = Array.isArray(outcome.meteredBudgetLabels)
+        ? outcome.meteredBudgetLabels
+        : getMeteredBudgetLabels(user);
+    const sources = [
+        { amount: outcome.creditsFromCC, label: 'CC pool' },
+        { amount: outcome.creditsFromEntPool, label: 'Enterprise pool' },
+        {
+            amount: outcome.creditsMetered,
+            label: `metered${formatMeteredBudgetContext(meteredLabels)}`
+        }
+    ];
+    const consumed = sources
+        .filter(source => Number(source.amount) > 0)
+        .map(source => `${formatSimulationCredits(source.amount)} ${source.label}`);
+    return consumed.length > 0 ? consumed.join(' + ') : 'No credits consumed';
+}
+
+function formatCallSource(outcome, user) {
     if ((outcome.usage || 0) === 0) return 'No usage';
-    if (outcome.status === 'metered') {
-        return `${formatSimulationCredits(outcome.creditsFromCC)} CC pool + ${formatSimulationCredits(outcome.creditsFromEntPool)} ent. pool + ${formatSimulationCredits(outcome.creditsMetered)} metered`;
-    }
-    if (outcome.creditsFromCC > 0 && outcome.creditsFromEntPool > 0) {
-        return `CC pool (${formatSimulationCredits(outcome.creditsFromCC)}) + Ent. pool (${formatSimulationCredits(outcome.creditsFromEntPool)})`;
-    }
-    return outcome.creditsFromCC > 0 ? 'CC pool' : 'Enterprise pool';
+    return formatConsumedSources(outcome, user);
 }
 
 function callReasonData(user, result) {
@@ -1415,7 +2309,10 @@ function computeSimulationResults(options = {}) {
                 reason: `Enterprise budget exhausted (${formatSimulationBudget(state.enterprise.enterpriseBudget)})`
             };
         }
-        return { status: 'metered', reason: 'Metered usage available' };
+        return {
+            status: 'metered',
+            reason: `Metered usage available${formatMeteredBudgetContext(getMeteredBudgetLabels(user))}`
+        };
     };
 
     Object.values(resultsByUser).forEach(r => {
@@ -1443,14 +2340,18 @@ function computeSimulationResults(options = {}) {
             ? saved.creditsMetered : r.creditsMetered;
         r.lastCallMeteredCost = saved && Number.isFinite(saved.meteredCost)
             ? saved.meteredCost : r.meteredCost;
+        r.lastCallMeteredBudgetLabels = saved && Array.isArray(saved.meteredBudgetLabels)
+            ? saved.meteredBudgetLabels : r.meteredBudgetLabels;
+        const resultUser = state.users.find(u => u.id === r.userId);
         r.lastCallSource = formatCallSource({
             status: r.lastCallStatus,
             usage: r.lastCallUsage,
             creditsFromCC: r.lastCallCreditsFromCC,
             creditsFromEntPool: r.lastCallCreditsFromEntPool,
-            creditsMetered: r.lastCallCreditsMetered
-        });
-        const next = projectNextCall(state.users.find(u => u.id === r.userId));
+            creditsMetered: r.lastCallCreditsMetered,
+            meteredBudgetLabels: r.lastCallMeteredBudgetLabels
+        }, resultUser);
+        const next = projectNextCall(resultUser);
         r.nextCallStatus = next.status;
         r.nextCallReason = next.reason;
         // Compatibility for consumers that still read the former single-status fields.
@@ -1744,7 +2645,8 @@ function applyUserUsageChange(userId, creditsValue) {
             creditsFromCC: result.lastCallCreditsFromCC,
             creditsFromEntPool: result.lastCallCreditsFromEntPool,
             creditsMetered: result.lastCallCreditsMetered,
-            meteredCost: result.lastCallMeteredCost
+            meteredCost: result.lastCallMeteredCost,
+            meteredBudgetLabels: result.lastCallMeteredBudgetLabels
         }
     ]));
     setUserUsageValue(userId, creditsValue);
@@ -1760,7 +2662,8 @@ function applyUserUsageChange(userId, creditsValue) {
             creditsFromCC: changed.lastCallCreditsFromCC,
             creditsFromEntPool: changed.lastCallCreditsFromEntPool,
             creditsMetered: changed.lastCallCreditsMetered,
-            meteredCost: changed.lastCallMeteredCost
+            meteredCost: changed.lastCallMeteredCost,
+            meteredBudgetLabels: changed.lastCallMeteredBudgetLabels
         };
     }
     saveState();
@@ -2042,6 +2945,7 @@ document.getElementById('mainNav').addEventListener('click', (e) => {
     if (panel === 'simulate') { renderCCPoolToggles(); renderGlobalBudgetSimulation(); renderDashboardState(); }
     if (panel === 'budgets') renderBudgets();
     if (panel === 'enterprise') { renderEnterpriseStats(); }
+    if (panel === 'orgmap') renderOrgMap();
 });
 
 // ─── Tab Counts ────────────────────────────────────────────────────────────
@@ -2069,6 +2973,7 @@ function renderAll() {
     renderBudgets();
     renderPoolView();
     renderGlobalBudgetSimulation();
+    renderOrgMap();
     renderTabCounts();
     updateUserCreateMode();
     renderDashboardState();

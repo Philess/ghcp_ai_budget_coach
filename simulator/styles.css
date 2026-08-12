@@ -528,3 +528,512 @@
     .btn-cta:hover { opacity: 0.88; transform: translateY(-1px); }
     .btn-cta-primary { background: var(--color-accent-emphasis); color: #fff; }
     .btn-cta-secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+
+    /* ── Organization map: industrial hierarchy view ── */
+    #panel-orgmap {
+        --orgmap-enterprise: #c084fc;
+        --orgmap-cost-center: #58a6ff;
+        --orgmap-organization: #56d364;
+        --orgmap-team: #e3b341;
+        --orgmap-user: #b1bac4;
+        --orgmap-ulb: #39d0c8;
+        --orgmap-overage: #f778ba;
+        --orgmap-pool: #9da7b3;
+        --orgmap-rail: #484f58;
+        --orgmap-panel: #111820;
+        --orgmap-panel-raised: #1a222c;
+    }
+
+    .orgmap-intro-card {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) minmax(420px, 1.4fr);
+        gap: 24px;
+        border-top: 3px solid var(--orgmap-enterprise);
+    }
+
+    .orgmap-description { max-width: 62ch; }
+
+    .orgmap-legend {
+        display: flex;
+        justify-content: flex-end;
+        gap: 22px;
+        padding-left: 22px;
+        border-left: 1px solid var(--orgmap-rail);
+    }
+
+    .orgmap-legend-group { min-width: 0; }
+
+    .orgmap-legend-title {
+        margin-bottom: 7px !important;
+        color: var(--color-text-muted) !important;
+        font-size: 0.6875rem !important;
+        letter-spacing: 0.09em !important;
+    }
+
+    .orgmap-legend-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px 12px;
+        list-style: none;
+    }
+
+    .orgmap-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #c9d1d9;
+        font-size: 0.6875rem;
+        white-space: nowrap;
+    }
+
+    .orgmap-entity-swatch {
+        width: 11px;
+        height: 11px;
+        border: 2px solid currentColor;
+        background: color-mix(in srgb, currentColor 20%, transparent);
+        clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+    }
+
+    .orgmap-entity-enterprise { color: var(--orgmap-enterprise); }
+    .orgmap-entity-cost-center { color: var(--orgmap-cost-center); }
+    .orgmap-entity-organization { color: var(--orgmap-organization); }
+    .orgmap-entity-team { color: var(--orgmap-team); }
+    .orgmap-entity-user { color: var(--orgmap-user); }
+
+    .orgmap-canvas {
+        min-height: 240px;
+        overflow: hidden;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        background: #0b1016;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+        padding: 18px;
+    }
+
+    .orgmap-enterprise-box,
+    .orgmap-cost-center-box,
+    .orgmap-group-box,
+    .orgmap-user-chip {
+        position: relative;
+        min-width: 0;
+        background: var(--orgmap-panel);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+    }
+
+    .orgmap-enterprise-box {
+        border-top: 3px solid var(--orgmap-enterprise);
+        padding: 16px;
+    }
+
+    .orgmap-enterprise-header,
+    .orgmap-cost-center-header,
+    .orgmap-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 0 10px;
+        background: transparent;
+        border: 0;
+    }
+
+    .orgmap-enterprise-title,
+    .orgmap-cost-center-title,
+    .orgmap-group-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+    }
+
+    .orgmap-enterprise-title { font-size: 1.05rem; color: #e4c5ff; }
+    .orgmap-cost-center-title { font-size: 0.9375rem; color: #b6d8ff; }
+    .orgmap-group-title { font-size: 0.8125rem; }
+
+    .orgmap-user-count {
+        flex: 0 0 auto;
+        padding: 2px 7px;
+        border: 1px solid #484f58;
+        border-radius: 2px;
+        color: #c9d1d9;
+        background: #202832;
+        font: 600 0.625rem/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .orgmap-cost-centers {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 18px;
+        margin-top: 16px;
+        padding-top: 22px;
+        border-top: 1px solid var(--orgmap-enterprise);
+    }
+
+    .orgmap-cost-centers::before,
+    .orgmap-groups::before,
+    .orgmap-users::before {
+        content: "";
+        position: absolute;
+        left: 18px;
+        top: -23px;
+        width: 1px;
+        height: 23px;
+        background: currentColor;
+    }
+
+    .orgmap-cost-center-box {
+        color: var(--orgmap-cost-center);
+        border-top: 3px solid currentColor;
+        padding: 14px;
+    }
+
+    .orgmap-cost-center-unassigned {
+        border-style: dashed;
+        color: var(--orgmap-user);
+    }
+
+    .orgmap-groups {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+        padding: 17px 0 0 17px;
+        border-top: 1px solid currentColor;
+        border-left: 2px solid currentColor;
+    }
+
+    .orgmap-group-box {
+        color: var(--orgmap-user);
+        border-top: 2px solid currentColor;
+        padding: 12px;
+    }
+
+    .orgmap-group-organization { color: var(--orgmap-organization); }
+    .orgmap-group-team { color: var(--orgmap-team); }
+    .orgmap-group-direct { color: var(--orgmap-user); border-top-style: dashed; }
+    .orgmap-group-organization .orgmap-group-title { color: #94e7a0; }
+    .orgmap-group-team .orgmap-group-title { color: #f2cf6b; }
+    .orgmap-group-direct .orgmap-group-title { color: #d0d7de; }
+
+    .orgmap-users {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+        padding: 14px 0 0 12px;
+        border-top: 1px solid currentColor;
+        border-left: 1px dashed currentColor;
+    }
+
+    .orgmap-users::before { left: 12px; top: -15px; height: 15px; }
+
+    .orgmap-user-chip {
+        color: var(--orgmap-user);
+        padding: 10px;
+        background: #171e27;
+        border-left: 2px solid currentColor;
+    }
+
+    .orgmap-user-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .orgmap-user-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        color: #e6edf3;
+        font-size: 0.75rem;
+    }
+
+    .orgmap-user-license {
+        flex: 0 0 auto;
+        color: #9da7b3;
+        font: 600 0.5625rem/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .orgmap-budgets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 7px 0;
+    }
+
+    .orgmap-budget-badge {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        min-height: 22px;
+        overflow: hidden;
+        border: 1px solid currentColor;
+        border-radius: 0;
+        color: var(--orgmap-pool);
+        background: rgba(157, 167, 179, 0.1);
+        font: 600 0.625rem/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .orgmap-budget-ulb { color: var(--orgmap-ulb); background: rgba(57, 208, 200, 0.11); }
+    .orgmap-budget-overage { color: var(--orgmap-overage); background: rgba(247, 120, 186, 0.11); }
+    .orgmap-budget-pool { color: var(--orgmap-pool); background: rgba(157, 167, 179, 0.11); }
+
+    .orgmap-budget-label,
+    .orgmap-budget-amount {
+        display: inline-block;
+        padding: 3px 6px;
+    }
+
+    .orgmap-budget-label {
+        border-right: 1px solid currentColor;
+        letter-spacing: 0.06em;
+    }
+
+    .orgmap-budget-amount {
+        overflow: hidden;
+        color: #e6edf3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .orgmap-budget-effective { box-shadow: inset 3px 0 0 currentColor; }
+    .orgmap-budget-inherited { border-style: dashed; }
+    .orgmap-budget-inherited .orgmap-budget-label::after {
+        content: " ↳";
+        opacity: 0.9;
+    }
+
+    .orgmap-budget-shadowed {
+        opacity: 0.48;
+        filter: saturate(0.45);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+    }
+
+    .orgmap-budget-info {
+        display: inline-grid;
+        place-items: center;
+        align-self: stretch;
+        width: 24px;
+        min-width: 24px;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid currentColor;
+        border-radius: 0;
+        color: inherit;
+        background: rgba(255, 255, 255, 0.04);
+        font: 700 0.6875rem/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        text-decoration: none;
+    }
+
+    .orgmap-budget-info:hover { background: rgba(255, 255, 255, 0.12); }
+
+    .orgmap-usage {
+        display: grid;
+        grid-template-columns: minmax(60px, 1fr) minmax(0, auto);
+        align-items: center;
+        gap: 7px;
+        margin-top: 7px;
+    }
+
+    .orgmap-usage-track {
+        height: 3px;
+        overflow: hidden;
+        background: #30363d;
+        border-radius: 0;
+    }
+
+    .orgmap-usage-fill {
+        display: block;
+        height: 100%;
+        background: #39d0c8;
+    }
+
+    .orgmap-usage-label {
+        overflow: hidden;
+        color: #9da7b3;
+        font: 0.5625rem/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .orgmap-memberships {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+    }
+
+    .orgmap-membership-tag {
+        max-width: 100%;
+        overflow: hidden;
+        padding: 1px 5px;
+        border: 1px solid currentColor;
+        border-radius: 8px;
+        background: transparent;
+        font-size: 0.5625rem;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .orgmap-membership-team { color: #f2cf6b; }
+    .orgmap-membership-organization { color: #7ee787; }
+
+    .orgmap-users-toggle {
+        width: 100%;
+        margin-top: 9px;
+        padding: 5px 9px;
+        border-color: currentColor;
+        border-style: dashed;
+        border-radius: 2px;
+        color: #c9d1d9;
+        background: transparent;
+        font: 600 0.6875rem/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .orgmap-users-toggle::before { content: "+ "; color: currentColor; }
+    .orgmap-users-toggle[aria-expanded="true"]::before { content: "− "; }
+    .orgmap-users-toggle:hover { background: rgba(255, 255, 255, 0.06); }
+
+    .orgmap-group-empty,
+    .orgmap-cost-center-empty {
+        grid-column: 1 / -1;
+        padding: 16px;
+        border: 1px dashed currentColor;
+        color: #9da7b3;
+        background: rgba(13, 17, 23, 0.55);
+        font-size: 0.75rem;
+        text-align: center;
+    }
+
+    .orgmap-empty-state {
+        display: grid;
+        min-height: 205px;
+        place-content: center;
+        padding: 36px;
+        border: 1px dashed var(--orgmap-rail);
+        color: var(--color-text-muted);
+        text-align: center;
+    }
+
+    .orgmap-empty-state::before {
+        content: "NO NODES";
+        margin-bottom: 10px;
+        color: var(--orgmap-enterprise);
+        font: 700 0.625rem/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: 0.16em;
+    }
+
+    .orgmap-empty-state h3 { color: var(--color-text); font-size: 1rem; }
+    .orgmap-empty-state p { margin-top: 5px; font-size: 0.75rem; }
+
+    /* Budget detail overlay/dialog; supports renderer and popover naming variants. */
+    .orgmap-dialog-backdrop,
+    .orgmap-dialog-overlay,
+    .orgmap-overlay,
+    .orgmap-budget-dialog-backdrop {
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(1, 4, 9, 0.78);
+    }
+
+    .orgmap-dialog,
+    .orgmap-dialog-panel,
+    .orgmap-budget-dialog,
+    .orgmap-popover {
+        width: min(520px, 100%);
+        max-height: min(680px, calc(100vh - 40px));
+        overflow: auto;
+        border: 1px solid #6e7681;
+        border-top: 3px solid var(--orgmap-ulb, #39d0c8);
+        border-radius: 0;
+        color: var(--color-text);
+        background: #161b22;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.62);
+    }
+
+    .orgmap-dialog-header,
+    .orgmap-budget-dialog-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--color-border);
+        background: #1c2128;
+    }
+
+    .orgmap-dialog-title,
+    .orgmap-budget-dialog-title { font-size: 0.9375rem; }
+
+    .orgmap-dialog-body,
+    .orgmap-budget-dialog-body { padding: 16px; color: #c9d1d9; }
+
+    .orgmap-dialog-footer,
+    .orgmap-budget-dialog-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .orgmap-dialog-close,
+    .orgmap-budget-dialog-close {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-color: #6e7681;
+    }
+
+    #panel-orgmap :is(button, [tabindex]):focus-visible,
+    :is(.orgmap-dialog, .orgmap-budget-dialog) :is(button, [tabindex]):focus-visible {
+        outline: 2px solid #79c0ff;
+        outline-offset: 2px;
+        box-shadow: none;
+    }
+
+    @media (max-width: 900px) {
+        .orgmap-intro-card { grid-template-columns: 1fr; gap: 16px; }
+        .orgmap-legend {
+            justify-content: flex-start;
+            padding: 14px 0 0;
+            border-top: 1px solid var(--orgmap-rail);
+            border-left: 0;
+        }
+        .orgmap-cost-centers { grid-template-columns: minmax(0, 1fr); }
+        .orgmap-groups { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    }
+
+    @media (max-width: 600px) {
+        .orgmap-canvas { padding: 9px; }
+        .orgmap-enterprise-box { padding: 11px; }
+        .orgmap-cost-center-box { padding: 10px; }
+        .orgmap-legend { flex-direction: column; gap: 12px; }
+        .orgmap-groups,
+        .orgmap-users { grid-template-columns: minmax(0, 1fr); }
+        .orgmap-usage { grid-template-columns: 1fr; gap: 4px; }
+        .orgmap-usage-label { white-space: normal; }
+        .orgmap-dialog-backdrop,
+        .orgmap-dialog-overlay,
+        .orgmap-overlay,
+        .orgmap-budget-dialog-backdrop { padding: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .orgmap-usage-fill,
+        .orgmap-users-toggle,
+        .orgmap-budget-info { transition: none; }
+    }
