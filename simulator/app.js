@@ -9,6 +9,7 @@ function defaultState() {
             meteredEnabled: true,
             enterpriseBudget: 1000,
             enterpriseHardStop: true,
+            costCenterBudgetsIndependent: false,
             universalULB: null
         },
         teams: [],
@@ -1152,6 +1153,7 @@ function updateBudgets() {
     state.enterprise.universalULB = Number.isFinite(ulbVal) ? dollarsToCredits(ulbVal) : null;
     state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
     state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
+    state.enterprise.costCenterBudgetsIndependent = document.getElementById('costCenterBudgetsIndependent').checked;
     saveState();
 }
 
@@ -1280,6 +1282,8 @@ function renderBudgets() {
     document.getElementById('universalULB').value = state.enterprise.universalULB !== null ? creditsToDollars(state.enterprise.universalULB).toFixed(2) : '';
     document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
     document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
+    const independentCheckbox = document.getElementById('costCenterBudgetsIndependent');
+    if (independentCheckbox) independentCheckbox.checked = !!state.enterprise.costCenterBudgetsIndependent;
 
     // Refresh target dropdowns
     renderULBTargets();
