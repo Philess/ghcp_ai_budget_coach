@@ -1665,7 +1665,7 @@ function showOrgMapBudgetInfo(budgetId) {
     const overlay = document.createElement('div');
     overlay.id = 'orgMapBudgetInfoOverlay';
     overlay.className = 'orgmap-budget-info-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:none;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:auto;'
     overlay.innerHTML = `<section class="orgmap-budget-info-dialog" role="dialog" aria-modal="true" aria-labelledby="orgMapBudgetInfoTitle" style="width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--color-canvas-default,#fff);color:var(--color-fg-default,#24292f);border:1px solid var(--color-border-default,#d0d7de);border-radius:8px;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.3);pointer-events:auto">
         <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
             <h2 id="orgMapBudgetInfoTitle" style="margin:0">${escapeHtml(descriptor.title)}</h2>
@@ -1685,10 +1685,8 @@ function showOrgMapBudgetInfo(budgetId) {
         <p style="margin:0">${escapeHtml(descriptor.rule)}</p>
     </section>`;
     document.body.appendChild(overlay);
-    const header = document.querySelector('header');
-    const nav = document.querySelector('nav');
     orgMapBudgetInfoInertElements = [...document.body.children]
-        .filter(element => element !== overlay && element !== header && element !== nav)
+        .filter(element => element !== overlay)
         .map(element => ({ element, wasInert: element.inert }));
     orgMapBudgetInfoInertElements.forEach(({ element }) => { element.inert = true; });
     overlay.querySelector('.orgmap-budget-info-close').focus();
@@ -1770,7 +1768,9 @@ function renderOrgMapUsageBar(node, usage, context) {
     const width = Math.min(100, Math.max(0, percent));
     const label = capacity > 0
         ? `${fmt(Math.round(consumed))} of ${fmt(Math.round(capacity))} credits consumed (${percent.toFixed(1)}%)`
-        : `${fmt(Math.round(requested))} credits requested; no applicable capacity`;
+        : consumed > 0
+            ? `${fmt(Math.round(consumed))} credits consumed (no fixed pool or ULB capacity)`
+            : `${fmt(Math.round(requested))} credits requested; no applicable capacity`;
     const progressMaximum = Math.max(1, Math.round(capacity), Math.round(consumed));
     return `<div class="orgmap-usage" aria-label="${escapeHtml(label)}">
         <div class="orgmap-usage-track" role="progressbar" aria-label="Credit usage" aria-valuemin="0" aria-valuemax="${escapeHtml(progressMaximum)}" aria-valuenow="${escapeHtml(Math.round(consumed))}">
