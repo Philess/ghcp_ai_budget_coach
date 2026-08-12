@@ -203,6 +203,42 @@ export function membershipState() {
     });
 }
 
+export function independentCostCenterBudgetState() {
+    return createState({
+        enterprise: {
+            businessSeats: 4,
+            meteredEnabled: true,
+            enterpriseBudget: 100,
+            enterpriseHardStop: true,
+            costCenterBudgetsIndependent: false
+        },
+        costCenters: [{
+            id: 'cc-rnd',
+            name: 'RND',
+            teamIds: [],
+            orgIds: [],
+            userIds: ['user-rnd-1', 'user-rnd-2'],
+            poolEnabled: true,
+            overagesAllowed: true,
+            budget: 50,
+            budgetHardStop: true,
+            ulb: null
+        }],
+        users: [
+            { id: 'user-rnd-1', name: 'RND One', license: 'business', individualULB: null },
+            { id: 'user-rnd-2', name: 'RND Two', license: 'business', individualULB: null },
+            { id: 'user-shared-1', name: 'Shared One', license: 'business', individualULB: null },
+            { id: 'user-shared-2', name: 'Shared Two', license: 'business', individualULB: null }
+        ],
+        usage: {
+            'user-rnd-1': 0,
+            'user-rnd-2': 0,
+            'user-shared-1': 0,
+            'user-shared-2': 0
+        }
+    });
+}
+
 export function multiScopeState() {
     return createState({
         enterprise: {

@@ -21,6 +21,22 @@ export class SimulatorPage {
         await this.page.waitForLoadState('networkidle');
     }
 
+    async showPanel(panel) {
+        await this.page.evaluate(currentPanel => {
+            document.querySelectorAll('.panel').forEach(element => element.classList.remove('active'));
+            document.getElementById(`panel-${currentPanel}`)?.classList.add('active');
+            if (currentPanel === 'simulate') {
+                renderCCPoolToggles();
+                renderGlobalBudgetSimulation();
+                renderDashboardState();
+            }
+            if (currentPanel === 'budgets') renderBudgets();
+            if (currentPanel === 'pool') renderPoolView();
+            if (currentPanel === 'enterprise') renderEnterpriseStats();
+            if (currentPanel === 'orgmap') renderOrgMap();
+        }, panel);
+    }
+
     row(userId) {
         return this.page.locator(`[data-user-id="${userId}"]`);
     }
@@ -67,6 +83,10 @@ export class SimulatorPage {
 
     gauge(key) {
         return this.page.locator(`[data-gauge-key="${key}"]`);
+    }
+
+    budgetControl(key) {
+        return this.page.locator(`[data-budget-row="${key}"]`);
     }
 
     async gaugeValues(key) {
