@@ -566,12 +566,24 @@ function buildOrgMapModel() {
                     : null
             };
             group.users.push(userNode);
-            group.usage += userUsage;
+            const aggregateGroups = [
+                ...userTeams.map(team => teamGroupById.get(team.id)).filter(Boolean),
+                ...userOrganizations.map(org => orgGroupById.get(org.id)).filter(Boolean)
+            ];
+            (aggregateGroups.length > 0 ? aggregateGroups : [directGroup]).forEach(aggregateGroup => {
+                if (!Array.isArray(aggregateGroup.aggregateUsers)) aggregateGroup.aggregateUsers = [];
+                aggregateGroup.aggregateUsers.push(userNode);
+                aggregateGroup.usage += userUsage;
+            });
         });
 
         const source = destination.source;
         const assignedMembers = source ? getAssignedCCMembers(source) : destinationUsers;
-        const nodeUsage = groups.reduce((sum, group) => sum + group.usage, 0);
+        groups.forEach(group => {
+            if (!Array.isArray(group.aggregateUsers)) group.aggregateUsers = [...group.users];
+            group.memberCount = group.aggregateUsers.length;
+        });
+        const nodeUsage = destinationUsers.reduce((sum, user) => sum + (Number(usage[user.id]) || 0), 0);
         return {
             ...(source ? {
                 ...source,
@@ -1445,11 +1457,12 @@ function buildOrgMapUsage(model) {
             });
             (Array.isArray(cc.groups) ? cc.groups : []).forEach(group => {
                 const groupKey = `${ccKey}/${group.type}:${String(group.id)}`;
+                const aggregateUsers = Array.isArray(group.aggregateUsers) ? group.aggregateUsers : group.users;
                 const orgBudget = group.type === 'organization'
                     ? (Array.isArray(state.orgs) ? state.orgs : []).find(org => org.id === group.id)?.budget
                     : null;
                 usage.groups[groupKey] = emptyOrgMapUsageTotals({
-                    users: Array.isArray(group.users) ? group.users.length : 0,
+                    users: Array.isArray(aggregateUsers) ? aggregateUsers.length : 0,
                     overageBudget: orgBudget === null || orgBudget === undefined
                         ? null : orgMapUsageNumber(orgBudget)
                 });
@@ -1481,9 +1494,12 @@ function buildOrgMapUsage(model) {
             const ccTotals = usage.costCenters[ccKey];
             (Array.isArray(cc.groups) ? cc.groups : []).forEach(group => {
                 const groupTotals = usage.groups[`${ccKey}/${group.type}:${String(group.id)}`];
-                (Array.isArray(group.users) ? group.users : []).forEach(user => {
+                (Array.isArray(group.aggregateUsers) ? group.aggregateUsers : (Array.isArray(group.users) ? group.users : [])).forEach(user => {
                     const result = resultsByUser.get(user.id);
                     addOrgMapUsageResult(groupTotals, result);
+                });
+                (Array.isArray(group.users) ? group.users : []).forEach(user => {
+                    const result = resultsByUser.get(user.id);
                     addOrgMapUsageResult(ccTotals, result);
                 });
             });
@@ -1818,6 +1834,7 @@ function orgMapGroupKey(costCenter, group) {
 function renderOrgMapGroup(group, model, costCenter, usage) {
     const key = orgMapGroupKey(costCenter, group);
     const users = Array.isArray(group.users) ? group.users : [];
+    const memberCount = Number.isFinite(Number(group.memberCount)) ? Number(group.memberCount) : users.length;
     const collapsible = users.length > ORG_MAP_USER_COLLAPSE_THRESHOLD;
     const expanded = orgMapExpandedUserGroups.has(key);
     const visibleUsers = collapsible && !expanded ? users.slice(0, ORG_MAP_USER_COLLAPSE_THRESHOLD) : users;
@@ -1826,10 +1843,10 @@ function renderOrgMapGroup(group, model, costCenter, usage) {
     const toggle = collapsible
         ? `<button type="button" class="orgmap-users-toggle" aria-expanded="${expanded}" onclick="toggleOrgMapUsers('${escapeInlineArg(key)}')">${expanded ? 'Show fewer users' : `Show ${hiddenCount} more users`}</button>`
         : '';
-    return `<section class="orgmap-group-box orgmap-group-${group.type}" data-orgmap-type="${escapeHtml(group.type)}" data-orgmap-id="${escapeHtml(group.id)}" aria-label="${escapeHtml(`${group.name}, ${users.length} users`)}">
+    return `<section class="orgmap-group-box orgmap-group-${group.type}" data-orgmap-type="${escapeHtml(group.type)}" data-orgmap-id="${escapeHtml(group.id)}" aria-label="${escapeHtml(`${group.name}, ${memberCount} users`)}">
         <header class="orgmap-group-header">
             <h4 class="orgmap-group-title">${escapeHtml(group.name)}</h4>
-            <span class="orgmap-user-count">${escapeHtml(users.length)} user${users.length === 1 ? '' : 's'}</span>
+            <span class="orgmap-user-count">${escapeHtml(memberCount)} user${memberCount === 1 ? '' : 's'}</span>
         </header>
         ${renderOrgMapBudgets(group, context)}
         ${renderOrgMapUsageBar(group, usage, context)}
