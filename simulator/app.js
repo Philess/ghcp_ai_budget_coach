@@ -1682,22 +1682,24 @@ function showOrgMapBudgetInfo(budgetId) {
     overlay.id = 'orgMapBudgetInfoOverlay';
     overlay.className = 'orgmap-budget-dialog-backdrop';
     overlay.innerHTML = `<section class="orgmap-budget-dialog" role="dialog" aria-modal="true" aria-labelledby="orgMapBudgetInfoTitle">
-        <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
-            <h2 id="orgMapBudgetInfoTitle" style="margin:0">${escapeHtml(descriptor.title)}</h2>
-            <button type="button" class="orgmap-budget-dialog-close" aria-label="Close budget details" onclick="closeOrgMapBudgetInfo()" style="font-size:1.25rem;line-height:1">×</button>
+        <header class="orgmap-budget-dialog-header">
+            <h2 id="orgMapBudgetInfoTitle" class="orgmap-budget-dialog-title">${escapeHtml(descriptor.title)}</h2>
+            <button type="button" class="orgmap-budget-dialog-close" aria-label="Close budget details" onclick="closeOrgMapBudgetInfo()">×</button>
         </header>
-        <dl style="display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:20px 0">
-            <dt>Budget type</dt><dd>${escapeHtml(kindLabels[descriptor.kind] || descriptor.kind)}</dd>
-            <dt>Source</dt><dd>${escapeHtml(`${descriptor.level}: ${descriptor.sourceName}`)}</dd>
-            <dt>Configured amount</dt><dd>${escapeHtml(configuredAmount)}</dd>
-            <dt>Status</dt><dd>${escapeHtml(status)}</dd>
-            <dt>Enforcement</dt><dd>${escapeHtml(enforcement)}</dd>
-            <dt>Consumed</dt><dd>${escapeHtml(formatLiveAmount(live.consumed))}</dd>
-            <dt>Remaining</dt><dd>${escapeHtml(formatLiveAmount(live.remaining))}</dd>
-            <dt>Used</dt><dd>${escapeHtml(live.percentage === null ? 'Calculated per user' : `${live.percentage.toFixed(1)}%`)}</dd>
-        </dl>
-        <h3 style="margin-bottom:6px">Why it applies</h3>
-        <p style="margin:0">${escapeHtml(descriptor.rule)}</p>
+        <div class="orgmap-budget-dialog-body">
+            <dl style="display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;margin:0 0 20px">
+                <dt>Budget type</dt><dd>${escapeHtml(kindLabels[descriptor.kind] || descriptor.kind)}</dd>
+                <dt>Source</dt><dd>${escapeHtml(`${descriptor.level}: ${descriptor.sourceName}`)}</dd>
+                <dt>Configured amount</dt><dd>${escapeHtml(configuredAmount)}</dd>
+                <dt>Status</dt><dd>${escapeHtml(status)}</dd>
+                <dt>Enforcement</dt><dd>${escapeHtml(enforcement)}</dd>
+                <dt>Consumed</dt><dd>${escapeHtml(formatLiveAmount(live.consumed))}</dd>
+                <dt>Remaining</dt><dd>${escapeHtml(formatLiveAmount(live.remaining))}</dd>
+                <dt>Used</dt><dd>${escapeHtml(live.percentage === null ? 'Calculated per user' : `${live.percentage.toFixed(1)}%`)}</dd>
+            </dl>
+            <h3 style="margin-bottom:6px">Why it applies</h3>
+            <p>${escapeHtml(descriptor.rule)}</p>
+        </div>
     </section>`;
     document.body.appendChild(overlay);
     orgMapBudgetInfoInertElements = [...document.body.children]
