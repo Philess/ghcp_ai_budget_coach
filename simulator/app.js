@@ -1153,7 +1153,8 @@ function updateBudgets() {
     state.enterprise.universalULB = Number.isFinite(ulbVal) ? dollarsToCredits(ulbVal) : null;
     state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
     state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
-    state.enterprise.costCenterBudgetsIndependent = document.getElementById('costCenterBudgetsIndependent').checked;
+    const independentCheckbox = document.getElementById('costCenterBudgetsIndependent');
+    state.enterprise.costCenterBudgetsIndependent = independentCheckbox ? independentCheckbox.checked : false;
     saveState();
 }
 
@@ -1959,9 +1960,18 @@ function getUserCC(user) {
     return null;
 }
 
+function userHasIndependentCostCenterBudget(user, cc = getUserCC(user)) {
+    return !!(state.enterprise.costCenterBudgetsIndependent
+        && cc
+        && cc.overagesAllowed
+        && cc.budget !== null
+        && cc.budget !== undefined);
+}
+
 function getMeteredBudgetLabels(user) {
     const labels = [];
     const cc = getUserCC(user);
+    const hasIndependentCostCenterBudget = userHasIndependentCostCenterBudget(user, cc);
     if (cc && cc.budget !== null && cc.budget !== undefined) {
         labels.push(`${cc.name} Cost Center Overage Budget`);
     }
@@ -1969,7 +1979,9 @@ function getMeteredBudgetLabels(user) {
     if (org && org.budget !== null && org.budget !== undefined) {
         labels.push(`${org.name} Organization Overage Budget`);
     }
-    if (state.enterprise.enterpriseBudget !== null && state.enterprise.enterpriseBudget !== undefined) {
+    if (!hasIndependentCostCenterBudget
+        && state.enterprise.enterpriseBudget !== null
+        && state.enterprise.enterpriseBudget !== undefined) {
         labels.push('Enterprise Overage Budget');
     }
     return labels;
@@ -2058,6 +2070,7 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         }
 
         const org = user.orgId ? state.orgs.find(o => o.id === user.orgId) : null;
+        const hasIndependentCostCenterBudget = userHasIndependentCostCenterBudget(user, cc);
         const hardStops = [];
         if (cc && cc.budget !== null && cc.budgetHardStop) {
             hardStops.push({
@@ -2071,7 +2084,9 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
                 reason: `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`
             });
         }
-        if (state.enterprise.enterpriseBudget !== null && state.enterprise.enterpriseHardStop) {
+        if (!hasIndependentCostCenterBudget
+            && state.enterprise.enterpriseBudget !== null
+            && state.enterprise.enterpriseHardStop) {
             hardStops.push({
                 affordable: meteredCreditsFromBudget(
                     state.enterprise.enterpriseBudget - poolState.enterpriseMetered),
@@ -2098,7 +2113,9 @@ function evaluateUser(user, userUsage, poolState, baselineResult = null, poolCap
         result.meteredBudgetLabels = getMeteredBudgetLabels(user);
         if (cc) poolState.ccMetered[cc.id] = (poolState.ccMetered[cc.id] || 0) + deltaCost;
         if (org) poolState.orgMetered[org.id] = (poolState.orgMetered[org.id] || 0) + deltaCost;
-        poolState.enterpriseMetered += deltaCost;
+        if (!hasIndependentCostCenterBudget) {
+            poolState.enterpriseMetered += deltaCost;
+        }
 
         result.status = hardStopReason ? 'blocked' : 'metered';
         result.reason = hardStopReason;
@@ -2259,6 +2276,7 @@ function computeSimulationResults(options = {}) {
         }
 
         const cc = getUserCC(user);
+        const hasIndependentCostCenterBudget = userHasIndependentCostCenterBudget(user, cc);
         if (cc && frozenCCs.has(cc.id)) {
             return {
                 status: 'blocked',
@@ -2303,7 +2321,8 @@ function computeSimulationResults(options = {}) {
                 reason: `Org budget exhausted (${formatSimulationBudget(org.budget)}, ${org.name})`
             };
         }
-        if (state.enterprise.enterpriseHardStop
+        if (!hasIndependentCostCenterBudget
+            && state.enterprise.enterpriseHardStop
             && state.enterprise.enterpriseBudget !== null
             && (enterpriseOverageExhausted
                 || meteredCreditsFromBudget(

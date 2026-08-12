@@ -449,6 +449,68 @@ test('enterprise exhaustion projects pool headroom as served and paid overage as
     assertNextCall(byId[MATTHIEU], 'blocked', /Enterprise budget exhausted/);
 });
 
+test('independent cost-center overage does not consume enterprise metered budget', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 0;
+    state.enterprise.enterpriseBudget = 1;
+    state.enterprise.enterpriseHardStop = true;
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.costCenters = [{
+        id: 'cc-rnd',
+        name: 'RND',
+        poolEnabled: false,
+        overagesAllowed: true,
+        budget: 10,
+        budgetHardStop: true,
+        ulb: null,
+        userIds: [PHILIPPE]
+    }];
+    state.users = [state.users.find(user => user.id === PHILIPPE)];
+    sim.setState(state);
+    sim.call('applyUserUsageChange', PHILIPPE, 200);
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'metered');
+    assert.match(byId[PHILIPPE].lastCallSource, /Cost Center Overage Budget/);
+    assert.doesNotMatch(byId[PHILIPPE].lastCallSource, /Enterprise Overage Budget/);
+    const { poolState } = sim.call('computeSimulationResults');
+    assert.equal(poolState.ccMetered['cc-rnd'], 2);
+    assert.equal(poolState.enterpriseMetered, 0);
+});
+
+test('independent cost-center overage bypasses enterprise exhaustion for next-call projection', () => {
+    const sim = loadSimulator();
+    const state = scenarioState();
+    state.enterprise.businessSeats = 0;
+    state.enterprise.enterpriseBudget = 1;
+    state.enterprise.enterpriseHardStop = true;
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.costCenters = [{
+        id: 'cc-rnd',
+        name: 'RND',
+        poolEnabled: false,
+        overagesAllowed: true,
+        budget: 10,
+        budgetHardStop: true,
+        ulb: null,
+        userIds: [MATTHIEU]
+    }];
+    state.users = [
+        { id: PHILIPPE, name: 'Philippe', license: 'business', individualULB: null },
+        { id: MATTHIEU, name: 'Matthieu', license: 'business', individualULB: null }
+    ];
+    sim.setState(state);
+    sim.call('applyUserUsageChange', PHILIPPE, 100); // $1 enterprise metered budget exhausted
+    sim.call('applyUserUsageChange', MATTHIEU, 50);  // independent CC overage budget
+
+    const byId = resultsById(sim);
+    assertLastCall(byId[PHILIPPE], 'metered');
+    assertNextCall(byId[PHILIPPE], 'blocked', /Enterprise budget exhausted/);
+    assertLastCall(byId[MATTHIEU], 'metered');
+    assertNextCall(byId[MATTHIEU], 'metered');
+});
+
 // The reserved cost center pool is a shared resource: it is 3 business seats × 1,900
 // = 5,700 credits and it has no overage budget, so once it is exhausted every member
 // competing for it is blocked — not just the members processed last.
