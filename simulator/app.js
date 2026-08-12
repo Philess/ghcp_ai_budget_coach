@@ -1681,8 +1681,7 @@ function showOrgMapBudgetInfo(budgetId) {
     const overlay = document.createElement('div');
     overlay.id = 'orgMapBudgetInfoOverlay';
     overlay.className = 'orgmap-budget-dialog-backdrop';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.55);pointer-events:auto;'
-    overlay.innerHTML = `<section class="orgmap-budget-dialog" role="dialog" aria-modal="true" aria-labelledby="orgMapBudgetInfoTitle" style="width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--color-canvas-default,#fff);color:var(--color-fg-default,#24292f);border:1px solid var(--color-border-default,#d0d7de);border-radius:8px;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,.3);pointer-events:auto">
+    overlay.innerHTML = `<section class="orgmap-budget-dialog" role="dialog" aria-modal="true" aria-labelledby="orgMapBudgetInfoTitle">
         <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
             <h2 id="orgMapBudgetInfoTitle" style="margin:0">${escapeHtml(descriptor.title)}</h2>
             <button type="button" class="orgmap-budget-dialog-close" aria-label="Close budget details" onclick="closeOrgMapBudgetInfo()" style="font-size:1.25rem;line-height:1">×</button>
