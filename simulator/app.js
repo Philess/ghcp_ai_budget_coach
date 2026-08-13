@@ -485,6 +485,108 @@ function getCCPoolSize(cc) {
     return getAssignedCCMembers(cc).reduce((sum, u) => sum + userCreditsPerSeat(u), 0);
 }
 
+function getOverageBudgetTargets(scope) {
+    if (!scope || typeof scope !== 'object') return [];
+    if (scope.type === 'enterprise') {
+        return state.users.filter(user => !userHasIndependentCostCenterBudget(user));
+    }
+    if (scope.type === 'cc') {
+        return scope.cc ? getAssignedCCMembers(scope.cc) : [];
+    }
+    if (scope.type === 'org') {
+        return scope.org ? state.users.filter(u => u.orgId === scope.org.id) : [];
+    }
+    return [];
+}
+
+function getUserPoolEntitlement(user) {
+    const cc = getUserCC(user);
+    if (cc && cc.poolEnabled) return userCreditsPerSeat(user);
+    const reserved = state.costCenters
+        .filter(costCenter => costCenter.poolEnabled)
+        .reduce((sum, costCenter) => sum + getCCPoolSize(costCenter), 0);
+    const entPool = totalPool() - reserved;
+    const eligible = state.users.filter(u => {
+        const costCenter = getUserCC(u);
+        return !costCenter || !costCenter.poolEnabled;
+    });
+    if (eligible.length === 0) return 0;
+    return entPool / eligible.length;
+}
+
+// A user's total simulated usage is an all-or-nothing figure: if it exceeds
+// their effective ULB, the whole request is blocked and contributes zero to
+// any budget. Distributing overage credits with a flat per-user share can
+// easily exceed a small group's ULBs and collapse the result to 0%, so
+// distribution must respect each user's headroom below their ULB.
+function getUserUsageCap(user) {
+    const ulb = getEffectiveULB(user);
+    return ulb.value === null ? Infinity : ulb.value;
+}
+
+// Distributes `totalCredits` of metered overage across `targets`, first
+// filling each target's pool entitlement (so the pool reads as fully used
+// before overage kicks in), then water-filling the overage credits so no
+// user's total usage is pushed past their effective ULB. Any credits that
+// can't be placed because every target is already at its ULB cap are simply
+// left unallocated — that reflects a real capacity limit, not a bug.
+function distributeOverageCredits(targets, totalCredits, newUsage) {
+    if (!targets.length || totalCredits <= 0) return;
+    const caps = {};
+    let active = targets.filter(u => {
+        const entitlement = Math.floor(Math.max(newUsage[u.id] || 0, getUserPoolEntitlement(u)));
+        newUsage[u.id] = entitlement;
+        caps[u.id] = getUserUsageCap(u);
+        return newUsage[u.id] < caps[u.id];
+    });
+
+    let remaining = totalCredits;
+    while (remaining > 1e-6 && active.length > 0) {
+        const share = remaining / active.length;
+        let allocated = 0;
+        const nextActive = [];
+        active.forEach(u => {
+            const headroom = caps[u.id] - newUsage[u.id];
+            const alloc = Math.min(share, headroom);
+            newUsage[u.id] += alloc;
+            allocated += alloc;
+            if (headroom - alloc > 1e-6) nextActive.push(u);
+        });
+        remaining -= allocated;
+        if (allocated <= 1e-6) break;
+        active = nextActive;
+    }
+
+    targets.forEach(u => { newUsage[u.id] = Math.floor(newUsage[u.id]); });
+}
+
+// Sums the overage headroom actually available across `targets` given their
+// ULBs, so the UI can warn when a requested percentage is mathematically
+// unreachable (e.g. only a handful of independence-excluded users remain,
+// each capped by a small per-user usage limit).
+function getOverageFeasibleCredits(targets) {
+    let total = 0;
+    for (const u of targets) {
+        const cap = getUserUsageCap(u);
+        if (!Number.isFinite(cap)) return Infinity;
+        const entitlement = getUserPoolEntitlement(u);
+        total += Math.max(0, cap - entitlement);
+    }
+    return total;
+}
+
+// Builds a help-text suffix warning that a requested overage percentage may
+// not be fully reachable because the eligible users' ULBs cap how much of
+// the budget can actually be metered against them.
+function overageCapHint(targets, budget) {
+    if (!targets.length || !(budget > 0)) return '';
+    const feasibleCredits = getOverageFeasibleCredits(targets);
+    if (!Number.isFinite(feasibleCredits)) return '';
+    const feasiblePct = Math.max(0, Math.min(100, (feasibleCredits / CREDITS_PER_DOLLAR / budget) * 100));
+    if (feasiblePct >= 99.95) return '';
+    return ` · Capped by user limits: max ~${feasiblePct.toFixed(1)}% reachable for these users`;
+}
+
 function orgMapIdList(primaryId, ids) {
     const requested = new Set([
         primaryId,
@@ -1153,9 +1255,16 @@ function updateBudgets() {
     state.enterprise.universalULB = Number.isFinite(ulbVal) ? dollarsToCredits(ulbVal) : null;
     state.enterprise.enterpriseBudget = parseFloat(document.getElementById('enterpriseBudget').value) || 0;
     state.enterprise.enterpriseHardStop = document.getElementById('enterpriseHardStop').checked;
-    const independentCheckbox = document.getElementById('costCenterBudgetsIndependent');
-    state.enterprise.costCenterBudgetsIndependent = independentCheckbox ? independentCheckbox.checked : false;
     saveState();
+}
+
+function setCostCenterBudgetsIndependent(value) {
+    state.enterprise.costCenterBudgetsIndependent = !!value;
+    document.querySelectorAll('[data-bind="costCenterBudgetsIndependent"]').forEach(checkbox => {
+        checkbox.checked = !!state.enterprise.costCenterBudgetsIndependent;
+    });
+    saveState();
+    renderGlobalBudgetSimulation();
 }
 
 function renderULBTargets() {
@@ -1283,8 +1392,9 @@ function renderBudgets() {
     document.getElementById('universalULB').value = state.enterprise.universalULB !== null ? creditsToDollars(state.enterprise.universalULB).toFixed(2) : '';
     document.getElementById('enterpriseBudget').value = state.enterprise.enterpriseBudget;
     document.getElementById('enterpriseHardStop').checked = state.enterprise.enterpriseHardStop;
-    const independentCheckbox = document.getElementById('costCenterBudgetsIndependent');
-    if (independentCheckbox) independentCheckbox.checked = !!state.enterprise.costCenterBudgetsIndependent;
+    document.querySelectorAll('[data-bind="costCenterBudgetsIndependent"]').forEach(checkbox => {
+        checkbox.checked = !!state.enterprise.costCenterBudgetsIndependent;
+    });
 
     // Refresh target dropdowns
     renderULBTargets();
@@ -2748,39 +2858,32 @@ function applyAllGlobalBudgetPercents() {
         }
     });
 
-    // Enterprise overage budget → all users equally
+    // Enterprise overage budget → independence-aware targets, water-filled
+    // so no single target's ULB collapses the whole request to zero.
     const entOverPct = percents['enterpriseOverage'] || 0;
     if (entOverPct > 0 && state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
         const totalCredits = meteredCreditsFromBudget(state.enterprise.enterpriseBudget * entOverPct / 100);
-        if (state.users.length > 0) {
-            const perUser = Math.floor(totalCredits / state.users.length);
-            state.users.forEach(u => { newUsage[u.id] += perUser; });
-        }
+        const targets = getOverageBudgetTargets({ type: 'enterprise' });
+        distributeOverageCredits(targets, totalCredits, newUsage);
     }
 
-    // CC overage budgets → CC members equally
+    // CC overage budgets → CC targets, water-filled against each user's ULB
     state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
         const pct = percents['ccOverage_' + cc.id] || 0;
         if (pct > 0) {
-            const ccUsers = getAssignedCCMembers(cc);
-            if (ccUsers.length > 0) {
-                const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
-                const perUser = Math.floor(totalCredits / ccUsers.length);
-                ccUsers.forEach(u => { newUsage[u.id] += perUser; });
-            }
+            const targets = getOverageBudgetTargets({ type: 'cc', cc });
+            const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
+            distributeOverageCredits(targets, totalCredits, newUsage);
         }
     });
 
-    // Org overage budgets → org members equally
+    // Org overage budgets → org targets, water-filled against each user's ULB
     state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
         const pct = percents['orgOverage_' + org.id] || 0;
         if (pct > 0) {
-            const orgUsers = state.users.filter(u => u.orgId === org.id);
-            if (orgUsers.length > 0) {
-                const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
-                const perUser = Math.floor(totalCredits / orgUsers.length);
-                orgUsers.forEach(u => { newUsage[u.id] += perUser; });
-            }
+            const targets = getOverageBudgetTargets({ type: 'org', org });
+            const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
+            distributeOverageCredits(targets, totalCredits, newUsage);
         }
     });
 
@@ -2852,8 +2955,16 @@ function renderGlobalBudgetSimulation() {
     const eligibleForEntPool = state.users.filter(u => { const cc = getUserCC(u); return !cc || !cc.poolEnabled; });
     if (entPool > 0) {
         const pct = percents['enterprisePool'] || 0;
+        const entOverageTargets = getOverageBudgetTargets({ type: 'enterprise' });
+        const entOverageTargetIds = new Set(entOverageTargets.map(user => user.id));
+        const entPoolHint = state.enterprise.meteredEnabled
+            && state.enterprise.enterpriseBudget > 0
+            && (percents['enterpriseOverage'] || 0) > 0
+            && eligibleForEntPool.some(user => entOverageTargetIds.has(user.id))
+            ? ' · Enterprise overage will fill targeted users\' pool to 100% first'
+            : '';
         poolHtml += renderBudgetControl('enterprisePool', 'Enterprise Shared Pool',
-            `${formatSimulationCredits(entPool)} total`,
+            `${formatSimulationCredits(entPool)} total${entPoolHint}`,
             eligibleForEntPool.length, pct, { variant: 'pool', targetType: 'enterprise' });
     }
 
@@ -2863,8 +2974,11 @@ function renderGlobalBudgetSimulation() {
         const ccUsers = getAssignedCCMembers(cc);
         if (ccPool > 0) {
             const pct = percents['ccPool_' + cc.id] || 0;
+            const ccPoolHint = (percents['ccOverage_' + cc.id] || 0) > 0 && cc.budget !== null && cc.budget !== undefined && cc.budget > 0
+                ? ' · CC overage will fill this pool to 100% first'
+                : '';
             poolHtml += renderBudgetControl('ccPool_' + cc.id, cc.name + ' Pool',
-                `${formatSimulationCredits(ccPool)} total`,
+                `${formatSimulationCredits(ccPool)} total${ccPoolHint}`,
                 ccUsers.length, pct, { variant: 'pool', targetType: 'cc' });
         }
     });
@@ -2872,27 +2986,31 @@ function renderGlobalBudgetSimulation() {
     // Enterprise overage budget
     if (state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
         const pct = percents['enterpriseOverage'] || 0;
+        const entOverageTargets = getOverageBudgetTargets({ type: 'enterprise' });
+        const capHint = overageCapHint(entOverageTargets, state.enterprise.enterpriseBudget);
         overageHtml += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
-            `${formatSimulationBudget(state.enterprise.enterpriseBudget)} total`,
-            state.users.length, pct, { variant: 'overage', targetType: 'enterprise' });
+            `${formatSimulationBudget(state.enterprise.enterpriseBudget)} total${capHint}`,
+            entOverageTargets.length, pct, { variant: 'overage', targetType: 'enterprise' });
     }
 
     // CC overage budgets
     state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
-        const ccUsers = getAssignedCCMembers(cc);
+        const ccOverageTargets = getOverageBudgetTargets({ type: 'cc', cc });
         const pct = percents['ccOverage_' + cc.id] || 0;
+        const capHint = overageCapHint(ccOverageTargets, cc.budget);
         overageHtml += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
-            `${formatSimulationBudget(cc.budget)} total`,
-            ccUsers.length, pct, { variant: 'overage', targetType: 'cc' });
+            `${formatSimulationBudget(cc.budget)} total${capHint}`,
+            ccOverageTargets.length, pct, { variant: 'overage', targetType: 'cc' });
     });
 
     // Org overage budgets
     state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
-        const orgUsers = state.users.filter(u => u.orgId === org.id);
+        const orgOverageTargets = getOverageBudgetTargets({ type: 'org', org });
         const pct = percents['orgOverage_' + org.id] || 0;
+        const capHint = overageCapHint(orgOverageTargets, org.budget);
         overageHtml += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
             `${formatSimulationBudget(org.budget)} total`,
-            orgUsers.length, pct, { variant: 'overage', targetType: 'org' });
+            orgOverageTargets.length, pct, { variant: 'overage', targetType: 'org' });
     });
 
     let html = '';
@@ -2901,7 +3019,9 @@ function renderGlobalBudgetSimulation() {
             <div class="budget-control-grid">${poolHtml}</div>`;
     }
     if (overageHtml) {
+        const overageIndependenceToggle = `<label class="checkbox-label" style="margin-bottom:12px"><input type="checkbox" data-bind="costCenterBudgetsIndependent" ${state.enterprise.costCenterBudgetsIndependent ? 'checked' : ''} onchange="setCostCenterBudgetsIndependent(this.checked)"> Cost center overage budgets are independent of enterprise budget</label>`;
         html += `<h3 class="budget-group-title">💳 Overage Budgets <span class="help-text">Metered spend beyond the pool</span></h3>
+            ${overageIndependenceToggle}
             <div class="budget-control-grid">${overageHtml}</div>`;
     }
     if (!html) {
@@ -3073,6 +3193,7 @@ function defaultWizardData() {
         overageBudgets: {
             enterpriseBudget: state.enterprise.enterpriseBudget,
             enterpriseHardStop: state.enterprise.enterpriseHardStop,
+            costCenterBudgetsIndependent: state.enterprise.costCenterBudgetsIndependent,
             orgs: [],
             costCenters: []
         }
@@ -3168,8 +3289,10 @@ function captureWizardStepValues(step) {
     if (step === 5) {
         const budgetEl = document.getElementById('wizardEntBudget');
         const hardStopEl = document.getElementById('wizardEntHardStop');
+        const independentEl = document.getElementById('wizardEntIndependent');
         if (budgetEl) wizardData.overageBudgets.enterpriseBudget = parseFloat(budgetEl.value) || 0;
         if (hardStopEl) wizardData.overageBudgets.enterpriseHardStop = hardStopEl.checked;
+        if (independentEl) wizardData.overageBudgets.costCenterBudgetsIndependent = independentEl.checked;
     }
 }
 
@@ -3310,7 +3433,15 @@ function wizardSaveExistingOverage(type, id) {
     const newVal = parseFloat((document.getElementById('wzeOverageVal_' + type + '_' + id) || {}).value);
     if (isNaN(newVal) || newVal < 0) { if (errEl) errEl.textContent = 'Enter a valid budget (≥ $0).'; return; }
     const hardStop = (document.getElementById('wzeOverageHS_' + type + '_' + id) || {}).checked ?? true;
-    if (type === 'enterprise') { state.enterprise.enterpriseBudget = newVal; state.enterprise.enterpriseHardStop = hardStop; }
+    if (type === 'enterprise') {
+        const independent = !!((document.getElementById('wzeOverageIndep_' + type + '_' + id) || {}).checked);
+        state.enterprise.enterpriseBudget = newVal;
+        state.enterprise.enterpriseHardStop = hardStop;
+        setCostCenterBudgetsIndependent(independent);
+        wizardData.overageBudgets.enterpriseBudget = newVal;
+        wizardData.overageBudgets.enterpriseHardStop = hardStop;
+        wizardData.overageBudgets.costCenterBudgetsIndependent = independent;
+    }
     else if (type === 'org') { const o = state.orgs.find(o => o.id === id); if (o) { o.budget = newVal; o.budgetHardStop = hardStop; } }
     else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (c) { c.budget = newVal; c.budgetHardStop = hardStop; } }
     saveState(); wizardEditingExistingKey = null; renderWizardBody();
@@ -3985,7 +4116,7 @@ function renderWizardStepOverageBudgets() {
     const entEditing = wizardEditingExistingKey === entKey;
     const entRow = `<div class="wizard-entry-item existing${entEditing ? ' editing' : ''}">
         <div class="wizard-entry-item-info"><strong>Enterprise</strong>
-            <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(state.enterprise.enterpriseBudget)} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}</span></div>
+            <span style="margin-left:6px;font-size:0.875rem">${formatBudgetWithCreditReferenceFromDollars(state.enterprise.enterpriseBudget)} · ${state.enterprise.enterpriseHardStop ? 'hard stop' : 'soft stop'}${state.enterprise.costCenterBudgetsIndependent ? ' · independent CC budgets' : ''}</span></div>
         <div style="display:flex;gap:4px;flex-shrink:0"><button type="button" class="btn-sm" onclick="wizardToggleExistingEdit('${escapeInlineArg(entKey)}')">✏️ Edit</button></div></div>`;
     existingOverageItems.push(entEditing ? entRow + `<div class="wizard-existing-edit-form">
         <div class="form-row" style="margin-bottom:8px">
@@ -3994,6 +4125,9 @@ function renderWizardStepOverageBudgets() {
             <div class="form-group"><label>&nbsp;</label>
                 <label class="checkbox-label">
                     <input type="checkbox" id="wzeOverageHS_enterprise__" ${state.enterprise.enterpriseHardStop ? 'checked' : ''}> Hard stop</label></div>
+            <div class="form-group"><label>&nbsp;</label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="wzeOverageIndep_enterprise__" data-bind="costCenterBudgetsIndependent" ${state.enterprise.costCenterBudgetsIndependent ? 'checked' : ''}> Cost center overage budgets are independent of enterprise budget</label></div>
         </div>
         <div id="wzeOverageErr_enterprise__" class="wizard-error"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -4059,6 +4193,11 @@ function renderWizardStepOverageBudgets() {
                 <label class="checkbox-label">
                     <input type="checkbox" id="wizardEntHardStop" ${wizardData.overageBudgets.enterpriseHardStop ? 'checked' : ''}>
                     Hard stop when exhausted
+                </label></div>
+            <div class="form-group"><label>&nbsp;</label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="wizardEntIndependent" data-bind="costCenterBudgetsIndependent" ${wizardData.overageBudgets.costCenterBudgetsIndependent ? 'checked' : ''}>
+                    Cost center overage budgets are independent of enterprise budget
                 </label></div>
         </div>
         <div class="section-divider"></div>
@@ -4133,10 +4272,12 @@ function renderWizardStepReview() {
     }
     const entBudgetChanged = wizardData.overageBudgets.enterpriseBudget !== state.enterprise.enterpriseBudget
         || wizardData.overageBudgets.enterpriseHardStop !== state.enterprise.enterpriseHardStop;
+    const entIndependenceChanged = wizardData.overageBudgets.costCenterBudgetsIndependent !== state.enterprise.costCenterBudgetsIndependent;
     const hasOvBudgets = wizardData.overageBudgets.orgs.length > 0 || wizardData.overageBudgets.costCenters.length > 0;
-    if (entBudgetChanged || hasOvBudgets) {
+    if (entBudgetChanged || entIndependenceChanged || hasOvBudgets) {
         let ovHtml = '';
         if (entBudgetChanged) ovHtml += `<div class="wizard-review-item"><strong>Enterprise:</strong> ${formatBudgetWithCreditReferenceFromDollars(wizardData.overageBudgets.enterpriseBudget)} ${wizardData.overageBudgets.enterpriseHardStop ? '(hard stop)' : '(soft stop)'}</div>`;
+        if (entBudgetChanged || entIndependenceChanged) ovHtml += `<div class="wizard-review-item"><strong>Cost center budget behavior:</strong> ${wizardData.overageBudgets.costCenterBudgetsIndependent ? 'Independent of enterprise budget' : 'Uses enterprise budget'}</div>`;
         wizardData.overageBudgets.orgs.forEach(b => {
             ovHtml += `<div class="wizard-review-item"><strong>${escapeHtml(b.orgName)}</strong> (Org): ${formatBudgetWithCreditReferenceFromDollars(b.budget)} ${b.hardStop ? '(hard stop)' : '(soft stop)'}</div>`;
         });
@@ -4227,6 +4368,7 @@ function confirmWizard() {
     // 6. Overage budgets
     state.enterprise.enterpriseBudget = wizardData.overageBudgets.enterpriseBudget;
     state.enterprise.enterpriseHardStop = wizardData.overageBudgets.enterpriseHardStop;
+    setCostCenterBudgetsIndependent(wizardData.overageBudgets.costCenterBudgetsIndependent);
     wizardData.overageBudgets.orgs.forEach(b => {
         const org = state.orgs.find(o => o.name === b.orgName);
         if (org) { org.budget = b.budget; org.budgetHardStop = b.hardStop; }

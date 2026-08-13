@@ -2,11 +2,16 @@ import { expect, test } from '@playwright/test';
 import {
     BUSINESS_CREDITS,
     createState,
+    independentCostCenterBudgetState,
     membershipState,
     orderedOverageState,
     singleUserState
 } from './fixtures/scenarios.js';
 import { SimulatorPage } from './pages/simulator-page.js';
+
+function percentValue(text) {
+    return Number.parseFloat(text.replace('%', ''));
+}
 
 test('blocks after pool exhaustion when metered usage is disabled', async ({ page }) => {
     const simulator = new SimulatorPage(page);
@@ -258,4 +263,73 @@ test('ULB blocks during included-pool phase and across a saved baseline', async 
     expect(await simulator.gaugeValues('enterprise-pool')).toMatchObject({
         used: '1,900 AI credits'
     });
+});
+
+test('syncs cost-center budget independence between the budgets panel and dashboard controls', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.load(independentCostCenterBudgetState());
+    await simulator.showPanel('budgets');
+
+    const budgetsCheckbox = page.locator('#costCenterBudgetsIndependent');
+    await budgetsCheckbox.check();
+    await expect(budgetsCheckbox).toBeChecked();
+
+    await page.getByRole('button', { name: /Dashboard/ }).click();
+    const dashboardCheckbox = page.locator('#globalBudgetControls [data-bind="costCenterBudgetsIndependent"]');
+    await expect(dashboardCheckbox).toBeChecked();
+
+    await dashboardCheckbox.uncheck();
+    await expect(dashboardCheckbox).not.toBeChecked();
+
+    await simulator.showPanel('budgets');
+    await expect(page.locator('#costCenterBudgetsIndependent')).not.toBeChecked();
+});
+
+test('persists cost-center budget independence when confirmed from wizard step 6', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.loadEmpty();
+
+    await page.getByRole('button', { name: /Setup Wizard/ }).click();
+    for (let step = 0; step < 5; step += 1) {
+        await page.getByRole('button', { name: /Next/ }).click();
+    }
+
+    await page.locator('#wizardEntBudget').fill('100');
+    await page.locator('#wizardEntIndependent').check();
+    await page.getByRole('button', { name: /Next/ }).click();
+    await page.getByRole('button', { name: /Confirm & Create/ }).click();
+    await expect(page.locator('#wizardBody')).toContainText('Setup Complete');
+    await page.getByRole('button', { name: /Close/ }).click();
+
+    await simulator.showPanel('budgets');
+    await expect(page.locator('#costCenterBudgetsIndependent')).toBeChecked();
+    expect((await simulator.persistedState()).enterprise.costCenterBudgetsIndependent).toBe(true);
+});
+
+test('enterprise overage slider excludes independent cost-center users and preserves their budget gauge', async ({ page }) => {
+    const simulator = new SimulatorPage(page);
+    await simulator.load(independentCostCenterBudgetState());
+
+    await page.locator('#globalBudgetControls [data-bind="costCenterBudgetsIndependent"]').check();
+    await simulator.setGlobalPercent('enterpriseOverage', 50);
+
+    const enterpriseGauge = await simulator.gaugeValues('enterprise-budget');
+    const costCenterGauge = await simulator.gaugeValues('cc-budget-cc-rnd');
+
+    expect(percentValue(enterpriseGauge.percent)).toBeGreaterThanOrEqual(49.5);
+    expect(percentValue(enterpriseGauge.percent)).toBeLessThanOrEqual(50.5);
+    expect(percentValue(costCenterGauge.percent)).toBeLessThan(1);
+});
+
+test('enterprise overage user counts reflect independence-aware targeting', async ({ page }) => {
+    const state = independentCostCenterBudgetState();
+    const simulator = new SimulatorPage(page);
+    await simulator.load(state);
+
+    const independentMembers = state.costCenters[0].userIds.length;
+    const expectedEnterpriseTargets = state.users.length - independentMembers;
+
+    await page.locator('#globalBudgetControls [data-bind="costCenterBudgetsIndependent"]').check();
+    await expect(simulator.budgetControl('enterpriseOverage').locator('.badge'))
+        .toHaveText(`${expectedEnterpriseTargets} users`);
 });

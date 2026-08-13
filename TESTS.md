@@ -47,6 +47,17 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
 - Exhausting the enterprise hard-stop budget blocks users that need overage;
   their Next Call is blocked, while users still fully served from an included
   pool remain served.
+- When **Cost center overage budgets are independent of enterprise budget** is
+  enabled, enterprise-level overage distribution excludes users already covered
+  by an independent cost-center overage budget.
+- Global overage slider application first fills each targeted user's included
+  pool entitlement, then adds metered credits, so the resulting budget gauge
+  percentage matches the selected overage slider percentage whenever the
+  targeted users have enough ULB headroom. Credits are water-filled across
+  targets and capped at each user's effective ULB, so a small target group
+  can't be pushed past their limit and blocked outright; when the group's
+  combined headroom is less than requested, the control's help text reports
+  the maximum percentage that is actually reachable.
 - Exactly reaching a pool or budget cap is allowed. A hard stop takes effect
   when demand exceeds the cap.
 
@@ -61,6 +72,9 @@ One E2E scenario creates a representative enterprise through the real UI.
 Decision-matrix scenarios preload deterministic state through `localStorage`,
 then perform usage changes and assertions through the rendered UI. This keeps
 the tests isolated and fast without bypassing the behavior being tested.
+Coverage includes independence-aware global overage distribution, gauge-aligned
+overage slider application, and synchronization of the shared independence
+toggle across the wizard, budgets tab, and dashboard controls.
 
 ## Shared fixture catalog
 
@@ -87,6 +101,7 @@ Every fixture defines `usage`, `usageBaseline`, `usageSequence`,
 | CFG-04 | Resolve separate users through direct CC, enterprise-team, organization, and direct-user-list assignment | Each user draws from the expected cost center |
 | CFG-05 | Leave a user outside every cost center | The user draws only from the unreserved enterprise pool |
 | CFG-06 | Enable auto seats with one Business and one Enterprise user | Seat counts are 1 and 1 and the total pool is exactly 5,800 credits |
+| CFG-07 | Toggle **Cost center overage budgets are independent of enterprise budget** from the Budgets tab, Setup Wizard step 6, and dashboard **💳 Overage Budgets** section | All three controls reflect the same saved setting immediately and after reload |
 
 ### Included-pool routing
 
@@ -157,6 +172,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | UI-03 | Switch credits to dollars and back | Underlying usage/status is unchanged; usage, Last Call details, and finite inline ULB totals convert exactly while `/∞` remains unchanged |
 | UI-04 | Filter users by name | Only row visibility changes; usage and order do not |
 | UI-05 | Inspect the result table layout | Columns appear as Consumption, Last Call, Last Call Details, Next Call, and Next Call Reason; no standalone ULB Remaining column exists |
+| UI-06 | Apply global overage sliders with independent cost-center budgets enabled | Enterprise overage distribution skips users served by independent cost-center budgets, targeted users are filled to pool entitlement before metered credits are added, and the resulting gauge percentage matches the slider |
 | LIFE-01 | Import a deterministic configuration with optional fields omitted | State is normalized, rendered, and persisted after reload |
 | LIFE-02 | Cancel and then confirm reset | Cancel preserves state; confirm restores defaults and empty dashboard |
 | LIFE-03 | Load the page | `styles.css` and `app.js` load successfully with no browser errors |
@@ -178,6 +194,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | Baseline, included pools, and metered usage follow FIFO order | POOL-05, POOL-06, SEQ-01 through SEQ-10 |
 | Last Call is historical; Next Call projects final shared state | MTR-03 through MTR-05, MTR-09, MTR-10, SEQ-02 through SEQ-05, UI-01 |
 | Scope hard stops freeze Next Call without rewriting earlier Last Calls | MTR-03 through MTR-05, SEQ-04, SEQ-05 |
+| Independence-aware overage controls stay synced and scope global sliders correctly | CFG-07, UI-06 |
 
 ## Running tests
 

@@ -2,11 +2,23 @@
 // per-user consumption changes are applied on top of the saved starting point.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { loadSimulator } from './load-simulator.mjs';
 
 const PHILIPPE = 'u-philippe';
 const MATTHIEU = 'u-matthieu';
 const THIERRY = 'u-thierry';
+const SAMPLE_RND_CC = 'cc_1783340547965';
+const SAMPLE_ECOMMERCE_CC = 'cc_1783347696931';
+const here = dirname(fileURLToPath(import.meta.url));
+const sampleConfigPath = join(here, '..', 'simulator', 'budget-simulator-sample.json');
+
+function sampleConfiguration() {
+    return JSON.parse(readFileSync(sampleConfigPath, 'utf8'));
+}
 
 // 3 business seats → 5,700 pool credits; the RND cost center has a $1 overage
 // budget (100 metered credits) with a hard stop and no reserved pool.
@@ -75,6 +87,13 @@ function assertLastCall(result, status, reason) {
 function assertNextCall(result, status, reason) {
     assert.equal(result.nextCallStatus, status);
     if (reason) assert.match(result.nextCallReason, reason);
+}
+
+function clearUsage(state) {
+    state.usage = Object.fromEntries(state.users.map(user => [user.id, 0]));
+    state.usageBaseline = Object.fromEntries(state.users.map(user => [user.id, 0]));
+    state.usageSequence = [];
+    state.lastCallOutcomes = {};
 }
 
 test('the starting point consumes the shared pool in user order', () => {
@@ -655,4 +674,301 @@ test('an over-subscribed starting point blocks the later user when metering is o
     assertLastCall(byId[PHILIPPE], 'served');
     assert.equal(byId[MATTHIEU].creditsFromEntPool, 0);
     assertLastCall(byId[MATTHIEU], 'blocked', /metered usage not enabled/);
+});
+
+test('the enterprise overage slider skips users with an independent cost-center overage budget', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.globalBudgetPercents = { enterpriseOverage: 58.5 };
+    clearUsage(state);
+    const rnd = state.costCenters.find(cc => cc.id === SAMPLE_RND_CC);
+    const initialRndPool = sim.call('getCCPoolSize', rnd);
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { poolState } = sim.call('computeSimulationResults');
+
+    assert.equal(poolState.ccPools[SAMPLE_RND_CC], initialRndPool);
+    assert.equal(poolState.ccMetered[SAMPLE_RND_CC] || 0, 0);
+    state.users
+        .filter(user => sim.call('getUserCC', user)?.id === SAMPLE_RND_CC)
+        .forEach(user => assert.equal(sim.getState().usage[user.id], 0));
+});
+
+test('the enterprise overage slider still targets cost centers without an independent overage budget', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.globalBudgetPercents = { enterpriseOverage: 58.5 };
+    state.enterprise.universalULB = null;
+    state.costCenters.find(cc => cc.id === SAMPLE_ECOMMERCE_CC).ulb = null;
+    clearUsage(state);
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { poolState } = sim.call('computeSimulationResults');
+    const ecommerceUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_ECOMMERCE_CC);
+
+    assert.ok(ecommerceUsers.length > 0);
+    ecommerceUsers.forEach(user => {
+        assert.ok(sim.getState().usage[user.id] > sim.call('userCreditsPerSeat', user));
+    });
+    assert.ok(poolState.enterpriseMetered > 0);
+});
+
+// Regression test for a bug where flatly dividing the enterprise overage
+// credits across a small group of independence-excluded targets could push
+// each target's total usage past their cost center's ULB, causing every one
+// of them to be blocked outright (an all-or-nothing per-user check) and
+// collapsing the enterprise budget gauge to 0% instead of a partial,
+// ULB-capped amount. This uses the bundled sample config's real ULB values
+// (unlike the neighboring test, which nulls out the ULB to sidestep this).
+test('the enterprise overage slider water-fills targets instead of ULB-blocking them entirely', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.globalBudgetPercents = {
+        ccPool_cc_1783347696931: 100,
+        enterpriseOverage: 53
+    };
+    clearUsage(state);
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { results, poolState } = sim.call('computeSimulationResults');
+    const ecommerceUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_ECOMMERCE_CC);
+
+    assert.ok(ecommerceUsers.length > 0);
+    const byId = Object.fromEntries(results.map(r => [r.userId, r]));
+    ecommerceUsers.forEach(user => {
+        assert.notEqual(byId[user.id].status, 'blocked',
+            `expected ${user.name} to be served/metered up to their ULB, not blocked entirely`);
+    });
+
+    // RND stays untouched by the enterprise overage slider (independence-aware targeting).
+    const rnd = state.costCenters.find(cc => cc.id === SAMPLE_RND_CC);
+    assert.equal(poolState.ccPools[SAMPLE_RND_CC], sim.call('getCCPoolSize', rnd));
+    assert.equal(poolState.ccMetered[SAMPLE_RND_CC] || 0, 0);
+
+    // Enterprise metered spend is capped by the eligible users' ULBs but must be
+    // strictly positive - previously it collapsed to exactly 0.
+    assert.ok(poolState.enterpriseMetered > 0);
+    assert.ok(poolState.enterpriseMetered <= state.enterprise.enterpriseBudget);
+});
+
+test('the enterprise overage percent is reflected accurately on the gauge when pool capacity would otherwise absorb it', () => {
+    const sim = loadSimulator();
+    sim.setState({
+        enterprise: {
+            businessSeats: 2,
+            enterpriseSeats: 0,
+            meteredEnabled: true,
+            enterpriseBudget: 1000,
+            enterpriseHardStop: true,
+            universalULB: null
+        },
+        teams: [],
+        orgs: [],
+        costCenters: [],
+        users: [
+            { id: 'shared-a', name: 'Shared A', license: 'business', individualULB: null },
+            { id: 'shared-b', name: 'Shared B', license: 'business', individualULB: null }
+        ],
+        usage: {},
+        usageBaseline: {},
+        usageSequence: [],
+        simulationUnit: 'credits',
+        globalBudgetPercents: { enterpriseOverage: 50 }
+    });
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { poolState } = sim.call('computeSimulationResults');
+    const usage = sim.getState().usage;
+
+    assert.equal(usage['shared-a'], 26900);
+    assert.equal(usage['shared-b'], 26900);
+    assert.ok(Math.abs(poolState.enterpriseMetered - 500) <= 0.5);
+});
+
+test('overage sliders never round fractional pool entitlements above available capacity', () => {
+    for (const scope of ['enterprise', 'cc', 'org']) {
+        const sim = loadSimulator();
+        const users = Array.from({ length: 6 }, (_, index) => ({
+            id: `user-${index}`,
+            name: `User ${index}`,
+            license: 'business',
+            individualULB: null,
+            costCenterId: scope === 'cc' ? 'cc-shared' : null,
+            orgId: scope === 'org' ? 'org-shared' : null
+        }));
+        sim.setState({
+            enterprise: {
+                businessSeats: 1,
+                enterpriseSeats: 0,
+                meteredEnabled: true,
+                enterpriseBudget: scope === 'enterprise' ? 0.01 : 0,
+                enterpriseHardStop: true,
+                universalULB: null
+            },
+            teams: [],
+            orgs: scope === 'org'
+                ? [{ id: 'org-shared', name: 'Shared Org', budget: 0.01, budgetHardStop: true }]
+                : [],
+            costCenters: scope === 'cc'
+                ? [{
+                    id: 'cc-shared',
+                    name: 'Shared CC',
+                    poolEnabled: false,
+                    overagesAllowed: true,
+                    budget: 0.01,
+                    budgetHardStop: true,
+                    ulb: null,
+                    userIds: users.map(user => user.id)
+                }]
+                : [],
+            users,
+            usage: {},
+            usageBaseline: {},
+            usageSequence: [],
+            simulationUnit: 'credits',
+            globalBudgetPercents: {
+                [scope === 'enterprise' ? 'enterpriseOverage' : `${scope}Overage_${scope}-shared`]: 100
+            }
+        });
+
+        sim.call('applyAllGlobalBudgetPercents');
+
+        assert.equal(Object.values(sim.getState().usage).reduce((sum, usage) => sum + usage, 0), 1896);
+        assert.equal(sim.call('computeSimulationResults').poolState.enterpriseMetered, 0);
+    }
+});
+
+test('toggling independence off keeps the enterprise slider targeting every user', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = false;
+    state.globalBudgetPercents = { enterpriseOverage: 58.5 };
+    clearUsage(state);
+    const rnd = state.costCenters.find(cc => cc.id === SAMPLE_RND_CC);
+    const initialRndPool = sim.call('getCCPoolSize', rnd);
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { poolState } = sim.call('computeSimulationResults');
+    const rndUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_RND_CC);
+
+    assert.ok(rndUsers.length > 0);
+    rndUsers.forEach(user => assert.ok(sim.getState().usage[user.id] > 0));
+    assert.ok(poolState.ccPools[SAMPLE_RND_CC] < initialRndPool);
+    assert.ok((poolState.ccMetered[SAMPLE_RND_CC] || 0) > 0);
+});
+
+test('getOverageBudgetTargets and getUserPoolEntitlement behave correctly', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = true;
+
+    const targets = [...sim.call('getOverageBudgetTargets', { type: 'enterprise' })];
+    const targetIds = new Set(targets.map(user => user.id));
+    const rndUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_RND_CC);
+    const ecommerceUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_ECOMMERCE_CC);
+
+    assert.ok(rndUsers.length > 0);
+    assert.ok(ecommerceUsers.length > 0);
+    rndUsers.forEach(user => assert.equal(targetIds.has(user.id), false));
+    ecommerceUsers.forEach(user => assert.equal(targetIds.has(user.id), true));
+    assert.equal(targets.length, ecommerceUsers.length);
+
+    const ecommerceUser = ecommerceUsers[0];
+    assert.equal(
+        sim.call('getUserPoolEntitlement', ecommerceUser),
+        sim.call('userCreditsPerSeat', ecommerceUser)
+    );
+
+    sim.setState({
+        enterprise: {
+            businessSeats: 2,
+            enterpriseSeats: 1,
+            meteredEnabled: true,
+            enterpriseBudget: 1000,
+            enterpriseHardStop: true,
+            universalULB: null
+        },
+        teams: [],
+        orgs: [],
+        costCenters: [{
+            id: 'cc-pooled',
+            name: 'Pooled CC',
+            poolEnabled: true,
+            overagesAllowed: true,
+            budget: null,
+            budgetHardStop: true,
+            ulb: null,
+            userIds: ['pooled-enterprise']
+        }],
+        users: [
+            { id: 'pooled-enterprise', name: 'Pooled Enterprise', license: 'enterprise', individualULB: null },
+            { id: 'shared-a', name: 'Shared A', license: 'business', individualULB: null },
+            { id: 'shared-b', name: 'Shared B', license: 'business', individualULB: null },
+            { id: 'shared-c', name: 'Shared C', license: 'business', individualULB: null }
+        ],
+        usage: {},
+        usageBaseline: {},
+        usageSequence: [],
+        simulationUnit: 'credits',
+        globalBudgetPercents: {}
+    });
+
+    const entitlementState = sim.getState();
+    const pooledEnterprise = entitlementState.users.find(user => user.id === 'pooled-enterprise');
+    const sharedUser = entitlementState.users.find(user => user.id === 'shared-a');
+    const pooledCC = entitlementState.costCenters[0];
+    const unreservedEnterprisePool = sim.call('totalPool') - sim.call('getCCPoolSize', pooledCC);
+    const sharedEntitlement = sim.call('getUserPoolEntitlement', sharedUser);
+
+    assert.equal(
+        sim.call('getUserPoolEntitlement', pooledEnterprise),
+        sim.call('userCreditsPerSeat', pooledEnterprise)
+    );
+    assert.ok(sharedEntitlement > 0);
+    assert.ok(sharedEntitlement <= unreservedEnterprisePool);
+    assert.ok(Math.abs(sharedEntitlement - (unreservedEnterprisePool / 3)) < 1e-9);
+});
+
+test('saving the wizard enterprise overage row keeps the draft synchronized', () => {
+    const sim = loadSimulator();
+    const elements = {
+        wzeOverageVal_enterprise_enterprise: { value: '275' },
+        wzeOverageHS_enterprise_enterprise: { checked: false },
+        wzeOverageIndep_enterprise_enterprise: { checked: true }
+    };
+    sim.context.document.getElementById = id => elements[id] || {
+        style: {},
+        value: '',
+        checked: false,
+        textContent: '',
+        innerHTML: ''
+    };
+    vm.runInContext('wizardData = defaultWizardData()', sim.context);
+
+    sim.call('wizardSaveExistingOverage', 'enterprise', 'enterprise');
+
+    assert.equal(vm.runInContext('wizardData.overageBudgets.enterpriseBudget', sim.context), 275);
+    assert.equal(vm.runInContext('wizardData.overageBudgets.enterpriseHardStop', sim.context), false);
+    assert.equal(vm.runInContext('wizardData.overageBudgets.costCenterBudgetsIndependent', sim.context), true);
+});
+
+test('changing cost-center independence preserves in-progress budget input', () => {
+    const sim = loadSimulator();
+    const enterpriseBudget = { value: '275' };
+    sim.context.document.getElementById = id => id === 'enterpriseBudget'
+        ? enterpriseBudget
+        : { style: {}, value: '', checked: false, textContent: '', innerHTML: '' };
+
+    sim.call('setCostCenterBudgetsIndependent', true);
+
+    assert.equal(enterpriseBudget.value, '275');
+    assert.equal(sim.getState().enterprise.costCenterBudgetsIndependent, true);
 });

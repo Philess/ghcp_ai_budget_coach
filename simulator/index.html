@@ -236,7 +236,7 @@
                     <div class="form-group">
                         <label>&nbsp;</label>
                         <label class="checkbox-label">
-                            <input type="checkbox" id="costCenterBudgetsIndependent" onchange="updateBudgets()">
+                            <input type="checkbox" id="costCenterBudgetsIndependent" data-bind="costCenterBudgetsIndependent" onchange="setCostCenterBudgetsIndependent(this.checked)">
                             Cost center overage budgets are independent of enterprise budget
                         </label>
                     </div>
