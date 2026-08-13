@@ -49,7 +49,7 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   pool remain served.
 - When **Cost center overage budgets are independent of enterprise budget** is
   enabled, enterprise-level overage distribution excludes users already covered
-  by an independent cost-center or organization overage budget.
+  by an independent cost-center overage budget.
 - Global overage slider application first fills each targeted user's included
   pool entitlement, then adds metered credits, so the resulting budget gauge
   percentage matches the selected overage slider percentage.
@@ -167,7 +167,7 @@ The cost center has a $1 hard-stop overage budget (100 metered credits).
 | UI-03 | Switch credits to dollars and back | Underlying usage/status is unchanged; usage, Last Call details, and finite inline ULB totals convert exactly while `/∞` remains unchanged |
 | UI-04 | Filter users by name | Only row visibility changes; usage and order do not |
 | UI-05 | Inspect the result table layout | Columns appear as Consumption, Last Call, Last Call Details, Next Call, and Next Call Reason; no standalone ULB Remaining column exists |
-| UI-06 | Apply global overage sliders with independent scoped budgets enabled | Enterprise overage distribution skips users served by independent cost-center/org budgets, targeted users are filled to pool entitlement before metered credits are added, and the resulting gauge percentage matches the slider |
+| UI-06 | Apply global overage sliders with independent cost-center budgets enabled | Enterprise overage distribution skips users served by independent cost-center budgets, targeted users are filled to pool entitlement before metered credits are added, and the resulting gauge percentage matches the slider |
 | LIFE-01 | Import a deterministic configuration with optional fields omitted | State is normalized, rendered, and persisted after reload |
 | LIFE-02 | Cancel and then confirm reset | Cancel preserves state; confirm restores defaults and empty dashboard |
 | LIFE-03 | Load the page | `styles.css` and `app.js` load successfully with no browser errors |

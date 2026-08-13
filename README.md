@@ -118,7 +118,7 @@ flowchart LR
 | Usage exactly fills a shared hard-stop budget | The acting user's **Last Call** is metered; **Next Call** is blocked for the scope. Enterprise members with pool headroom can still be served. |
 | A later action attempts to exceed a shared hard-stop budget | The acting user's **Last Call** is blocked. Other members keep their actual Last Call, while **Next Call** is blocked for the scope. |
 | Cost center overage budgets are independent of the enterprise budget | The same toggle is available in the **Budgets** tab, **Setup Wizard** step 6 (**Overage Budgets**), and the dashboard's **Global Budget Usage Simulation → 💳 Overage Budgets** section; all three controls stay synchronized. |
-| Global overage sliders are used with independent cost center or org budgets | Enterprise overage distribution skips users already covered by an independent scoped overage budget, and each targeted user's included pool entitlement is filled before metered credits are added so the resulting gauge percentage matches the slider. |
+| Global overage sliders are used with independent cost center budgets | Enterprise overage distribution skips users already covered by an independent cost center overage budget, and each targeted user's included pool entitlement is filled before metered credits are added so the resulting gauge percentage matches the slider. |
 
 ### Recommended Setup (3 Controls Together)
 
@@ -179,8 +179,8 @@ the same setting and stay in sync.
 
 Within **Global Budget Usage Simulation**, overage sliders distribute metered
 usage only across users targeted by that budget scope. For example, the
-enterprise overage slider skips users whose cost center or organization is
-using an independent scoped overage budget, and every targeted user is first
+enterprise overage slider skips users whose cost center is using an independent
+overage budget, and every targeted user is first
 filled to their included pool entitlement before metered credits are added so
 the budget gauge tracks the selected slider percentage closely.
 

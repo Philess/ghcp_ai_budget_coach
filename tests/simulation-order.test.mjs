@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { loadSimulator } from './load-simulator.mjs';
 
 const PHILIPPE = 'u-philippe';
@@ -750,6 +751,59 @@ test('the enterprise overage percent is reflected accurately on the gauge when p
     assert.ok(Math.abs(poolState.enterpriseMetered - 500) <= 0.5);
 });
 
+test('overage sliders never round fractional pool entitlements above available capacity', () => {
+    for (const scope of ['enterprise', 'cc', 'org']) {
+        const sim = loadSimulator();
+        const users = Array.from({ length: 6 }, (_, index) => ({
+            id: `user-${index}`,
+            name: `User ${index}`,
+            license: 'business',
+            individualULB: null,
+            costCenterId: scope === 'cc' ? 'cc-shared' : null,
+            orgId: scope === 'org' ? 'org-shared' : null
+        }));
+        sim.setState({
+            enterprise: {
+                businessSeats: 1,
+                enterpriseSeats: 0,
+                meteredEnabled: true,
+                enterpriseBudget: scope === 'enterprise' ? 0.01 : 0,
+                enterpriseHardStop: true,
+                universalULB: null
+            },
+            teams: [],
+            orgs: scope === 'org'
+                ? [{ id: 'org-shared', name: 'Shared Org', budget: 0.01, budgetHardStop: true }]
+                : [],
+            costCenters: scope === 'cc'
+                ? [{
+                    id: 'cc-shared',
+                    name: 'Shared CC',
+                    poolEnabled: false,
+                    overagesAllowed: true,
+                    budget: 0.01,
+                    budgetHardStop: true,
+                    ulb: null,
+                    userIds: users.map(user => user.id)
+                }]
+                : [],
+            users,
+            usage: {},
+            usageBaseline: {},
+            usageSequence: [],
+            simulationUnit: 'credits',
+            globalBudgetPercents: {
+                [scope === 'enterprise' ? 'enterpriseOverage' : `${scope}Overage_${scope}-shared`]: 100
+            }
+        });
+
+        sim.call('applyAllGlobalBudgetPercents');
+
+        assert.equal(Object.values(sim.getState().usage).reduce((sum, usage) => sum + usage, 0), 1896);
+        assert.equal(sim.call('computeSimulationResults').poolState.enterpriseMetered, 0);
+    }
+});
+
 test('toggling independence off keeps the enterprise slider targeting every user', () => {
     const sim = loadSimulator();
     sim.call('applyConfiguration', sampleConfiguration());
@@ -841,4 +895,40 @@ test('getOverageBudgetTargets and getUserPoolEntitlement behave correctly', () =
     assert.ok(sharedEntitlement > 0);
     assert.ok(sharedEntitlement <= unreservedEnterprisePool);
     assert.ok(Math.abs(sharedEntitlement - (unreservedEnterprisePool / 3)) < 1e-9);
+});
+
+test('saving the wizard enterprise overage row keeps the draft synchronized', () => {
+    const sim = loadSimulator();
+    const elements = {
+        wzeOverageVal_enterprise_enterprise: { value: '275' },
+        wzeOverageHS_enterprise_enterprise: { checked: false },
+        wzeOverageIndep_enterprise_enterprise: { checked: true }
+    };
+    sim.context.document.getElementById = id => elements[id] || {
+        style: {},
+        value: '',
+        checked: false,
+        textContent: '',
+        innerHTML: ''
+    };
+    vm.runInContext('wizardData = defaultWizardData()', sim.context);
+
+    sim.call('wizardSaveExistingOverage', 'enterprise', 'enterprise');
+
+    assert.equal(vm.runInContext('wizardData.overageBudgets.enterpriseBudget', sim.context), 275);
+    assert.equal(vm.runInContext('wizardData.overageBudgets.enterpriseHardStop', sim.context), false);
+    assert.equal(vm.runInContext('wizardData.overageBudgets.costCenterBudgetsIndependent', sim.context), true);
+});
+
+test('changing cost-center independence preserves in-progress budget input', () => {
+    const sim = loadSimulator();
+    const enterpriseBudget = { value: '275' };
+    sim.context.document.getElementById = id => id === 'enterpriseBudget'
+        ? enterpriseBudget
+        : { style: {}, value: '', checked: false, textContent: '', innerHTML: '' };
+
+    sim.call('setCostCenterBudgetsIndependent', true);
+
+    assert.equal(enterpriseBudget.value, '275');
+    assert.equal(sim.getState().enterprise.costCenterBudgetsIndependent, true);
 });

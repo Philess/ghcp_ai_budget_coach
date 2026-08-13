@@ -1191,7 +1191,6 @@ function setCostCenterBudgetsIndependent(value) {
         checkbox.checked = !!state.enterprise.costCenterBudgetsIndependent;
     });
     saveState();
-    renderBudgets();
     renderGlobalBudgetSimulation();
 }
 
@@ -2794,7 +2793,7 @@ function applyAllGlobalBudgetPercents() {
         if (targets.length > 0) {
             const perUser = Math.floor(totalCredits / targets.length);
             targets.forEach(u => {
-                newUsage[u.id] = Math.round(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
+                newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
                 newUsage[u.id] += perUser;
             });
         }
@@ -2809,7 +2808,7 @@ function applyAllGlobalBudgetPercents() {
                 const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
                 const perUser = Math.floor(totalCredits / targets.length);
                 targets.forEach(u => {
-                    newUsage[u.id] = Math.round(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
+                    newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
                     newUsage[u.id] += perUser;
                 });
             }
@@ -2825,7 +2824,7 @@ function applyAllGlobalBudgetPercents() {
                 const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
                 const perUser = Math.floor(totalCredits / targets.length);
                 targets.forEach(u => {
-                    newUsage[u.id] = Math.round(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
+                    newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
                     newUsage[u.id] += perUser;
                 });
             }
@@ -3380,6 +3379,9 @@ function wizardSaveExistingOverage(type, id) {
         state.enterprise.enterpriseBudget = newVal;
         state.enterprise.enterpriseHardStop = hardStop;
         setCostCenterBudgetsIndependent(independent);
+        wizardData.overageBudgets.enterpriseBudget = newVal;
+        wizardData.overageBudgets.enterpriseHardStop = hardStop;
+        wizardData.overageBudgets.costCenterBudgetsIndependent = independent;
     }
     else if (type === 'org') { const o = state.orgs.find(o => o.id === id); if (o) { o.budget = newVal; o.budgetHardStop = hardStop; } }
     else if (type === 'cc') { const c = state.costCenters.find(c => c.id === id); if (c) { c.budget = newVal; c.budgetHardStop = hardStop; } }
