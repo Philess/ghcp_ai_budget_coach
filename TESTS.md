@@ -52,7 +52,12 @@ deployed GitHub Pages site, or use pixel-perfect visual snapshots.
   by an independent cost-center overage budget.
 - Global overage slider application first fills each targeted user's included
   pool entitlement, then adds metered credits, so the resulting budget gauge
-  percentage matches the selected overage slider percentage.
+  percentage matches the selected overage slider percentage whenever the
+  targeted users have enough ULB headroom. Credits are water-filled across
+  targets and capped at each user's effective ULB, so a small target group
+  can't be pushed past their limit and blocked outright; when the group's
+  combined headroom is less than requested, the control's help text reports
+  the maximum percentage that is actually reachable.
 - Exactly reaching a pool or budget cap is allowed. A hard stop takes effect
   when demand exceeds the cap.
 

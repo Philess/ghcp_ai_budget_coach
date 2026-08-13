@@ -182,7 +182,12 @@ usage only across users targeted by that budget scope. For example, the
 enterprise overage slider skips users whose cost center is using an independent
 overage budget, and every targeted user is first
 filled to their included pool entitlement before metered credits are added so
-the budget gauge tracks the selected slider percentage closely.
+the budget gauge tracks the selected slider percentage closely. Credits beyond
+that are water-filled across targets up to each user's effective ULB, so a
+small group of eligible users can't be pushed past their usage limit and
+blocked outright (which previously could collapse the gauge to 0%). When the
+targeted group's combined ULB headroom can't absorb the full request, the
+control's help text shows the maximum percentage that's actually reachable.
 
 Features:
 - Configure enterprise settings (Business/Enterprise seat counts, derived AI credit pool, metered overage policy)

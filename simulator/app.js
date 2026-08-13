@@ -514,6 +514,79 @@ function getUserPoolEntitlement(user) {
     return entPool / eligible.length;
 }
 
+// A user's total simulated usage is an all-or-nothing figure: if it exceeds
+// their effective ULB, the whole request is blocked and contributes zero to
+// any budget. Distributing overage credits with a flat per-user share can
+// easily exceed a small group's ULBs and collapse the result to 0%, so
+// distribution must respect each user's headroom below their ULB.
+function getUserUsageCap(user) {
+    const ulb = getEffectiveULB(user);
+    return ulb.value === null ? Infinity : ulb.value;
+}
+
+// Distributes `totalCredits` of metered overage across `targets`, first
+// filling each target's pool entitlement (so the pool reads as fully used
+// before overage kicks in), then water-filling the overage credits so no
+// user's total usage is pushed past their effective ULB. Any credits that
+// can't be placed because every target is already at its ULB cap are simply
+// left unallocated — that reflects a real capacity limit, not a bug.
+function distributeOverageCredits(targets, totalCredits, newUsage) {
+    if (!targets.length || totalCredits <= 0) return;
+    const caps = {};
+    let active = targets.filter(u => {
+        const entitlement = Math.floor(Math.max(newUsage[u.id] || 0, getUserPoolEntitlement(u)));
+        newUsage[u.id] = entitlement;
+        caps[u.id] = getUserUsageCap(u);
+        return newUsage[u.id] < caps[u.id];
+    });
+
+    let remaining = totalCredits;
+    while (remaining > 1e-6 && active.length > 0) {
+        const share = remaining / active.length;
+        let allocated = 0;
+        const nextActive = [];
+        active.forEach(u => {
+            const headroom = caps[u.id] - newUsage[u.id];
+            const alloc = Math.min(share, headroom);
+            newUsage[u.id] += alloc;
+            allocated += alloc;
+            if (headroom - alloc > 1e-6) nextActive.push(u);
+        });
+        remaining -= allocated;
+        if (allocated <= 1e-6) break;
+        active = nextActive;
+    }
+
+    targets.forEach(u => { newUsage[u.id] = Math.floor(newUsage[u.id]); });
+}
+
+// Sums the overage headroom actually available across `targets` given their
+// ULBs, so the UI can warn when a requested percentage is mathematically
+// unreachable (e.g. only a handful of independence-excluded users remain,
+// each capped by a small per-user usage limit).
+function getOverageFeasibleCredits(targets) {
+    let total = 0;
+    for (const u of targets) {
+        const cap = getUserUsageCap(u);
+        if (!Number.isFinite(cap)) return Infinity;
+        const entitlement = getUserPoolEntitlement(u);
+        total += Math.max(0, cap - entitlement);
+    }
+    return total;
+}
+
+// Builds a help-text suffix warning that a requested overage percentage may
+// not be fully reachable because the eligible users' ULBs cap how much of
+// the budget can actually be metered against them.
+function overageCapHint(targets, budget) {
+    if (!targets.length || !(budget > 0)) return '';
+    const feasibleCredits = getOverageFeasibleCredits(targets);
+    if (!Number.isFinite(feasibleCredits)) return '';
+    const feasiblePct = Math.max(0, Math.min(100, (feasibleCredits / CREDITS_PER_DOLLAR / budget) * 100));
+    if (feasiblePct >= 99.95) return '';
+    return ` · Capped by user limits: max ~${feasiblePct.toFixed(1)}% reachable for these users`;
+}
+
 function orgMapIdList(primaryId, ids) {
     const requested = new Set([
         primaryId,
@@ -2785,49 +2858,32 @@ function applyAllGlobalBudgetPercents() {
         }
     });
 
-    // Enterprise overage budget → independence-aware targets equally
+    // Enterprise overage budget → independence-aware targets, water-filled
+    // so no single target's ULB collapses the whole request to zero.
     const entOverPct = percents['enterpriseOverage'] || 0;
     if (entOverPct > 0 && state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
         const totalCredits = meteredCreditsFromBudget(state.enterprise.enterpriseBudget * entOverPct / 100);
         const targets = getOverageBudgetTargets({ type: 'enterprise' });
-        if (targets.length > 0) {
-            const perUser = Math.floor(totalCredits / targets.length);
-            targets.forEach(u => {
-                newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
-                newUsage[u.id] += perUser;
-            });
-        }
+        distributeOverageCredits(targets, totalCredits, newUsage);
     }
 
-    // CC overage budgets → CC targets equally
+    // CC overage budgets → CC targets, water-filled against each user's ULB
     state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
         const pct = percents['ccOverage_' + cc.id] || 0;
         if (pct > 0) {
             const targets = getOverageBudgetTargets({ type: 'cc', cc });
-            if (targets.length > 0) {
-                const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
-                const perUser = Math.floor(totalCredits / targets.length);
-                targets.forEach(u => {
-                    newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
-                    newUsage[u.id] += perUser;
-                });
-            }
+            const totalCredits = meteredCreditsFromBudget(cc.budget * pct / 100);
+            distributeOverageCredits(targets, totalCredits, newUsage);
         }
     });
 
-    // Org overage budgets → org targets equally
+    // Org overage budgets → org targets, water-filled against each user's ULB
     state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
         const pct = percents['orgOverage_' + org.id] || 0;
         if (pct > 0) {
             const targets = getOverageBudgetTargets({ type: 'org', org });
-            if (targets.length > 0) {
-                const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
-                const perUser = Math.floor(totalCredits / targets.length);
-                targets.forEach(u => {
-                    newUsage[u.id] = Math.floor(Math.max(newUsage[u.id], getUserPoolEntitlement(u)));
-                    newUsage[u.id] += perUser;
-                });
-            }
+            const totalCredits = meteredCreditsFromBudget(org.budget * pct / 100);
+            distributeOverageCredits(targets, totalCredits, newUsage);
         }
     });
 
@@ -2931,8 +2987,9 @@ function renderGlobalBudgetSimulation() {
     if (state.enterprise.meteredEnabled && state.enterprise.enterpriseBudget > 0) {
         const pct = percents['enterpriseOverage'] || 0;
         const entOverageTargets = getOverageBudgetTargets({ type: 'enterprise' });
+        const capHint = overageCapHint(entOverageTargets, state.enterprise.enterpriseBudget);
         overageHtml += renderBudgetControl('enterpriseOverage', 'Enterprise Overage Budget',
-            `${formatSimulationBudget(state.enterprise.enterpriseBudget)} total`,
+            `${formatSimulationBudget(state.enterprise.enterpriseBudget)} total${capHint}`,
             entOverageTargets.length, pct, { variant: 'overage', targetType: 'enterprise' });
     }
 
@@ -2940,8 +2997,9 @@ function renderGlobalBudgetSimulation() {
     state.costCenters.filter(cc => cc.budget !== null && cc.budget !== undefined && cc.budget > 0).forEach(cc => {
         const ccOverageTargets = getOverageBudgetTargets({ type: 'cc', cc });
         const pct = percents['ccOverage_' + cc.id] || 0;
+        const capHint = overageCapHint(ccOverageTargets, cc.budget);
         overageHtml += renderBudgetControl('ccOverage_' + cc.id, cc.name + ' Overage Budget',
-            `${formatSimulationBudget(cc.budget)} total`,
+            `${formatSimulationBudget(cc.budget)} total${capHint}`,
             ccOverageTargets.length, pct, { variant: 'overage', targetType: 'cc' });
     });
 
@@ -2949,6 +3007,7 @@ function renderGlobalBudgetSimulation() {
     state.orgs.filter(org => org.budget !== null && org.budget !== undefined && org.budget > 0).forEach(org => {
         const orgOverageTargets = getOverageBudgetTargets({ type: 'org', org });
         const pct = percents['orgOverage_' + org.id] || 0;
+        const capHint = overageCapHint(orgOverageTargets, org.budget);
         overageHtml += renderBudgetControl('orgOverage_' + org.id, org.name + ' Overage Budget',
             `${formatSimulationBudget(org.budget)} total`,
             orgOverageTargets.length, pct, { variant: 'overage', targetType: 'org' });

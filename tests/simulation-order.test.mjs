@@ -717,6 +717,46 @@ test('the enterprise overage slider still targets cost centers without an indepe
     assert.ok(poolState.enterpriseMetered > 0);
 });
 
+// Regression test for a bug where flatly dividing the enterprise overage
+// credits across a small group of independence-excluded targets could push
+// each target's total usage past their cost center's ULB, causing every one
+// of them to be blocked outright (an all-or-nothing per-user check) and
+// collapsing the enterprise budget gauge to 0% instead of a partial,
+// ULB-capped amount. This uses the bundled sample config's real ULB values
+// (unlike the neighboring test, which nulls out the ULB to sidestep this).
+test('the enterprise overage slider water-fills targets instead of ULB-blocking them entirely', () => {
+    const sim = loadSimulator();
+    sim.call('applyConfiguration', sampleConfiguration());
+    const state = sim.getState();
+    state.enterprise.costCenterBudgetsIndependent = true;
+    state.globalBudgetPercents = {
+        ccPool_cc_1783347696931: 100,
+        enterpriseOverage: 53
+    };
+    clearUsage(state);
+
+    sim.call('applyAllGlobalBudgetPercents');
+    const { results, poolState } = sim.call('computeSimulationResults');
+    const ecommerceUsers = state.users.filter(user => sim.call('getUserCC', user)?.id === SAMPLE_ECOMMERCE_CC);
+
+    assert.ok(ecommerceUsers.length > 0);
+    const byId = Object.fromEntries(results.map(r => [r.userId, r]));
+    ecommerceUsers.forEach(user => {
+        assert.notEqual(byId[user.id].status, 'blocked',
+            `expected ${user.name} to be served/metered up to their ULB, not blocked entirely`);
+    });
+
+    // RND stays untouched by the enterprise overage slider (independence-aware targeting).
+    const rnd = state.costCenters.find(cc => cc.id === SAMPLE_RND_CC);
+    assert.equal(poolState.ccPools[SAMPLE_RND_CC], sim.call('getCCPoolSize', rnd));
+    assert.equal(poolState.ccMetered[SAMPLE_RND_CC] || 0, 0);
+
+    // Enterprise metered spend is capped by the eligible users' ULBs but must be
+    // strictly positive - previously it collapsed to exactly 0.
+    assert.ok(poolState.enterpriseMetered > 0);
+    assert.ok(poolState.enterpriseMetered <= state.enterprise.enterpriseBudget);
+});
+
 test('the enterprise overage percent is reflected accurately on the gauge when pool capacity would otherwise absorb it', () => {
     const sim = loadSimulator();
     sim.setState({
